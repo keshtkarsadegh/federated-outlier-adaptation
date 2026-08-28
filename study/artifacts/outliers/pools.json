@@ -7174,5 +7174,5 @@
     "f4097_41": 1.0,
     "f4099_10": 1.0
   },
-  "scores": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/outliers/clients_acc_on_global.json"
+  "scores": "$FOA_STUDY_DIR/outliers/clients_acc_on_global.json"
 }

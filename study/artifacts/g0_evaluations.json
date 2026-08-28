@@ -208,8 +208,8 @@
       "f4057_40": 1.0
     },
     "tag": "old_data_fold1",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/old_data.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz"
   },
   "old_data_fold2": {
     "fold": 2,
@@ -420,8 +420,8 @@
       "f4057_40": 1.0
     },
     "tag": "old_data_fold2",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/old_data.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz"
   },
   "old_data_fold3": {
     "fold": 3,
@@ -632,8 +632,8 @@
       "f4057_40": 1.0
     },
     "tag": "old_data_fold3",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/old_data.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz"
   },
   "old_data_fold4": {
     "fold": 4,
@@ -844,8 +844,8 @@
       "f4057_40": 0.9655172413793104
     },
     "tag": "old_data_fold4",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/old_data.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz"
   },
   "old_data_fold5": {
     "fold": 5,
@@ -1056,7 +1056,7 @@
       "f4057_40": 1.0
     },
     "tag": "old_data_fold5",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/old_data.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz"
   }
 }

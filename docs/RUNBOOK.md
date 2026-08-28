@@ -152,15 +152,24 @@ and one for others, and the difference would read as a size effect.
 | Boundary hits (grid-edge winners) | any selection step | appended to `tables/BOUNDARY_HITS.txt` |
 | Scaling / dropout records | P18/P19/P20 emissions | `study_emit.py five\|drop20\|c20` -> `tables/p18_*, p19_*, p20_*.json` |
 | Per-run curves and heatmaps | run folders | `foa report`, `foa figures` |
-| **`tables/master_table.md`** | the run folders' `final_evaluation` blocks | **assembled by hand** — see the gap note below |
-| **`tables/scaling_table.md`** | P18/P19/P20 `final_evaluation` blocks, fold 1 | **assembled by hand** |
+| `tables/master_table.md` | the run folders' `final_evaluation` blocks, CV-5 | `tools/make_tables.py master` |
+| `tables/scaling_table.md` | P18/P19/P20 `final_evaluation` blocks, **fold 1** | `tools/make_tables.py scaling` |
 
-> **Known gap.** The two headline markdown tables are not produced by a command.
-> Every *number* in them comes from a `final_evaluation` block in a run folder
-> and every row is reproducible, but the assembly step is manual. A reviewer can
-> check them against the shipped artefacts; they cannot regenerate them with one
-> invocation. Closing this needs a small table generator that reads the run
-> folders by parent prefix and emits the markdown.
+```bash
+python tools/make_tables.py all --root "$FOA_STUDY_DIR" --out-dir study/artifacts/tables
+
+# and the regression: fail loudly if a table no longer matches its runs
+python tools/make_tables.py master --root "$FOA_STUDY_DIR" \
+    --out study/artifacts/tables/master_table.md --check
+```
+
+Every **number** in both tables is read from a run folder; the framing prose is
+carried as prose, because a sentence stating an interpretation is not something
+a program derives. Three rules of the scaling table are in the code rather than
+in the head of whoever writes it: the fold filter is explicit (`FOLD_ONLY = 1`),
+the ten-client anchors are read from **fold 1 of the same runs** rather than
+from the CV-5 mean, and no single-fold cell carries a `±` — the P15 cross-fold
+spread is quoted once instead, as the noise floor to judge differences against.
 
 Every run folder carries a three-category `final_evaluation`:
 

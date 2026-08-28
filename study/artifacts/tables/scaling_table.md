@@ -1,6 +1,6 @@
 # Scaling & dropout tables — Digits_study01 winners (fold 1, single g-0)
 Cells: pooled clients test / old-data preservation (5-fold mean). No CV on these probes
-(owner rule); P15 cross-fold spread (the noise floor): ~±0.01-0.02 pooled, ~±0.003 old.
+(owner rule); P15 cross-fold spread (the noise floor): ~±0.01-0.02 pooled, ~±0.0003-0.0058 old.
 Do-nothing baselines (fold 1): cohort10 = 0.8224 (CV mean; study baseline), cohort20 = 0.8534.
 Extremes ran full participation (never dropped); 5c/10c rows include plain-FedAvg controls, 20c is winners-only.
 

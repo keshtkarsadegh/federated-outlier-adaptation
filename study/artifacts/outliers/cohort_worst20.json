@@ -54,5 +54,5 @@
   "min_accuracy": 0.5416666666666666,
   "max_accuracy": 0.8725490196078431,
   "mean_accuracy": 0.8329399913873905,
-  "source": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/outliers/bad_acc_on_g0.json"
+  "source": "$FOA_STUDY_DIR/outliers/bad_acc_on_g0.json"
 }

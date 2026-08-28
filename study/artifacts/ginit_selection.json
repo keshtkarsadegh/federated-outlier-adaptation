@@ -12,8 +12,8 @@
       "epochs_run": 21,
       "best_epoch": 10,
       "stopped_early": true,
-      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold1/global_results/global_metrics.json",
-      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold1/global_model"
+      "metrics_path": "$FOA_STUDY_DIR/ginit_fold1/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/ginit_fold1/global_model"
     },
     {
       "fold": 2,
@@ -22,8 +22,8 @@
       "epochs_run": 29,
       "best_epoch": 18,
       "stopped_early": true,
-      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold2/global_results/global_metrics.json",
-      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold2/global_model"
+      "metrics_path": "$FOA_STUDY_DIR/ginit_fold2/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/ginit_fold2/global_model"
     },
     {
       "fold": 3,
@@ -32,8 +32,8 @@
       "epochs_run": 63,
       "best_epoch": 52,
       "stopped_early": true,
-      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold3/global_results/global_metrics.json",
-      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold3/global_model"
+      "metrics_path": "$FOA_STUDY_DIR/ginit_fold3/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/ginit_fold3/global_model"
     },
     {
       "fold": 4,
@@ -42,8 +42,8 @@
       "epochs_run": 24,
       "best_epoch": 13,
       "stopped_early": true,
-      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold4/global_results/global_metrics.json",
-      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold4/global_model"
+      "metrics_path": "$FOA_STUDY_DIR/ginit_fold4/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/ginit_fold4/global_model"
     },
     {
       "fold": 5,
@@ -52,8 +52,8 @@
       "epochs_run": 20,
       "best_epoch": 9,
       "stopped_early": true,
-      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold5/global_results/global_metrics.json",
-      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold5/global_model"
+      "metrics_path": "$FOA_STUDY_DIR/ginit_fold5/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/ginit_fold5/global_model"
     }
   ],
   "val_mean": 0.9953533741103909,
@@ -61,7 +61,7 @@
   "test_mean": 0.9950670314129204,
   "test_spread": 0.00016603972106975638,
   "n_folds": 5,
-  "source_model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_fold3/global_model",
-  "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/ginit_model",
+  "source_model": "$FOA_STUDY_DIR/ginit_fold3/global_model",
+  "model": "$FOA_STUDY_DIR/ginit_model",
   "sha256": "48689ec85d5921b8bd36fa53545fc368f8e9441f4acbec158da36c4e8b09f950"
 }

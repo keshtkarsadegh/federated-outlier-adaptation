@@ -20,7 +20,7 @@ two hundred retained writers, five-fold cross-validation throughout.
 | Path | Contents |
 |---|---|
 | `src/federated_outlier_adaptation/` | the package and the `foa` CLI (28 subcommands) |
-| `tools/` | task-file generators and the screen selectors |
+| `tools/` | task-file generators, screen selectors, the SD19 fetcher, the table generator |
 | `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
 | `tests/` | 1,648 tests, no GPU and no dataset required |
 | `study/jobs/` | every task file the published study ran, with per-stage READMEs |
@@ -54,6 +54,14 @@ That verifies the code and the shipped artefacts. To check that the study's
 selection chain is internally consistent — that each cohort really is cut from
 the ranking it claims — run the snippet in [`docs/VERIFY.md`](docs/VERIFY.md)
 (no GPU, no data).
+
+To get the data and build the cache (no GPU, ~10 min of conversion):
+
+```bash
+python tools/fetch_sd19.py --dest "$FOA_DATA_DIR/nist"   # fetch + verify + resume
+foa prepare-data --dataset nist --zip "$FOA_DATA_DIR/nist/by_write.zip" \
+    --out "$FOA_NIST28_DIR" --resolution 28 --classes all
+```
 
 With a GPU and the cache built, the cheapest real rung is **P09**, the plain
 FedAvg baseline: 10 tasks, about half a GPU-hour, and it produces the reference
@@ -160,19 +168,17 @@ with a fixed range.
 Stated plainly, because a reproducibility claim is only worth what its
 exceptions are:
 
-- **The two headline markdown tables** (`study/artifacts/tables/master_table.md`
-  and `scaling_table.md`) are assembled by hand. Every number in them comes from
-  a `final_evaluation` block in a run folder and every row is checkable against
-  the shipped artefacts, but there is no single command that regenerates them.
-- **No `foa` subcommand downloads SD19.** `docs/DATA.md` gives the URLs and the
-  checksums; the fetching is a `curl`.
 - **`foa prepare-data` defaults to 128 px.** The study needs `--resolution 28`,
   and a 128 px cache will train happily and reproduce nothing. `docs/DATA.md`
   says so twice.
-- **The scaling rungs are reported on fold 1 only** (P18, P19, P20). P18 and P19
-  have all five folds on disk; a table must filter on fold 1 explicitly for
-  *every* rung including the 10-client reference, or it will average five folds
-  for some rows and one for others.
+- **The scaling rungs are reported on fold 1 only** (P18, P19, P20) — a
+  deliberate design, not an omission: those probes ran one g-0 and one client
+  split. P18 and P19 nonetheless have all five folds on disk, so any table over
+  them must filter on fold 1 explicitly for *every* rung including the
+  ten-client anchor, or it averages five folds for some rows and one for others
+  and the difference reads as a size effect. `tools/make_tables.py` bakes that
+  rule in and a test pins it; anything else reading those folders must do the
+  same.
 - **`slurm/prepare_data.sbatch`** is the prior pipeline's 128 px job. Use
   `slurm/prepare_nist28.sbatch`.
 - Five generators in `tools/` (`make_stage*.py`, `emit_stage7_hybrid.py`) belong

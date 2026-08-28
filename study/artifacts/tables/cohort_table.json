@@ -500,8 +500,8 @@
     "max_rows": 119,
     "mean_rows": 102.4
   },
-  "clients_file": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/outliers/cohort_worst10.json",
-  "scores": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/outliers/bad_acc_on_g0.json",
-  "counts": "/mnt/lustre-grete/projects/auto_tads/payman_uni/results_v4/studies/Digits_study01/outliers/writer_counts.json",
-  "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/cohort10.foldbook.npz"
+  "clients_file": "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+  "scores": "$FOA_STUDY_DIR/outliers/bad_acc_on_g0.json",
+  "counts": "$FOA_STUDY_DIR/outliers/writer_counts.json",
+  "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
 }

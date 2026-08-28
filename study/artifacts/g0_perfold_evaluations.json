@@ -18,8 +18,8 @@
       "f2304_67": 0.8260869565217391
     },
     "tag": "cohort_fold1",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/cohort10.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
   },
   "cohort_fold2": {
     "fold": 2,
@@ -40,8 +40,8 @@
       "f2304_67": 0.8636363636363636
     },
     "tag": "cohort_fold2",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/cohort10.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
   },
   "cohort_fold3": {
     "fold": 3,
@@ -62,8 +62,8 @@
       "f2304_67": 0.9583333333333334
     },
     "tag": "cohort_fold3",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/cohort10.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
   },
   "cohort_fold4": {
     "fold": 4,
@@ -84,8 +84,8 @@
       "f2304_67": 0.9090909090909091
     },
     "tag": "cohort_fold4",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/cohort10.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
   },
   "cohort_fold5": {
     "fold": 5,
@@ -106,7 +106,7 @@
       "f2304_67": 0.8571428571428571
     },
     "tag": "cohort_fold5",
-    "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-    "fold_book": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/fold_books/cohort10.foldbook.npz"
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
   }
 }

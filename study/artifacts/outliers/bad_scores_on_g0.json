@@ -7537,6 +7537,6 @@
     "mean": 0.9772213424863967,
     "median": 0.9900990099009901
   },
-  "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
-  "clients_file": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/outliers/pool_bad.json"
+  "model": "$FOA_STUDY_DIR/g0_model",
+  "clients_file": "$FOA_STUDY_DIR/outliers/pool_bad.json"
 }

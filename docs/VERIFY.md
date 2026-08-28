@@ -26,15 +26,23 @@ the plumbing. The ones that matter most to a reader of the paper:
 | `test_study_runner.py` | the array runner's checks fire in an order where the variables they read exist — it *executes* the script body rather than only parsing it |
 | `test_nist28_pipeline.py` | the 28x28 conversion and the packed cache contract |
 | `test_selection.py`, `test_outlier_selection.py` | the two-phase g-init/g-0 selection and its no-leakage property |
+| `test_release_artifacts.py` | that no absolute machine path survives in the release; that the fetcher's checksums are the documented ones; that the scaling table pins fold 1 explicitly and carries no spread on a single-fold cell |
 
 ### The shipped artefacts
+
+> **Provenance paths were normalised for release.** Fields recording which model
+> or fold book produced an artefact carried the absolute path of the machine
+> that ran the study; they now read `$FOA_STUDY_DIR/...`, the same placeholder
+> the task files use, so a reader can expand them. Only path-valued strings were
+> rewritten — no accuracy, count, writer id or rule string was touched, and
+> `tools/sanitize_artifacts.py --check` re-proves it at any time.
 
 ```bash
 cd study/artifacts && sha256sum -c SHA256SUMS
 cd ../jobs        && sha256sum -c SHA256SUMS
 ```
 
-54 derived artefacts and 40 task files. This proves you hold the fold
+56 derived artefacts (both model checkpoints included) and 40 task files. This proves you hold the fold
 assignments, writer lists, selection records and experiment definitions that
 produced the published numbers.
 

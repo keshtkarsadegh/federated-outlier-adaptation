@@ -29,10 +29,33 @@ Landing page: <https://www.nist.gov/srd/nist-special-database-19>
 Direct downloads (the S3 bucket NIST publishes the SRD from):
 
 ```bash
+python tools/fetch_sd19.py --dest "$FOA_DATA_DIR/nist"
+```
+
+That fetches all three, **resumes** a partial download, **verifies** each
+against the SHA-256 below, and prints the conversion command. It is idempotent:
+a file already present and correct is reported and left alone, so it is safe to
+re-run after an interruption. A file whose hash does not match is refused and
+kept as `<name>.rejected` rather than deleted — a truncated transfer and a
+different SD19 release are worth telling apart.
+
+Only NIST's own host is built in. Pass your own mirror with `--mirror URL`
+(repeatable, or `FOA_SD19_MIRRORS`); the checksum is what makes any mirror safe,
+so an unverified one baked in would add risk and no convenience.
+
+To verify what you already have without downloading anything:
+
+```bash
+python tools/fetch_sd19.py --dest "$FOA_DATA_DIR/nist" --check
+```
+
+By hand, if you prefer:
+
+```bash
 mkdir -p "$FOA_DATA_DIR/nist" && cd "$FOA_DATA_DIR/nist"
-curl -fLO https://s3.amazonaws.com/nist-srd/SD19/by_write.zip
-curl -fLO https://s3.amazonaws.com/nist-srd/SD19/by_write_md5.log
-curl -fLO https://s3.amazonaws.com/nist-srd/SD19/by_class_md5.log
+curl -fLO -C - https://s3.amazonaws.com/nist-srd/SD19/by_write.zip
+curl -fLO -C - https://s3.amazonaws.com/nist-srd/SD19/by_write_md5.log
+curl -fLO -C - https://s3.amazonaws.com/nist-srd/SD19/by_class_md5.log
 ```
 
 If the bucket is unavailable, the same archive is mirrored by several academic
