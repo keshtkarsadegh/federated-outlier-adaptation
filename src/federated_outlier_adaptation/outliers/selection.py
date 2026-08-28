@@ -348,6 +348,7 @@ def select_cohort(
     tag=None,
     write_table=False,
     scores=None,
+    out=None,
 ):
     """
     Write the fixed cohort of the ``k`` worst-scoring eligible clients.
@@ -367,6 +368,13 @@ def select_cohort(
             else: those clients are exactly the ones that score worst.
         tag (str, optional): Label stored with the cohort.
         write_table (bool): Also write the per-client accuracy table.
+        out (Path or str, optional): Where the cohort file goes.  Needed when
+            the provider's own results root is not the study root - a non-NIST
+            provider writes under ``<results>/<provider>/``, so the default
+            location is one directory deeper than the rest of the chain reads.
+            Every other step of a study takes an explicit destination; this one
+            did not, and the mismatch is invisible until a later stage cannot
+            find the file.
         scores (Path or str, optional): The ranking to cut from.  Defaults to
             the root's ``clients_acc_on_global.json``.  The digits study passes
             the *shipped* model's scores over the bad pool instead, because the
@@ -382,8 +390,12 @@ def select_cohort(
     )
 
     outliers_dir = outliers_dir_of(provider, results_dir)
+    if out:
+        target = Path(out)
+        outliers_dir = target.parent
+    else:
+        target = outliers_dir / cohort_file_name(k)
     outliers_dir.mkdir(parents=True, exist_ok=True)
-    target = outliers_dir / cohort_file_name(k)
     accuracies_path = (
         Path(scores) if scores else accuracies_path_of(provider, results_dir)
     )
@@ -404,9 +416,11 @@ def select_cohort(
         NistLogger.info(f"Loaded existing cohort from {target}")
         return payload, target
 
-    _, payload = write_cohort(
+    written, payload = write_cohort(
         accuracies_path, outliers_dir, k=k, eligible=eligible_of(provider), tag=tag
     )
+    if Path(written) != target:
+        target.write_text(Path(written).read_text())
     return payload, target
 
 

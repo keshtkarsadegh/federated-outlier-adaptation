@@ -142,7 +142,7 @@ RESOLUTIONS = (28, 128)
 CLASS_SETS = ("all", "digits")
 
 #: Model topologies, mirrored from ``config.MODEL_NAMES``.
-MODEL_NAMES = ("fedavg_cnn", "flexible_cnn")
+MODEL_NAMES = ("fedavg_cnn", "flexible_cnn", "char_lstm")
 
 #: Conventions of the ``param_l2`` penalty, mirrored from the anchored trainer.
 PARAM_L2_CONVENTIONS = ("mean_per_tensor", "fedprox")
@@ -721,7 +721,14 @@ def cmd_global_train(args: argparse.Namespace) -> int:
     set_run_seed(args.seed)
     provider = _resolve_provider(args)
 
-    if args.provider and args.provider != "nist":
+    # A named population - "train on exactly these clients" - is the study
+    # pipeline's question, and `run_global_training` answers it for any
+    # provider: it goes through `provider.dataset.build_dataset(writers, ...)`
+    # and touches nothing dataset-specific. The provider-split entry point below
+    # answers a different question (draw a global/local partition, then score
+    # the held-out clients), and it has no way to be told which clients to use.
+    # So the population decides the route, not the provider.
+    if args.provider and args.provider != "nist" and args.population in ("source", None):
         from federated_outlier_adaptation.training.global_model import (
             run_provider_global_training,
         )
@@ -749,6 +756,7 @@ def cmd_global_train(args: argparse.Namespace) -> int:
         min_epochs=args.min_epochs,
         population=args.population,
         writers_file=args.writers_file,
+        provider=provider,
     )
     _maybe_write_pool(args, provider)
     return 0
@@ -826,6 +834,7 @@ def cmd_select_outliers(args: argparse.Namespace) -> int:
             tag=args.tag,
             write_table=not args.no_accuracy_table,
             scores=args.scores,
+            out=args.out,
         )
         print(f"Wrote {path}")
         print(
@@ -1584,6 +1593,122 @@ def cmd_writer_counts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_select_eligible(args: argparse.Namespace) -> int:
+    """Cut the eligible population from a writer-counts artefact."""
+    from federated_outlier_adaptation import config
+    from federated_outlier_adaptation.outliers.eligibility import (
+        eligibility_record,
+        load_totals,
+        write_eligibility,
+    )
+
+    provider = _resolve_provider(args)
+    results_dir = Path(getattr(provider, "results_dir", config.RESULTS_DIR))
+    counts = Path(args.counts) if args.counts else results_dir / "outliers" / "writer_counts.json"
+    if not counts.is_file():
+        print(f"FATAL: no writer-counts artefact at {counts}.", file=sys.stderr)
+        return 1
+    try:
+        totals = load_totals(counts)
+    except ValueError as error:
+        print(f"FATAL: {counts}: {error}", file=sys.stderr)
+        return 1
+
+    record = eligibility_record(totals, args.min_samples)
+    if not record["clients"]:
+        print(
+            f"FATAL: no writer holds {args.min_samples} rows; the floor excludes "
+            f"the whole population of {len(totals)}.",
+            file=sys.stderr,
+        )
+        return 1
+    record["source"] = str(counts)
+    out = Path(args.out) if args.out else results_dir / "outliers" / "eligible.json"
+    write_eligibility(record, out)
+    print(json.dumps({k: v for k, v in record.items() if k != "clients"}, indent=2))
+    print(f"Wrote {out}")
+    return 0
+
+
+def cmd_check_population(args: argparse.Namespace) -> int:
+    """
+    Assert what a chain stage must be able to assume about its own artefacts.
+
+    Returns non-zero on the first stage that is wrong, so a ``%1`` chain stops
+    where the mistake is instead of carrying it forward.
+    """
+    from federated_outlier_adaptation.outliers import checks
+
+    clients = checks.load_clients(args.clients_file)
+    problems = checks.check_size(clients, args.expect_size)
+
+    subset_of = {Path(p).name: checks.load_clients(p) for p in (args.subset_of or [])}
+    disjoint = {Path(p).name: checks.load_clients(p) for p in (args.disjoint_from or [])}
+    problems += checks.check_membership(clients, subset_of, disjoint)
+
+    if args.fold_book:
+        from federated_outlier_adaptation.data.fold_book import FoldBook
+
+        book = FoldBook.load(args.fold_book)
+        folds = args.folds or [1]
+        problems += checks.check_book(book, clients, folds)
+
+    totals = None
+    if args.counts and Path(args.counts).is_file():
+        from federated_outlier_adaptation.outliers.eligibility import load_totals
+
+        try:
+            totals = load_totals(args.counts)
+        except ValueError:
+            totals = None
+
+    label = args.label or Path(args.clients_file).name
+    if problems:
+        print(f"REFUSED: {label}", file=sys.stderr)
+        for problem in problems:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
+    print(f"{label}: {checks.describe(clients, totals)} - all checks pass")
+    if args.show:
+        print(json.dumps(clients, indent=2))
+    return 0
+
+
+def cmd_promote_model(args: argparse.Namespace) -> int:
+    """
+    Copy a trained model into the name the runs resolve, and record its checksum.
+
+    ``--init global --global-name NAME`` looks for ``<results>/<provider>/NAME_model``,
+    which is not where a training stage writes.  Promoting is what closes that
+    gap, and doing it with a checksum is what makes the model every later run
+    anchors on identified rather than assumed.
+    """
+    import hashlib
+    import shutil
+
+    source = Path(args.source)
+    if not source.is_file():
+        print(f"FATAL: no model at {source}.", file=sys.stderr)
+        return 1
+    target = Path(args.target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+
+    record = {
+        "name": args.name,
+        "source": str(source),
+        "model": str(target),
+        "sha256": digest,
+        "rule": args.rule or "promoted from a single training run",
+    }
+    if args.record:
+        Path(args.record).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.record).write_text(json.dumps(record, indent=2) + "\n")
+    print(json.dumps(record, indent=2))
+    return 0
+
+
 def cmd_cohort_table(args: argparse.Namespace) -> int:
     """Bank the cohort with the evidence behind its selection."""
     from federated_outlier_adaptation import config
@@ -2174,6 +2299,16 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("--force", action="store_true", help="Re-select even if the list exists.")
+    p.add_argument(
+        "--out",
+        default=None,
+        help=(
+            "Destination for the cohort file (--mode worst). Without it the "
+            "cohort lands in the provider's own outliers directory, which for a "
+            "non-NIST provider is <results>/<provider>/outliers - one level "
+            "deeper than the rest of a study reads."
+        ),
+    )
     p.set_defaults(func=cmd_select_outliers)
 
     # --- combined-train ---
@@ -2926,6 +3061,66 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=None, help="Destination JSON.")
     p.add_argument("--csv", default=None, help="Destination CSV (default: next to --out).")
     p.set_defaults(func=cmd_writer_counts)
+
+    # --- select-eligible ---
+    p = sub.add_parser(
+        "select-eligible",
+        help="Cut the eligible population from a writer-counts artefact.",
+    )
+    _add_common(p)
+    p.add_argument(
+        "--counts", default=None,
+        help="The writer-counts JSON; default outliers/writer_counts.json.",
+    )
+    p.add_argument(
+        "--min-samples", type=int, required=True, metavar="N",
+        help=(
+            "Rows a client needs to be eligible. The floor a per-client "
+            "60/20/20 split has to survive; set it from the measured "
+            "distribution, not from a guess."
+        ),
+    )
+    p.add_argument("--out", default=None, help="Destination JSON.")
+    p.set_defaults(func=cmd_select_eligible)
+
+    # --- check-population ---
+    p = sub.add_parser(
+        "check-population",
+        help="Assert a client list's size, membership and fold-book coverage.",
+    )
+    _add_common(p)
+    p.add_argument("--clients-file", required=True, help="The list under test.")
+    p.add_argument("--expect-size", type=int, default=None, metavar="N")
+    p.add_argument(
+        "--subset-of", action="append", default=None, metavar="PATH",
+        help="Every client must appear here. Repeatable.",
+    )
+    p.add_argument(
+        "--disjoint-from", action="append", default=None, metavar="PATH",
+        help="No client may appear here. Repeatable.",
+    )
+    # --fold-book comes from _add_common, which every subcommand shares.
+    p.add_argument(
+        "--folds", type=int, nargs="+", default=None, metavar="K",
+        help="Folds that must split every client three ways (default: 1).",
+    )
+    p.add_argument("--counts", default=None, help="Writer counts, for the summary line.")
+    p.add_argument("--label", default=None, help="Name this check reports under.")
+    p.add_argument("--show", action="store_true", help="Print the client list.")
+    p.set_defaults(func=cmd_check_population)
+
+    # --- promote-model ---
+    p = sub.add_parser(
+        "promote-model",
+        help="Copy a trained model to the name the runs resolve, with its checksum.",
+    )
+    _add_common(p)
+    p.add_argument("--source", required=True, help="The trained checkpoint.")
+    p.add_argument("--target", required=True, help="Where the runs look for it.")
+    p.add_argument("--name", required=True, help="The global name, e.g. g0.")
+    p.add_argument("--record", default=None, help="Destination for the selection record.")
+    p.add_argument("--rule", default=None, help="How this model was chosen, for the record.")
+    p.set_defaults(func=cmd_promote_model)
 
     # --- split-pools ---
     p = sub.add_parser(

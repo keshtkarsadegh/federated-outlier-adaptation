@@ -47,7 +47,8 @@ import re
 import zipfile
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Mapping
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -496,6 +497,72 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+#: Sentinel for "the book has not been looked for yet", distinct from "looked
+#: for and absent" - which is a real answer and must not be retried on every
+#: client of every round.
+_UNSET = object()
+
+
+class WindowCache:
+    """
+    The row-addressed face of a Shakespeare dataset.
+
+    Mirrors the three attributes the fold-book builder reads off the packed NIST
+    cache - ``len``, ``writer_ids``, ``writer_index`` - over the dense window
+    index.  It holds no data of its own: every row is a view into the character
+    stream the dataset already has.
+    """
+
+    def __init__(self, data: "ShakespeareData"):
+        self._data = data
+        self.writer_ids: List[str] = list(data.users)
+        counts = np.asarray(data._seq_counts, dtype=np.int64)
+        # Row -> owning user, for all four million windows at once: each user
+        # owns one contiguous block, so this is a repeat rather than a loop.
+        self.writer_index: np.ndarray = np.repeat(
+            np.arange(counts.size, dtype=np.int64), counts
+        )
+        self._rows = int(counts.sum())
+
+    def __len__(self) -> int:
+        return self._rows
+
+    @property
+    def resolution(self):
+        """No such thing here; present so a caller can ask and get an answer."""
+        return None
+
+
+class _LazyWriterSamples(Mapping):
+    """
+    ``{user: [(row, label), ...]}`` computed per user, on demand.
+
+    The book builder asks for the whole mapping and then uses a handful of its
+    keys.  Answering that literally would build four million tuples to split
+    ten users.
+    """
+
+    def __init__(self, data: "ShakespeareData", writers=None):
+        self._data = data
+        self._keys = list(data.users) if writers is None else list(writers)
+
+    def __getitem__(self, user: str):
+        if user not in self._data._row_of:
+            raise KeyError(user)
+        rows = self._data.window_rows(user)
+        labels = self._data.row_labels(rows)
+        return list(zip(rows.tolist(), labels.tolist()))
+
+    def __iter__(self):
+        return iter(self._keys)
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def __contains__(self, user) -> bool:
+        return user in self._data._row_of
+
+
 # ------------------------------------------------------------------- access
 class ShakespeareSequenceDataset(Dataset):
     """
@@ -564,6 +631,8 @@ class ShakespeareData:
         self.users: List[str] = list(self.index["users"])
         self._row_of: Dict[str, int] = {user: row for row, user in enumerate(self.users)}
         self._offset_cache: Dict[str, np.ndarray] = {}
+        self._cache: Optional["WindowCache"] = None
+        self._fold_book: Any = _UNSET
 
     # ------------------------------------------------------------- metadata
     def __len__(self) -> int:
@@ -579,6 +648,17 @@ class ShakespeareData:
 
     def all_users(self) -> List[str]:
         return list(self.users)
+
+    # The population commands were written against the NIST dataset's names.
+    # A client is a writer there and a (play, role) here; the vocabulary
+    # differs, the question does not, so both names answer it.
+    def all_writers(self) -> List[str]:
+        """Alias of :meth:`all_users`, for the writer-shaped call sites."""
+        return self.all_users()
+
+    def get_sample_count(self, writer_id) -> int:
+        """Alias of :meth:`sample_count`, for the writer-shaped call sites."""
+        return self.sample_count(writer_id)
 
     def sample_count(self, user: str) -> int:
         """Number of 80-character windows the user contributes."""
@@ -624,6 +704,125 @@ class ShakespeareData:
         """All targets as a ``[Nseq]`` ``uint8`` array."""
         return np.concatenate([self.targets(self.window_offsets(u)) for u in self.users])
 
+    # ------------------------------------------------------ the cache facade
+    #
+    # Everything below exists so that the fold-book machinery - which was built
+    # for the packed NIST cache and addresses samples by ROW - can address
+    # Shakespeare windows too.  The book is the study's split record: it is what
+    # lets two runs of one fold see the same rows, and what lets a reviewer
+    # check a split rather than only a result.  Re-deriving that machinery for a
+    # second dataset would have meant two split rules to keep in agreement, so
+    # instead this presents the shape the existing one already reads.
+    #
+    # THE ROW SPACE IS THE DENSE WINDOW INDEX, 0 .. num_sequences-1, not the
+    # token offset.  Token offsets are the natural address here - a window IS a
+    # position in the character stream - but they leave gaps: the last 80
+    # positions of every user start no window, and no user owns them.  The book
+    # maps every row to a writer through ``writer_index``, and a row owned by
+    # nobody would be attributed to whichever writer sat at index -1.  A dense
+    # index has no such holes, so the question cannot arise.
+
+    @property
+    def cache_dir(self) -> Path:
+        """Where the packed arrays live; recorded in a book's metadata."""
+        return self.npz_path.parent
+
+    @property
+    def classes(self) -> str:
+        """The label space, for a book's metadata: the character vocabulary."""
+        return f"chars{self.vocab_size}"
+
+    @property
+    def cache(self) -> "WindowCache":
+        """The row-addressed view of this dataset the fold book builds against."""
+        if self._cache is None:
+            self._cache = WindowCache(self)
+        return self._cache
+
+    def window_rows(self, user: str) -> np.ndarray:
+        """The user's dense window rows, ``[n]``."""
+        row = self._row_of[user]
+        start = int(self._seq_starts[row])
+        return np.arange(start, start + int(self._seq_counts[row]), dtype=np.int64)
+
+    def offsets_of_rows(self, rows) -> np.ndarray:
+        """
+        Token offsets of dense window rows.
+
+        The two spaces differ by each user's own displacement, so the map is a
+        per-row lookup rather than a constant shift.
+        """
+        rows = np.asarray(rows, dtype=np.int64)
+        if rows.size == 0:
+            return rows
+        owner = self.cache.writer_index[rows]
+        return self._user_starts[owner] + (rows - self._seq_starts[owner])
+
+    def row_labels(self, rows) -> np.ndarray:
+        """Next-character label of each dense window row."""
+        return self.targets(self.offsets_of_rows(rows))
+
+    def writer_samples(self, writers=None) -> Mapping:
+        """
+        ``{user: [(row, label), ...]}`` over the dense window rows.
+
+        Lazy on purpose.  The corpus holds four million windows, and
+        materialising every one as a Python tuple costs hundreds of megabytes to
+        build a book that usually covers ten users.  This computes a user's list
+        only when it is asked for, while still answering ``in``, ``len`` and
+        iteration over the full population - which is all the book builder needs
+        to decide what it covers.
+        """
+        return _LazyWriterSamples(self, writers)
+
+    def rows_dataset(self, rows, labels=None):
+        """
+        A torch dataset over explicit dense window rows.
+
+        The generic evaluation loader asks the dataset for this rather than
+        constructing an image dataset itself, which is the single change that
+        lets every book-addressed command - scoring, evaluation, the isolated
+        and centralized arms - run on a modality that is not images.
+
+        Args:
+            rows: Dense window rows.
+            labels: Ignored; the label of a window is the character that
+                follows it and is recovered from the stream. Accepted so the
+                call site does not need to know that.
+        """
+        return ShakespeareSequenceDataset(
+            self.tokens, self.offsets_of_rows(rows), self.seq_length
+        )
+
+    # ------------------------------------------------------------- the book
+    @property
+    def fold_book(self):
+        """The configured fold book, or ``None``; loaded once."""
+        if self._fold_book is _UNSET:
+            path = config.fold_book()
+            if not path:
+                self._fold_book = None
+            else:
+                from federated_outlier_adaptation.data.fold_book import FoldBook
+
+                self._fold_book = FoldBook.load(path)
+        return self._fold_book
+
+    def book_split(self, writers, fold):
+        """
+        The three parts of ``writers`` in ``fold``, from the book.
+
+        ``None`` when there is no book, no fold, or the book does not cover
+        every requested writer - in which case the caller falls back to the
+        seeded split, exactly as it does for NIST.
+        """
+        book = self.fold_book
+        if book is None or fold is None:
+            return None
+        if not all(book.covers(writer) for writer in writers):
+            return None
+        return book.split(fold, writers)
+
     # -------------------------------------------------------------- loaders
     def build_dataset(
         self,
@@ -647,6 +846,33 @@ class ShakespeareData:
         known = [user for user in users if user in self._row_of]
         if not known:
             return None, None, None
+
+        def loader_of(offsets_part: np.ndarray):
+            if offsets_part is None or np.asarray(offsets_part).size == 0:
+                return None
+            dataset = ShakespeareSequenceDataset(
+                self.tokens, np.asarray(offsets_part, dtype=np.int64), self.seq_length
+            )
+            generator = make_generator(loader_seed)
+            if generator is None:
+                return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+            return DataLoader(dataset, batch_size=batch_size, shuffle=True, generator=generator)
+
+        # A fold book, when one is configured and covers these users, *is* the
+        # split: the rows it recorded are the split, and no rate or seed here
+        # can move them. This is what makes one fold mean the same thing in
+        # every process that reads it - and, for this study specifically, what
+        # keeps g-0's training rows out of the partitions its preservation is
+        # measured on. Without it g-0 would train on a seeded cut and be scored
+        # on a booked one, and the two would overlap.
+        from federated_outlier_adaptation.utils.seeding import configured_fold
+
+        booked = self.book_split(known, configured_fold())
+        if booked is not None:
+            return tuple(
+                loader_of(self.offsets_of_rows(booked[part]))
+                for part in ("train", "val", "test")
+            )
 
         offsets = np.concatenate([self.window_offsets(user) for user in known])
         if offsets.size == 0:

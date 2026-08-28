@@ -68,6 +68,10 @@ if [ -z "${FOA_PROJECT_DIR:-}" ]; then
     echo "no default: one would point at a directory nobody created and turn a" >&2
     echo "missing setup into an empty study. Set it, then resubmit:" >&2
     echo "  export FOA_PROJECT_DIR=/path/to/your/workspace" >&2
+    echo "If this is a Slurm job, the submitting shell's environment was NOT" >&2
+    echo "propagated: many sites default to --export=NONE, and --export=ALL is" >&2
+    echo "the default being overridden. Name the variables by value:" >&2
+    echo "  sbatch --export=ALL,FOA_PROJECT_DIR=\$FOA_PROJECT_DIR,FOA_STUDY_DIR=\$FOA_STUDY_DIR ..." >&2
     exit 78
 fi
 _here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -105,7 +109,7 @@ fi
 # immediate abort.  The need-check is after the read, and that ordering is the
 # whole reason this comment exists.
 if [ -z "${G0_FOLD:-}" ] && [ -f "$FOA_STUDY_DIR/g0_selection.json" ]; then
-    G0_FOLD=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['selected_fold'])" \
+    G0_FOLD=$("$FOA_PYTHON" -c "import json,sys; print(json.load(open(sys.argv[1]))['selected_fold'])" \
         "$FOA_STUDY_DIR/g0_selection.json" 2>/dev/null || true)
 fi
 export G0_FOLD="${G0_FOLD:-}"
@@ -135,7 +139,8 @@ esac
 # ---------------------------------------------------------------- the guard
 PATH_FLAGS=" --results-dir --out --model-path --fold-book --clients-file \
 --writers-file --exclude-file --old-book --old-clients-file --outliers-file \
---init-checkpoint --root --data-dir --cache-dir "
+--init-checkpoint --root --data-dir --cache-dir --scores --csv --counts \
+--subset-of --disjoint-from --source --target --record "
 
 PREV=""
 BAD=0
@@ -165,14 +170,67 @@ echo "task[$INDEX]: $TASK" | tee "$TASK_LOG"
 echo "study=$FOA_STUDY_DIR cache=$FOA_NIST28_DIR host=$(hostname)" | tee -a "$TASK_LOG"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | tee -a "$TASK_LOG" || true
 
-MODULE_TASK="${TASK/#foa /python -u -m federated_outlier_adaptation.cli }"
+MODULE_TASK="${TASK/#foa /$FOA_PYTHON -u -m federated_outlier_adaptation.cli }"
 
 # A dry run walks every check above and stops here.  `bash -n` proves the script
 # parses; only running it proves the checks fire in an order where the variables
 # they read exist.  That distinction has cost a whole array once.
+#
+# AND IT LOADS THE TASK.  A dry run that only walked the shell body once passed
+# an entire chain whose CLI could not be imported at all - the job had picked up
+# a system python too old to parse the package, and nothing before the exec
+# looked.  So the dry run now does what the real element does short of training:
+# it imports the CLI under the resolved interpreter and parses the task line, or
+# compiles it when the step is a python one. An unimportable package, a bad
+# flag, or a syntax error in a guard step fails here instead of on a GPU.
 if [ -n "${FOA_DRY_RUN:-}" ]; then
     echo "DRY RUN would exec: $MODULE_TASK"
     echo "G0_FOLD=$G0_FOLD"
+    if ! FOA_TASK="$TASK" "$FOA_PYTHON" - <<'PYCHECK'
+import os, re, shlex
+
+task = os.environ["FOA_TASK"]
+
+# The runner expands shell variables through `eval` at exec time, so the task as
+# read still carries them. Resolve them the same way here: from the environment
+# when it has them, and otherwise to "1" - which is the shape a fold number
+# takes and harmless where a path is expected, since argparse does not open
+# anything. Without this a line like `--fold $GINIT_FOLD` fails the check for
+# naming a variable the submitter supplies, which is not a defect.
+unresolved = []
+
+
+def resolve(match):
+    name = match.group(1) or match.group(2)
+    value = os.environ.get(name)
+    if value:
+        return value
+    unresolved.append(name)
+    return "1"
+
+
+task = re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)", resolve, task)
+if unresolved:
+    print(f"  dry run: unresolved at check time, assumed '1': {sorted(set(unresolved))}")
+
+if task.startswith("foa "):
+    from federated_outlier_adaptation.cli import build_parser
+
+    build_parser().parse_args(shlex.split(task)[1:])
+    print("  dry run: CLI imported, task parses")
+elif " -c " in task:
+    # A guard or promotion step: compile its body rather than run it.
+    words = shlex.split(task)
+    body = words[words.index("-c") + 1]
+    compile(body, "<task>", "exec")
+    print("  dry run: python step compiles")
+else:
+    print("  dry run: shell step, not inspected")
+PYCHECK
+    then
+        echo "REFUSED: the task did not load under $FOA_PYTHON." >&2
+        exit 1
+    fi
     echo STUDY_TASK_DRY_RUN_OK
     exit 0
 fi

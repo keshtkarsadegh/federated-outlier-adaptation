@@ -103,10 +103,17 @@ reviewable before it costs anything.
 
 ```bash
 sbatch --account=$FOA_ACCOUNT --partition=$FOA_GPU_PARTITION --gres=gpu:1 \
+       --export=ALL,FOA_PROJECT_DIR=$FOA_PROJECT_DIR,FOA_STUDY_DIR=$FOA_STUDY_DIR \
        --array=1-N slurm/study_phase.sbatch study/jobs/d01_p15.txt
 slurm/run_tasks.sh study/jobs/d01_p15.txt          # no scheduler
 FOA_DRY_RUN=1 slurm/run_tasks.sh study/jobs/...    # every check, no execution
 ```
+
+> **`--export` is not optional.** Many sites default to `--export=NONE`, so the
+> submitting shell's environment does not reach the job — and `--export=ALL`
+> alone is exactly the default being overridden. Name the variables by value.
+> Without them `env.sh` refuses at startup, correctly, once per array element:
+> a 296-element pair of screens spent about ten GPU-hours saying so.
 
 The runner refuses a task line whose paths point outside the study root —
 checked *before* the variable is expanded, so a path pasted from another study
@@ -202,10 +209,20 @@ exceptions are:
 | `G0_FOLD` | winning g-0 fold, for Fisher-weighted penalties | derived from `g0_selection.json` |
 | `FOA_DRY_RUN` | run every check, execute nothing | unset |
 | `FOA_ACCOUNT`, `FOA_GPU_PARTITION`, `FOA_CPU_PARTITION` | scheduler | unset — pass at submit time |
-| `FOA_MODULES`, `FOA_ENV`, `FOA_HTTP_PROXY` | site specifics, all optional | unset |
+| `FOA_ENV` | conda prefix or virtualenv to run in | auto: `$FOA_PROJECT_DIR/envs/{foa,fal}`, else a single unambiguous `envs/*` |
+| `FOA_PYTHON` | the interpreter the runner resolved | derived; printed by every job |
+| `FOA_MODULES`, `FOA_HTTP_PROXY` | site specifics, both optional | unset |
 
 Nothing site-specific is baked in: no account, no partition, no absolute path.
 An unconfigured site gets plain behaviour rather than somebody else's cluster.
+
+**The interpreter is resolved and vetted before anything runs.** Batch nodes
+routinely put an old `/usr/bin/python3` first on PATH, and running under it
+fails deep inside an import with a `SyntaxError` that reads as a broken source
+file. `slurm/env.sh` finds an environment under `$FOA_PROJECT_DIR/envs/`, checks
+the version, checks that the package actually imports, and **refuses** with a
+message naming the interpreter rather than proceeding. Every job logs which
+python it chose.
 
 ---
 

@@ -7,12 +7,19 @@ pattern to learn.
 ```bash
 # with Slurm
 sbatch --account=$FOA_ACCOUNT --partition=$FOA_GPU_PARTITION --gres=gpu:1 \
+       --export=ALL,FOA_PROJECT_DIR=$FOA_PROJECT_DIR,FOA_STUDY_DIR=$FOA_STUDY_DIR \
        --array=1-N --output="$FOA_STUDY_DIR/logs/%x_%A_%a.log" \
        slurm/study_phase.sbatch study/jobs/<file>.txt
 
 # without Slurm (same script, sequentially)
 slurm/run_tasks.sh study/jobs/<file>.txt
 ```
+
+> **`--export` is not optional.** Many sites default to `--export=NONE`, so the
+> submitting shell's environment does not reach the job — and `--export=ALL`
+> alone is exactly the default being overridden. Name the variables by value.
+> Without them `env.sh` refuses at startup, correctly, once per array element:
+> a 296-element pair of screens spent about ten GPU-hours saying so.
 
 `N` is the line count, given in the table below. Some files must run **`%1`
 (serially)**, marked *chained*: each of their steps reads what the one before it

@@ -22,6 +22,38 @@ from typing import Any, Dict, Optional, Sequence
 from federated_outlier_adaptation.logging_utils import NistLogger
 
 
+def rows_dataset(dataset, rows, labels):
+    """
+    A torch dataset over explicit cache rows, whatever the modality.
+
+    The book addresses samples by row, and every book-driven command - scoring,
+    per-fold evaluation, the isolated and centralized arms - ends up here. It
+    used to construct an image dataset directly, which is what confined the
+    whole fold-book apparatus to NIST. Now it asks the dataset how to realise
+    its own rows and only falls back to the packed-image path when the dataset
+    does not say.
+
+    Args:
+        dataset: The provider's dataset.
+        rows: Row indices, already filtered to ones the dataset knows.
+        labels: Label per row, in the same order. A dataset that recovers its
+            own labels from the row (Shakespeare: the next character) may
+            ignore them.
+    """
+    build = getattr(dataset, "rows_dataset", None)
+    if build is not None:
+        return build(rows, labels)
+
+    from federated_outlier_adaptation.data.datasets import (
+        MemmapDigitDataset,
+        build_transform,
+    )
+
+    return MemmapDigitDataset(
+        dataset.cache, rows, labels, build_transform(dataset.cache.resolution)
+    )
+
+
 def rows_loader(provider, rows, batch_size: int = 256, shuffle: bool = False):
     """
     An evaluation loader over explicit cache rows.
@@ -38,11 +70,6 @@ def rows_loader(provider, rows, batch_size: int = 256, shuffle: bool = False):
     """
     from torch.utils.data import DataLoader
 
-    from federated_outlier_adaptation.data.datasets import (
-        MemmapDigitDataset,
-        build_transform,
-    )
-
     dataset = provider.dataset
     labels = {
         row: label
@@ -53,10 +80,7 @@ def rows_loader(provider, rows, batch_size: int = 256, shuffle: bool = False):
     if not kept:
         return None
     return DataLoader(
-        MemmapDigitDataset(
-            dataset.cache, kept, [labels[row] for row in kept],
-            build_transform(dataset.cache.resolution),
-        ),
+        rows_dataset(dataset, kept, [labels[row] for row in kept]),
         batch_size=batch_size,
         shuffle=shuffle,
     )
@@ -107,18 +131,11 @@ def evaluate_on_book(
     import torch
     from torch.utils.data import DataLoader
 
-    from federated_outlier_adaptation.data.datasets import (
-        MemmapDigitDataset,
-        build_transform,
-    )
-
     dataset = provider.dataset
-    cache = dataset.cache
     samples = dataset.writer_samples()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
     model.eval()
-    transform = build_transform(cache.resolution)
 
     per_writer: Dict[str, float] = {}
     pooled_correct = pooled_total = 0
@@ -138,7 +155,7 @@ def evaluate_on_book(
         if not rows:
             continue
         loader = DataLoader(
-            MemmapDigitDataset(cache, rows, [labels[row] for row in rows], transform),
+            rows_dataset(dataset, rows, [labels[row] for row in rows]),
             batch_size=batch_size,
             shuffle=False,
         )

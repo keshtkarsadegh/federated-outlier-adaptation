@@ -30,6 +30,7 @@
 #
 # Submit with:
 #   sbatch --account=$FOA_ACCOUNT --partition=$FOA_CPU_PARTITION \
+#          --export=ALL,FOA_PROJECT_DIR=$FOA_PROJECT_DIR \
 #          <repo>/slurm/prepare_nist28.sbatch
 #
 # Without Slurm, run the same command directly - it needs no GPU:
@@ -54,7 +55,7 @@ echo "archive=$ZIP"
 echo "out=$OUT"
 mkdir -p "$OUT"
 
-python -u -m federated_outlier_adaptation.cli prepare-data \
+"$FOA_PYTHON" -u -m federated_outlier_adaptation.cli prepare-data \
     --dataset nist \
     --zip "$ZIP" \
     --out "$OUT" \

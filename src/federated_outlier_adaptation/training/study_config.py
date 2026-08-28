@@ -91,8 +91,21 @@ class StudyConfig:
     cohort_size: int
     old_size: int
     clients_per_round: int
-    #: ``digits`` (10 labels, McMahan's head) or ``all`` (62).
+    #: ``digits`` (10 labels, McMahan's head) or ``all`` (62).  Meaningless for a
+    #: provider that is not NIST, and omitted from its lines.
     classes: str = "digits"
+    #: Which dataset the study federates.  ``nist`` carries the image flags;
+    #: anything else names itself and lets the provider supply its own shape.
+    provider: str = "nist"
+    #: The topology every line declares.  The provider ultimately chooses it -
+    #: a sequence dataset has no use for a CNN - but a line that declared the
+    #: wrong one would still run and would be recorded, in its own provenance,
+    #: as something it is not.
+    model: str = "fedavg_cnn"
+    #: Whether the study cross-validates.  The digit study does; the transfer
+    #: studies deliberately do not - one g-0, one client split - so that a
+    #: second modality costs a probe rather than a second full programme.
+    cross_validated: bool = True
     #: Prefix of every output folder, so two studies cannot collide in one root.
     tag: str = "d01"
     #: Base of every sampler seed this study emits.  Stages add offsets of a few
@@ -109,6 +122,18 @@ class StudyConfig:
     @property
     def cohort_book_name(self) -> str:
         return f"cohort{self.cohort_size}"
+
+    @property
+    def folds(self) -> tuple:
+        """
+        The folds a run of this study uses.
+
+        A book is always **built** with five folds - preservation is the mean
+        over five old-fold test partitions either way, and that is what keeps
+        the metric comparable across studies.  What a cross-validated study does
+        and a transfer study does not is *train* on all five.
+        """
+        return (1, 2, 3, 4, 5) if self.cross_validated else (1,)
 
     @property
     def dropout(self) -> float:
@@ -132,8 +157,31 @@ DIGITS_STUDY01 = StudyConfig(
     seed_base=700000,
 )
 
+#: The transfer study: the digit winners, unchanged, on a different modality.
+#:
+#: One hundred old users rather than two hundred, because a Shakespeare user is
+#: a (play, role) pair holding thousands of sequences where a NIST writer holds
+#: a hundred images - a hundred users is already forty times the digit study's
+#: old-data volume.  No cross-validation: the question is whether the winners
+#: transfer at all, and that is answered by one split.
+SHAKESPEARE_STUDY01 = StudyConfig(
+    name="Shakespeare_study01",
+    cohort_size=10,
+    old_size=100,
+    clients_per_round=participants(10, DROPOUT_RATE),
+    classes="",
+    tag="s01",
+    seed_base=800000,
+    provider="shakespeare",
+    model="char_lstm",
+    cross_validated=False,
+)
+
 #: Every study this pipeline knows about.
-STUDIES: Dict[str, StudyConfig] = {DIGITS_STUDY01.name: DIGITS_STUDY01}
+STUDIES: Dict[str, StudyConfig] = {
+    DIGITS_STUDY01.name: DIGITS_STUDY01,
+    SHAKESPEARE_STUDY01.name: SHAKESPEARE_STUDY01,
+}
 
 # The study's own participation is the formula's, not a second statement of it.
 # If the two ever part company, every stage already run was run at a rate the

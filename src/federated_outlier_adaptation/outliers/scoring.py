@@ -74,19 +74,17 @@ def score_writers(
     from torch.utils.data import DataLoader
 
     from federated_outlier_adaptation.data.datasets import (
-        MemmapDigitDataset,
         build_transform,
     )
+    from federated_outlier_adaptation.training.evaluate import rows_dataset
 
     dataset = provider.dataset
-    cache = dataset.cache
     samples = dataset.writer_samples()
     covered = list(writers) if writers is not None else list(book.writers)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
     model.eval()
-    transform = build_transform(cache.resolution)
 
     scores: List[Dict[str, float]] = []
     per_writer_samples: Dict[str, int] = {}
@@ -104,7 +102,7 @@ def score_writers(
             continue
 
         loader = DataLoader(
-            MemmapDigitDataset(cache, rows, [labels[row] for row in rows], transform),
+            rows_dataset(dataset, rows, [labels[row] for row in rows]),
             batch_size=batch_size,
             shuffle=False,
         )

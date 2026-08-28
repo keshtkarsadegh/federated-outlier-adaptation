@@ -99,7 +99,11 @@ NIST28_DIR: Path = _env_path("NIST28_DIR", DATA_DIR / "nist28")
 NIST_RESOLUTIONS = (28, 128)
 
 #: Model topologies selectable per run.
-MODEL_NAMES = ("fedavg_cnn", "flexible_cnn")
+#: ``char_lstm`` is the LEAF Shakespeare topology. It is chosen by the
+#: provider rather than by this flag - a sequence dataset has no use for a
+#: CNN - but it is nameable so a task line can declare what it expects and
+#: be refused when the two disagree.
+MODEL_NAMES = ("fedavg_cnn", "flexible_cnn", "char_lstm")
 
 
 def nist_resolution() -> int:

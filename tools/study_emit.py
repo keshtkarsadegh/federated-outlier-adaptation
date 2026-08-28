@@ -282,7 +282,7 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
 
     lines = []
     for index, cell in enumerate(winners):
-        for fold in SL.FOLDS:
+        for fold in SL.folds_of(cfg):
             lines.append(SL.agg_line(
                 cfg, cell, fold, SL.FULL_ROUNDS,
                 cfg.seed_base + 4000 + index * 10 + fold,
@@ -291,7 +291,7 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
         "# GENERATED, AND NOT YET AUTHORISED TO RUN.",
         "#",
         "# Each aggregation method's best cell from the 25-round screen, re-run",
-        f"# at the full {SL.FULL_ROUNDS}-round horizon: {len(winners)} methods x {len(SL.FOLDS)} folds.",
+        f"# at the full {SL.FULL_ROUNDS}-round horizon: {len(winners)} methods x {len(SL.folds_of(cfg))} folds.",
         "#",
         "# This is the P12 file. P11 is the screen; P12 is gated separately and",
         "# the owner has not authorised it. Do not submit this without that.",
@@ -374,7 +374,7 @@ def agg_trimmed_patch(cfg, root: Path, out: Path, expect: int) -> int:
     lines = [
         SL.agg_line(cfg, winner, fold, SL.FULL_ROUNDS,
                     cfg.seed_base + 4000 + index * 10 + fold)
-        for fold in SL.FOLDS
+        for fold in SL.folds_of(cfg)
     ]
     return emit(lines, out, expect, "p12/trimmed-patch", [
         "# GENERATED, AND NOT AUTHORISED TO RUN - stamped exactly as P12 was.",
@@ -388,7 +388,7 @@ def agg_trimmed_patch(cfg, root: Path, out: Path, expect: int) -> int:
         "# method's winner can move; re-running the other seventeen would spend",
         "# GPU time reproducing results whose inputs did not change.",
         "#",
-        f"# {len(SL.FOLDS)} tasks at the full {SL.FULL_ROUNDS}-round horizon, carrying the same",
+        f"# {len(SL.folds_of(cfg))} tasks at the full {SL.FULL_ROUNDS}-round horizon, carrying the same",
         "# seeds P12 uses for this method, so the patched lines and the ones they",
         "# replace are the same runs with a different coefficient.",
         "#",
@@ -507,7 +507,7 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
 
     lines = []
     for index, (method, family, cell) in enumerate(winners):
-        for fold in SL.FOLDS:
+        for fold in SL.folds_of(cfg):
             lines.append(SL.reg_line(
                 cfg, cell, fold, SL.FULL_ROUNDS,
                 cfg.seed_base + 8000 + index * 10 + fold, family=family,
@@ -517,7 +517,7 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
         "#",
         "# Each penalty's best cell PER FAMILY from the 25-round screen, re-run",
         f"# at the full {SL.FULL_ROUNDS}-round horizon: {len(SL.REG_METHODS)} methods x"
-        f" {len(SL.FAMILIES)} families x {len(SL.FOLDS)} folds.",
+        f" {len(SL.FAMILIES)} families x {len(SL.folds_of(cfg))} folds.",
         "#",
         "# THE FAMILY IS IN THE PARENT, and it has to be: the winners are chosen",
         "# per (method, family) and the same cell often wins on both schedules.",
@@ -721,7 +721,7 @@ def reg_patch(cfg, root: Path, out: Path, expect: int,
     lines = [
         SL.reg_line(cfg, winner, fold, SL.FULL_ROUNDS,
                     cfg.seed_base + 8000 + index * 10 + fold, family=family)
-        for fold in SL.FOLDS
+        for fold in SL.folds_of(cfg)
     ]
     return emit(lines, out, expect, f"p14/{method}-{family}-patch", [
         "# GENERATED, AND NOT AUTHORISED TO RUN - stamped exactly as P14 was.",
@@ -734,7 +734,7 @@ def reg_patch(cfg, root: Path, out: Path, expect: int,
         "# the pairs drawing on them can move; re-running the other pairs would",
         "# spend GPU time reproducing results whose inputs did not change.",
         "#",
-        f"# {len(SL.FOLDS)} tasks at the full {SL.FULL_ROUNDS}-round horizon, carrying the same",
+        f"# {len(SL.folds_of(cfg))} tasks at the full {SL.FULL_ROUNDS}-round horizon, carrying the same",
         "# seeds P14 uses for this pair, so the patched lines and the ones they",
         "# replace are the same runs with a different coefficient.",
         "#",
@@ -801,7 +801,7 @@ def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
             needs_fisher=True,
             lam=kd["hypers"]["lam"], T=kd["hypers"]["T"], mix=mix,
         )
-        for fold in SL.FOLDS:
+        for fold in SL.folds_of(cfg):
             lines.append(SL.hybrid_line(
                 cfg, cell, fold, cfg.seed_base + 9000 + index * 10 + fold
             ))
@@ -879,7 +879,7 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
                         f"was selected for {family}; the two lists disagree."
                     )
                 chosen.setdefault(family, []).append((agg_id, reg_id))
-                for fold in SL.FOLDS:
+                for fold in SL.folds_of(cfg):
                     lines.append(SL.combo_line(
                         cfg, aggs[agg_id], regs[reg_id], fold,
                         cfg.seed_base + 10000 + index * 10 + fold,
@@ -909,7 +909,7 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
         f"# penalties:    {reg_top}",
         "#",
         f"# {SL.COMBO_TOP_K} x {SL.COMBO_TOP_K} x {len(SL.FAMILIES)} families x"
-        f" {len(SL.FOLDS)} folds = {len(lines)} tasks.",
+        f" {len(SL.folds_of(cfg))} folds = {len(lines)} tasks.",
         "#",
     ])
 
@@ -1056,7 +1056,7 @@ def extreme(cfg, root: Path, out: Path, expect: int) -> int:
         listing.write_text(json.dumps(cell["clients"], indent=2) + "\n")
         print(f"  {cell['case']}: {cell['clients']} -> {listing}")
         clients_file = f"{SL.POOLS}/extreme_{cell['case']}.json"
-        for fold in SL.FOLDS:
+        for fold in SL.folds_of(cfg):
             lines.append(SL.extreme_line(
                 cfg, cell["case"], clients_file, agg, reg, fold,
                 cfg.seed_base + 11000 + index * 10 + fold,
@@ -1083,7 +1083,7 @@ def extreme(cfg, root: Path, out: Path, expect: int) -> int:
         "# not a participation study, it is a coin flip on whether the round",
         "# happens.",
         "#",
-        f"# {len(cells)} cases x {len(SL.FOLDS)} folds = {len(lines)} tasks.",
+        f"# {len(cells)} cases x {len(SL.folds_of(cfg))} folds = {len(lines)} tasks.",
         "#",
     ])
 
@@ -1337,7 +1337,7 @@ def stage_lines(cfg, root: Path, stage: str):
             "aggregation": cell["aggregation"], "regulariser": cell["regulariser"],
             "note": cell["note"], "trim_survivors": survivors,
         })
-        for fold in SL.FOLDS:
+        for fold in SL.folds_of(cfg):
             lines.append(SL.cohort_line(
                 cfg, cell, clients_file, agg, reg, fold,
                 cfg.seed_base + spec["seed_block"] + index * 10 + fold,
@@ -1428,7 +1428,7 @@ def stage_lines(cfg, root: Path, stage: str):
         "# that pair has not already bought.",
     ]) + [
         "#",
-        f"# {len(recorded)} configurations x {len(SL.FOLDS)} folds = {len(lines)} tasks,",
+        f"# {len(recorded)} configurations x {len(SL.folds_of(cfg))} folds = {len(lines)} tasks,",
         f"# {SL.FULL_ROUNDS} rounds each.",
         "#",
     ]

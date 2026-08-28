@@ -47,6 +47,40 @@ OLD_BOOK = f"{BOOKS}/old_data.foldbook.npz"
 #: record - see ``study_phase.sbatch``.
 FISHER = f"{ROOT}/g0_fold$G0_FOLD/global_results/fisher"
 
+
+def fisher_dir(cfg=None) -> str:
+    """
+    Where a study's g-0 left its Fisher information.
+
+    Two layouts, because two things differ.  A cross-validated study trains one
+    g-0 per fold and the winner's fold number is only known at submit time, so
+    its path carries ``$G0_FOLD`` and the runner substitutes it.  A study that
+    trains a single g-0 has no fold to substitute - and a non-NIST provider
+    writes under ``<results>/<provider>/``, one level deeper - so its path is
+    fixed and complete.
+
+    A study of the second kind that inherited the first kind's path would name
+    ``$G0_FOLD`` and be refused by the runner for having no selection record to
+    read it from, which is the right failure but an obscure way to learn this.
+    """
+    if cfg is None or getattr(cfg, "cross_validated", True):
+        return FISHER
+    provider = getattr(cfg, "provider", "nist")
+    root = ROOT if provider == "nist" else f"{ROOT}/{provider}"
+    return f"{root}/g0/global_results/fisher" if provider == "nist" \
+        else f"{ROOT}/g0/{provider}/global_results/fisher"
+
+
+def folds_of(cfg=None) -> tuple:
+    """
+    The folds a study's stages emit lines for.
+
+    ``FOLDS`` is the five a book is always built with.  What a study *trains*
+    on is its own: the digit study cross-validates, the transfer studies do not.
+    Reading this rather than the constant is what lets one generator serve both.
+    """
+    return tuple(getattr(cfg, "folds", None) or FOLDS)
+
 #: The two schedules a ``--aggregation fedavg`` task covers.
 FAMILIES = reg_cells.FAMILIES
 
@@ -61,7 +95,17 @@ TOP_K = 3
 
 
 def setting(cfg) -> str:
-    """The dataset flags every line of this study carries."""
+    """
+    The dataset flags every line of this study carries.
+
+    NIST needs its resolution and its label subset named on every line, because
+    one cache serves both and a line that omits them inherits a default that is
+    wrong for this study.  Another provider names itself and supplies its own
+    shape, so repeating image flags there would be noise at best and a
+    contradiction at worst.
+    """
+    if getattr(cfg, "provider", "nist") != "nist":
+        return f"--provider {cfg.provider}"
     return f"--resolution 28 --classes {cfg.classes}"
 
 
@@ -111,7 +155,8 @@ def _base(cfg, parent: str, fold: int, rounds: int, seed: int, trainer: str) -> 
     """The protocol every federated line of this study shares."""
     return (
         f"foa final --results-dir {ROOT} {setting(cfg)}"
-        f" --model fedavg_cnn --trainer {trainer} --parent {parent}"
+        f" --model {getattr(cfg, 'model', 'fedavg_cnn')}"
+        f" --trainer {trainer} --parent {parent}"
         f" --init global --global-name g0"
         f" --outliers-file {cohort_file(cfg)}"
         f" --fold-book {cohort_book(cfg)} --fold {fold}"
@@ -166,7 +211,7 @@ ANCHOR = "frozen"
 REG_METHODS = reg_cells.methods()
 
 
-def _reg_set(cell: Dict[str, Any]) -> str:
+def _reg_set(cell: Dict[str, Any], cfg=None) -> str:
     """The cell's penalty as ``--set NAME=VALUE`` tokens, in a stable order."""
     if cell["trainer"] != "AnchoredTrainer":
         return ""
@@ -177,7 +222,7 @@ def _reg_set(cell: Dict[str, Any]) -> str:
             # wrong for a coefficient.
             parts.append(f"{name}={float(cell['hypers'][name])!r}")
     if cell["needs_fisher"]:
-        parts.append(f"fisher_path={FISHER}")
+        parts.append(f"fisher_path={fisher_dir(cfg)}")
     return "--set " + " ".join(parts)
 
 
@@ -204,7 +249,7 @@ def reg_line(cfg, cell: Dict[str, Any], fold: int, rounds: int, seed: int,
     line += " --aggregation fedavg --outer-workers 2 --inner-workers 1"
     if cell["fedprox"]:
         line += " --fedprox-convention"
-    penalty = _reg_set(cell)
+    penalty = _reg_set(cell, cfg)
     return line + (f" {penalty}" if penalty else "")
 
 
@@ -241,7 +286,7 @@ def combo_line(cfg, agg: Dict[str, Any], reg: Dict[str, Any], fold: int,
     extra = _agg_flags(agg["flags"])
     if extra:
         line += f" {extra}"
-    penalty = _reg_set(reg)
+    penalty = _reg_set(reg, cfg)
     return line + (f" {penalty}" if penalty else "")
 
 

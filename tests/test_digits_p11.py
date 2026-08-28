@@ -63,16 +63,33 @@ def parsed(p11):
 # --------------------------------------------------------------------------- #
 # the revived configuration, and nothing else
 # --------------------------------------------------------------------------- #
-def test_only_the_digits_study_survived_the_reset():
+def test_no_study_of_the_deleted_programme_survived_the_reset():
     """
     The multi-study grid named folders that were deleted.
 
     Leaving those configurations in place would have kept five studies' worth of
-    dead addresses one import away from a live pipeline.
+    dead addresses one import away from a live pipeline. The registry has since
+    gained the Shakespeare transfer study, which is a *new* design point with a
+    root of its own - so the invariant is not "one study" but "no study that
+    addresses a deleted root".
     """
-    assert list(STUDIES) == ["Digits_study01"]
-    with pytest.raises(KeyError, match="Unknown study"):
-        config("T1_20outliers100oldselection20")
+    assert set(STUDIES) == {"Digits_study01", "Shakespeare_study01"}
+    for dead in ("T1_20outliers100oldselection20", "T2_10outliers",
+                 "T3_20normals", "main_v6"):
+        with pytest.raises(KeyError, match="Unknown study"):
+            config(dead)
+
+
+def test_the_two_studies_cannot_collide_in_one_root():
+    """
+    Different tags and different seed bases, so a folder or a sampler seed can
+    never be claimed by both.
+    """
+    tags = {cfg.tag for cfg in STUDIES.values()}
+    bases = {cfg.seed_base for cfg in STUDIES.values()}
+    assert len(tags) == len(bases) == len(STUDIES)
+    # Far enough apart that no stage's offset can reach the next study's block.
+    assert min(abs(a - b) for a in bases for b in bases if a != b) >= 50_000
 
 
 def test_the_study_is_the_digit_design_point():
