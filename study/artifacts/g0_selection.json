@@ -1,0 +1,67 @@
+{
+  "name": "g0",
+  "prefix": "g0",
+  "rule": "highest validation accuracy; ties to the lower fold",
+  "accuracy_source": "training metrics",
+  "selected_fold": 2,
+  "folds": [
+    {
+      "fold": 1,
+      "val_accuracy": 0.995282128703529,
+      "test_accuracy": 0.993946273174423,
+      "epochs_run": 28,
+      "best_epoch": 17,
+      "stopped_early": true,
+      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold1/global_results/global_metrics.json",
+      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold1/global_model"
+    },
+    {
+      "fold": 2,
+      "val_accuracy": 0.996591554629805,
+      "test_accuracy": 0.9950980392156863,
+      "epochs_run": 28,
+      "best_epoch": 17,
+      "stopped_early": true,
+      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold2/global_results/global_metrics.json",
+      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold2/global_model"
+    },
+    {
+      "fold": 3,
+      "val_accuracy": 0.9960362400906002,
+      "test_accuracy": 0.9952714204652923,
+      "epochs_run": 27,
+      "best_epoch": 16,
+      "stopped_early": true,
+      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold3/global_results/global_metrics.json",
+      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold3/global_model"
+    },
+    {
+      "fold": 4,
+      "val_accuracy": 0.9962157048249763,
+      "test_accuracy": 0.9958490566037735,
+      "epochs_run": 22,
+      "best_epoch": 11,
+      "stopped_early": true,
+      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold4/global_results/global_metrics.json",
+      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold4/global_model"
+    },
+    {
+      "fold": 5,
+      "val_accuracy": 0.9956431142261792,
+      "test_accuracy": 0.9917075009423294,
+      "epochs_run": 21,
+      "best_epoch": 10,
+      "stopped_early": true,
+      "metrics_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold5/global_results/global_metrics.json",
+      "model_path": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold5/global_model"
+    }
+  ],
+  "val_mean": 0.9959537484950179,
+  "val_spread": 0.0004538258346581077,
+  "test_mean": 0.9943744580803009,
+  "test_spread": 0.0014695955004287086,
+  "n_folds": 5,
+  "source_model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_fold2/global_model",
+  "model": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/g0_model",
+  "sha256": "cb06fb83b17b3f85730e3763b70560b293b689068d1adc96774f15bd0f2989ed"
+}

@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software or the results it reproduces, please cite both the
+  software and the accompanying manuscript.
+title: federated-outlier-adaptation
+abstract: >-
+  Reproducible pipeline for knowledge-preserving adaptation to outlier clients
+  in federated learning, covering communication scheduling, aggregation forms
+  and regularisation on NIST SD19 by writer, LEAF Shakespeare and CIFAR-10.
+type: software
+version: 0.3.0
+license: MIT
+repository-code: "https://github.com/paymankeshtkaruni/federated-outlier-adaptation"
+keywords:
+  - federated learning
+  - catastrophic forgetting
+  - knowledge distillation
+  - client heterogeneity
+  - reproducibility
+authors:
+  - family-names: Keshtkar
+    given-names: Sadegh
+    email: sadegh.keshtkar@gwdg.de
+    affiliation: >-
+      Gesellschaft fuer wissenschaftliche Datenverarbeitung mbH Goettingen
+      (GWDG)
+  - family-names: Bidollahkhani
+    given-names: Michael
+    email: michael.bkhani@uni-goettingen.de
+    affiliation: University of Goettingen
+  - family-names: Kunkel
+    given-names: Julian M.
+    email: julian.kunkel@gwdg.de
+    affiliation: >-
+      Gesellschaft fuer wissenschaftliche Datenverarbeitung mbH Goettingen
+      (GWDG) and University of Goettingen
+preferred-citation:
+  type: unpublished
+  title: >-
+    Knowledge-Preserving Adaptation to Outlier Clients in Federated Learning:
+    An Empirical Study of Aggregation, Scheduling and Regularization
+  year: 2026
+  notes: Submitted
+  authors:
+    - family-names: Keshtkar
+      given-names: Sadegh
+    - family-names: Bidollahkhani
+      given-names: Michael
+    - family-names: Kunkel
+      given-names: Julian M.

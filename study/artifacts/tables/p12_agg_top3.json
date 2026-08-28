@@ -1,0 +1,205 @@
+{
+  "rule": "owner decision A 2026-08-28: test-ranked among fully-reported finalists, one cell per method",
+  "rank_by": "test",
+  "source": "d01_aggfull_",
+  "considered": {
+    "concurrent": 3,
+    "sequential": 3
+  },
+  "rankings": {
+    "concurrent": {
+      "val": [
+        {
+          "id": "trimmed_0p2",
+          "adaptation": 0.9185992747625822,
+          "adaptation_test": 0.9053504530511476
+        },
+        {
+          "id": "median",
+          "adaptation": 0.9185729019606867,
+          "adaptation_test": 0.9107276135456525
+        },
+        {
+          "id": "trimmed_0p4",
+          "adaptation": 0.9158832769529407,
+          "adaptation_test": 0.9106746460694806
+        },
+        {
+          "id": "weight_uniform",
+          "adaptation": 0.9141041737599142,
+          "adaptation_test": 0.9063538906953827
+        },
+        {
+          "id": "eta_0p75",
+          "adaptation": 0.914019430458765,
+          "adaptation_test": 0.8981079619187677
+        },
+        {
+          "id": "weight_capped",
+          "adaptation": 0.9096694348699323,
+          "adaptation_test": 0.8964054361994073
+        },
+        {
+          "id": "anchor_0p03",
+          "adaptation": 0.9095492794106088,
+          "adaptation_test": 0.9126977483896458
+        },
+        {
+          "id": "fedadam_lr0p0316_tau0p01",
+          "adaptation": 0.904120214126737,
+          "adaptation_test": 0.8963404571921656
+        },
+        {
+          "id": "fedyogi_lr0p0316_tau0p01",
+          "adaptation": 0.8987238127384072,
+          "adaptation_test": 0.8909410749792321
+        },
+        {
+          "id": "fedavgm_b0p7",
+          "adaptation": 0.8890272240485056,
+          "adaptation_test": 0.8766687569889672
+        }
+      ],
+      "test": [
+        {
+          "id": "anchor_0p03",
+          "adaptation": 0.9095492794106088,
+          "adaptation_test": 0.9126977483896458
+        },
+        {
+          "id": "median",
+          "adaptation": 0.9185729019606867,
+          "adaptation_test": 0.9107276135456525
+        },
+        {
+          "id": "trimmed_0p4",
+          "adaptation": 0.9158832769529407,
+          "adaptation_test": 0.9106746460694806
+        },
+        {
+          "id": "weight_uniform",
+          "adaptation": 0.9141041737599142,
+          "adaptation_test": 0.9063538906953827
+        },
+        {
+          "id": "trimmed_0p2",
+          "adaptation": 0.9185992747625822,
+          "adaptation_test": 0.9053504530511476
+        },
+        {
+          "id": "eta_0p75",
+          "adaptation": 0.914019430458765,
+          "adaptation_test": 0.8981079619187677
+        },
+        {
+          "id": "weight_capped",
+          "adaptation": 0.9096694348699323,
+          "adaptation_test": 0.8964054361994073
+        },
+        {
+          "id": "fedadam_lr0p0316_tau0p01",
+          "adaptation": 0.904120214126737,
+          "adaptation_test": 0.8963404571921656
+        },
+        {
+          "id": "fedyogi_lr0p0316_tau0p01",
+          "adaptation": 0.8987238127384072,
+          "adaptation_test": 0.8909410749792321
+        },
+        {
+          "id": "fedavgm_b0p7",
+          "adaptation": 0.8890272240485056,
+          "adaptation_test": 0.8766687569889672
+        }
+      ]
+    },
+    "sequential": {
+      "val": [
+        {
+          "id": "seq_delta_scaled",
+          "adaptation": 0.9131637842261743,
+          "adaptation_test": 0.8990473178603472
+        },
+        {
+          "id": "seq_incremental",
+          "adaptation": 0.9087221754817897,
+          "adaptation_test": 0.8748883889501035
+        },
+        {
+          "id": "seq_order_shuffle",
+          "adaptation": 0.9085682904439797,
+          "adaptation_test": 0.9026687378757046
+        },
+        {
+          "id": "seq_fedavg",
+          "adaptation": 0.9069152315223785,
+          "adaptation_test": 0.8989847969523262
+        },
+        {
+          "id": "seq_equal",
+          "adaptation": 0.9049833540915921,
+          "adaptation_test": 0.9027686864569411
+        },
+        {
+          "id": "seq_delta_capped",
+          "adaptation": 0.9042518000405327,
+          "adaptation_test": 0.9053061856445453
+        },
+        {
+          "id": "seq_mix_0p3",
+          "adaptation": 0.894102085906774,
+          "adaptation_test": 0.8911435524321601
+        }
+      ],
+      "test": [
+        {
+          "id": "seq_delta_capped",
+          "adaptation": 0.9042518000405327,
+          "adaptation_test": 0.9053061856445453
+        },
+        {
+          "id": "seq_equal",
+          "adaptation": 0.9049833540915921,
+          "adaptation_test": 0.9027686864569411
+        },
+        {
+          "id": "seq_order_shuffle",
+          "adaptation": 0.9085682904439797,
+          "adaptation_test": 0.9026687378757046
+        },
+        {
+          "id": "seq_delta_scaled",
+          "adaptation": 0.9131637842261743,
+          "adaptation_test": 0.8990473178603472
+        },
+        {
+          "id": "seq_fedavg",
+          "adaptation": 0.9069152315223785,
+          "adaptation_test": 0.8989847969523262
+        },
+        {
+          "id": "seq_mix_0p3",
+          "adaptation": 0.894102085906774,
+          "adaptation_test": 0.8911435524321601
+        },
+        {
+          "id": "seq_incremental",
+          "adaptation": 0.9087221754817897,
+          "adaptation_test": 0.8748883889501035
+        }
+      ]
+    }
+  },
+  "top": {
+    "concurrent": [
+      "anchor_0p03",
+      "median",
+      "trimmed_0p4"
+    ],
+    "sequential": [
+      "seq_delta_capped",
+      "seq_equal",
+      "seq_order_shuffle"
+    ]
+  }
+}

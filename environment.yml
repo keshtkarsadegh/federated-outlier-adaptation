@@ -1,0 +1,16 @@
+# Conda environment for the project.
+#
+#   conda env create -f environment.yml -p ./envs/foa
+#   conda activate ./envs/foa
+#   pip install -e . --no-deps
+#
+# On a cluster whose compute nodes reach the internet only through a proxy,
+# source slurm/env.sh first so pip and conda pick the proxy up.
+name: foa
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - -r requirements.txt

@@ -1,0 +1,64 @@
+[tool.poetry]
+name = "federated_outlier_adaptation"
+version = "0.3.0"
+description = "Knowledge-preserving adaptation to outlier clients in federated learning"
+authors = [
+    "Sadegh Keshtkar <sadegh.keshtkar@gwdg.de>",
+    "Michael Bidollahkhani <michael.bkhani@uni-goettingen.de>",
+    "Julian M. Kunkel <julian.kunkel@gwdg.de>",
+]
+readme = "README.md"
+license = "MIT"
+packages = [{ include = "federated_outlier_adaptation", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+# Deep learning stack. The CUDA build is selected through requirements.txt /
+# environment.yml; the plain version constraint keeps `pip install -e .` usable
+# on a CPU-only machine.
+torch = "2.3.1"
+torchvision = "0.18.1"
+
+# Core utilities
+numpy = ">=1.26,<2"
+pandas = "^2.2"
+scikit-learn = "*"
+tqdm = ">=4.67,<5.0"
+requests = ">=2.32,<3.0"
+loguru = ">=0.7,<0.8"
+
+# Plotting
+matplotlib = "^3.10"
+seaborn = "*"
+
+# Image handling and parallel helpers
+pillow = "*"
+joblib = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+black = "^24.10"
+isort = "^5.13"
+
+[tool.poetry.scripts]
+foa = "federated_outlier_adaptation.cli:main"
+# Name of the entry point in the earlier repository.  Kept as an alias for one
+# release so existing scripts and task files keep running; use `foa`.
+fal = "federated_outlier_adaptation.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,49 @@
+# --- dataset -----------------------------------------------------------------
+# The SD19 archive is never extracted (inode pressure); only the manifest and
+# the packed cache are used at runtime.  Everything under data/ is derived or
+# downloaded, with the single exception of the label manifest.
+/data/**
+!/data/by_write/
+!/data/by_write/digits_labels.json
+
+# --- generated caches and logs ------------------------------------------------
+/results/logs/
+logs/
+*.log
+
+# --- environments -------------------------------------------------------------
+.venv/
+venv/
+envs/
+*.egg-info/
+dist/
+build/
+*.whl
+
+# --- python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# --- editors and local tooling -------------------------------------------------
+.idea/
+.vscode/
+.DS_Store
+
+# --- manuscript sources (kept outside the public repository) --------------------
+paper/
+ieee/
+
+# study runtime: caches, per-run outputs and logs are not committed
+data/nist/
+data/nist28*/
+results/
+*.log
+results_prior_study.tar.gz
+data/by_write/

@@ -1,0 +1,225 @@
+# Federated outlier adaptation
+
+Adapting a shipped handwriting model to the writers it fails on, without losing
+the writers it already serves.
+
+A global model is trained on a population of writers and deployed. A small group
+of **outlier writers** — the ones it reads worst — then federate to adapt it.
+The question this repository answers is what that adaptation costs: how much
+accuracy the outliers gain, how much the original population loses, and which
+server rule and which client-side penalty trade those two off best.
+
+The study is **`Digits_study01`**: NIST Special Database 19 by writer, digits
+0–9, 28×28, a FedAvg CNN of 1,663,370 parameters, ten outlier clients against
+two hundred retained writers, five-fold cross-validation throughout.
+
+---
+
+## What is here
+
+| Path | Contents |
+|---|---|
+| `src/federated_outlier_adaptation/` | the package and the `foa` CLI (28 subcommands) |
+| `tools/` | task-file generators and the screen selectors |
+| `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
+| `tests/` | 1,648 tests, no GPU and no dataset required |
+| `study/jobs/` | every task file the published study ran, with per-stage READMEs |
+| `study/artifacts/` | the derived artefacts needed to *check* results, incl. both model checkpoints |
+| `study/UPSTREAM.sha256` | checksums of the source data, the packed cache, the models |
+| `docs/` | data path, runbook, verification, prior pipeline |
+
+`study/artifacts/` is the part that makes this checkable without re-running
+anything: the writer pools and their scores, the three cohorts, all four fold
+books, the g-init and g-0 selection records, the baseline evaluations, and every
+selection table each stage produced — with a `SHA256SUMS` beside them.
+
+**No dataset is redistributed here.** NIST SD19 is downloaded from NIST; this
+repository ships the conversion code, the exact command, and the checksums that
+prove your cache matches ours.
+
+---
+
+## Quickstart
+
+```bash
+git clone <this repository> && cd federated-outlier-adaptation
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+
+pytest -q tests                              # 1,648 tests, ~1 minute, no GPU
+cd study/artifacts && sha256sum -c SHA256SUMS && cd ../..
+```
+
+That verifies the code and the shipped artefacts. To check that the study's
+selection chain is internally consistent — that each cohort really is cut from
+the ranking it claims — run the snippet in [`docs/VERIFY.md`](docs/VERIFY.md)
+(no GPU, no data).
+
+With a GPU and the cache built, the cheapest real rung is **P09**, the plain
+FedAvg baseline: 10 tasks, about half a GPU-hour, and it produces the reference
+row the whole study is read against.
+
+```bash
+export FOA_PROJECT_DIR=/path/to/workspace
+export FOA_STUDY_DIR="$FOA_PROJECT_DIR/results/studies/Digits_study01"
+FOA_DRY_RUN=1 slurm/run_tasks.sh study/jobs/d01_p09.txt   # checks, runs nothing
+slurm/run_tasks.sh study/jobs/d01_p09.txt                 # then for real
+```
+
+---
+
+## The four documents
+
+1. **[`docs/DATA.md`](docs/DATA.md)** — download SD19, verify it, build the
+   packed 28×28 cache, and confirm it byte-for-byte. The numbers that must
+   match: **814,255 rows, 3,597 writers, 62 classes; 402,953 digit rows across
+   3,580 writers.**
+2. **[`docs/RUNBOOK.md`](docs/RUNBOOK.md)** — every stage in order, with its
+   task file, its task count, and its **measured** GPU-hours. The whole
+   production chain is about **53 GPU-h**.
+3. **[`docs/VERIFY.md`](docs/VERIFY.md)** — four levels of checking, two of
+   which need neither a GPU nor the dataset, and the `evaluate-book` command
+   that proves a released model still reproduces a published row.
+4. **[`docs/PRIOR_PIPELINE.md`](docs/PRIOR_PIPELINE.md)** — the earlier
+   pipeline, kept because its code is still present.
+
+---
+
+## How the study is put together
+
+### Everything is a task file
+
+One `foa` command per line; one array element per line; one runner for all of
+them. A stage is a text file, which is what makes the experiment definition
+reviewable before it costs anything.
+
+```bash
+sbatch --account=$FOA_ACCOUNT --partition=$FOA_GPU_PARTITION --gres=gpu:1 \
+       --array=1-N slurm/study_phase.sbatch study/jobs/d01_p15.txt
+slurm/run_tasks.sh study/jobs/d01_p15.txt          # no scheduler
+FOA_DRY_RUN=1 slurm/run_tasks.sh study/jobs/...    # every check, no execution
+```
+
+The runner refuses a task line whose paths point outside the study root —
+checked *before* the variable is expanded, so a path pasted from another study
+is caught even though it would have expanded perfectly well.
+
+### Selection is two-phase, and cannot leak
+
+`g-init` trains on every writer, so its ranking is contaminated by
+memorisation; it is asked only for a coarse BAD/GOOD cut. The two hundred
+retained writers are drawn from GOOD. **`g-0`** is trained on those, and it is
+`g-0` — a model that has never seen a BAD writer — that scores the BAD pool and
+whose worst ten become the cohort. No cohort writer influenced the model that
+selected it, by construction.
+
+### Splits are written down, not recomputed
+
+A **fold book** is a persisted CV split: an `int8 [folds, rows]` assignment
+array, per-writer stratified 60/20/20 over five folds. Runs read their train,
+validation and test rows out of the book rather than re-deriving them, so two
+runs of the same fold see the same rows — and a reviewer can check the split
+itself, not just the result. The four books ship in `study/artifacts/fold_books/`
+with their hashes.
+
+### Participation is one expression
+
+```
+participants(n, dropout) = floor((1 - dropout) * n)
+```
+
+Nine of ten for this study, eight of ten at the dropout point, four of five and
+eighteen or sixteen of twenty on the scaling ladder. It lives once, in
+`training/study_config.py`; no task file carries a literal, and the study
+configuration asserts at import that its own `clients_per_round` still equals
+the rule. The extremes are the one documented exception: at one or two clients
+the rule leaves nobody, and dropping a client from a two-client federation is a
+coin flip on whether the round happens, so those cases run at full
+participation.
+
+### Every run reports three categories
+
+`final_evaluation` carries the cohort's pooled test accuracy, a per-client
+column, and the old data's five fold test partitions scored **separately** with
+mean ± sd. Adaptation is read from the first, preservation from the second. A
+method that buys one at the other's expense cannot hide it.
+
+### Screens do not choose their own winners
+
+A screen runs at 25 rounds; a selector reads its results and emits the
+full-horizon file. The selectors refuse to emit a selection built on no
+evidence — a screen that produced nothing would otherwise yield a task file
+that looks exactly like a real one — and every emission is checked against a
+mandatory `--expect` count, because the array that consumes it is submitted
+with a fixed range.
+
+---
+
+## Known gaps
+
+Stated plainly, because a reproducibility claim is only worth what its
+exceptions are:
+
+- **The two headline markdown tables** (`study/artifacts/tables/master_table.md`
+  and `scaling_table.md`) are assembled by hand. Every number in them comes from
+  a `final_evaluation` block in a run folder and every row is checkable against
+  the shipped artefacts, but there is no single command that regenerates them.
+- **No `foa` subcommand downloads SD19.** `docs/DATA.md` gives the URLs and the
+  checksums; the fetching is a `curl`.
+- **`foa prepare-data` defaults to 128 px.** The study needs `--resolution 28`,
+  and a 128 px cache will train happily and reproduce nothing. `docs/DATA.md`
+  says so twice.
+- **The scaling rungs are reported on fold 1 only** (P18, P19, P20). P18 and P19
+  have all five folds on disk; a table must filter on fold 1 explicitly for
+  *every* rung including the 10-client reference, or it will average five folds
+  for some rows and one for others.
+- **`slurm/prepare_data.sbatch`** is the prior pipeline's 128 px job. Use
+  `slurm/prepare_nist28.sbatch`.
+- Five generators in `tools/` (`make_stage*.py`, `emit_stage7_hybrid.py`) belong
+  to a superseded 62-class study and target a results root that no longer
+  exists. They are kept for provenance; the runner refuses their output.
+
+---
+
+## Configuration
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `FOA_PROJECT_DIR` | writable root for data, results, environments | **required** |
+| `FOA_STUDY_DIR` | the one results root a study writes into | `$FOA_RESULTS_DIR/studies/Digits_study01` |
+| `FOA_RESULTS_DIR` | results root | `$FOA_PROJECT_DIR/results` |
+| `FOA_DATA_DIR` | data root | `$FOA_PROJECT_DIR/data` |
+| `FOA_NIST28_DIR` | packed 28×28 cache | `$FOA_DATA_DIR/nist28` |
+| `FOA_NIST_CLASSES` | `digits` (10) or `all` (62) | `digits` |
+| `FOA_NIST_RESOLUTION` | 28 or 128 | `128` — the study needs **28** |
+| `FOA_MODEL` | `fedavg_cnn` or `flexible_cnn` | `fedavg_cnn` |
+| `G0_FOLD` | winning g-0 fold, for Fisher-weighted penalties | derived from `g0_selection.json` |
+| `FOA_DRY_RUN` | run every check, execute nothing | unset |
+| `FOA_ACCOUNT`, `FOA_GPU_PARTITION`, `FOA_CPU_PARTITION` | scheduler | unset — pass at submit time |
+| `FOA_MODULES`, `FOA_ENV`, `FOA_HTTP_PROXY` | site specifics, all optional | unset |
+
+Nothing site-specific is baked in: no account, no partition, no absolute path.
+An unconfigured site gets plain behaviour rather than somebody else's cluster.
+
+---
+
+## Requirements
+
+Python 3.12, PyTorch (CUDA 12.1 wheels pinned in `requirements.txt`), NumPy,
+Pillow, matplotlib, pandas, SciPy. `environment.yml` for conda,
+`requirements.txt` for pip; `pip install -e .` installs the `foa` entry point.
+
+A GPU is needed only to produce accuracy numbers. Everything about how they were
+produced — the splits, the selections, the task definitions, the participation
+arithmetic — is checkable on a laptop.
+
+---
+
+## Citation
+
+See [`CITATION.cff`](CITATION.cff).
+
+## Licence
+
+See [`LICENSE`](LICENSE). NIST SD19 is distributed by NIST under its own terms
+and is not included here.

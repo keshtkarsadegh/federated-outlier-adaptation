@@ -1,0 +1,27 @@
+{
+  "rule": "seeded uniform draw without replacement from the eligible writers",
+  "end": "best",
+  "seed": 20260830,
+  "k": 5,
+  "size": 5,
+  "pool": null,
+  "splittable_only": true,
+  "eligible_clients": 2506,
+  "population_clients": 2506,
+  "clients": [
+    "f1228_30",
+    "f2408_73",
+    "f3604_21",
+    "f3841_01",
+    "f3947_36"
+  ],
+  "accuracies": {
+    "f1228_30": 1.0,
+    "f2408_73": 1.0,
+    "f3604_21": 1.0,
+    "f3841_01": 1.0,
+    "f3947_36": 1.0
+  },
+  "tag": "digits_typical5_v2",
+  "scores": "/user/keshtkar/u25763/.project/dir.lustre-grete/payman_uni/results_v4/studies/Digits_study01/outliers/clients_acc_on_global.json"
+}

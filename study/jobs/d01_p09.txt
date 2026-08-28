@@ -1,0 +1,50 @@
+# d01_p09.txt - Digits_study01, P09: NORMAL FEDERATED LEARNING.
+#
+# The baseline the rest of the study is argued against. Plain FedAvg, no
+# regulariser, no anchor - just the ten cohort writers federating among
+# themselves, and what that does to a model that already knows the old
+# population.
+#
+# THE FEDERATION. Ten clients enrolled, 9 drawn per round - this study's
+# 10% dropout - by a sampler seeded per line, so a fold's participation
+# pattern is reproducible and no two lines share one. E=5, batch 64, 100
+# rounds.
+#
+# BOTH FAMILIES PER TASK. --aggregation fedavg runs the parallel schedule
+# and the cyclic one in a single job, and skips the two families whose
+# rule is the same update written the other way round.
+#
+# TWO INITS. --init global starts from the shipped g-0; --init scratch
+# from a fresh model. --global-name g0 is carried by both so the
+# provenance names the same artefact either way.
+#
+# 2 inits x 5 folds = 10 tasks.
+#
+# --save-final-model keeps each family's server model for the stages that
+# come after. --track-clients keeps the per-client series.
+#
+# INDEPENDENT OF THE OTHER TWO. This file reads only artefacts that already
+# exist - the cohort, its fold book, the old book and g-0 - and writes only
+# its own outputs. P08, P09 and P10 can be submitted at the same time.
+#
+# THE THREE EVALUATIONS every run reports:
+#   own / clients   the cohort's fold-k TEST rows
+#   preservation    EVERY fold of the old book, separately (--old-fold all),
+#                   reported as five accuracies with their mean and spread.
+#                   Five partitions of one population, so the spread across
+#                   them is the error bar - merging them would throw it away.
+#
+#   J=$FOA_PROJECT_DIR/jobs/v4
+#   sbatch --account=$FOA_ACCOUNT --array=1-10 \
+#          $J/study_phase.sbatch $J/d01_p09.txt
+#
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_global_fold1 --aggregation fedavg --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30001 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 1 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_global_fold2 --aggregation fedavg --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30002 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 2 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_global_fold3 --aggregation fedavg --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30003 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 3 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_global_fold4 --aggregation fedavg --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30004 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 4 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_global_fold5 --aggregation fedavg --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30005 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 5 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_scratch_fold1 --aggregation fedavg --init scratch --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30501 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 1 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_scratch_fold2 --aggregation fedavg --init scratch --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30502 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 2 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_scratch_fold3 --aggregation fedavg --init scratch --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30503 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 3 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_scratch_fold4 --aggregation fedavg --init scratch --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30504 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 4 --outer-workers 2 --inner-workers 1
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_fl_scratch_fold5 --aggregation fedavg --init scratch --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 30505 --track-clients --rounds 100 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 5 --outer-workers 2 --inner-workers 1

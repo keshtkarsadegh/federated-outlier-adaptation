@@ -1,0 +1,61 @@
+# d01_p11_ext.txt - Digits_study01, P11 BOUNDARY EXTENSION: the trim row.
+#
+# WHY. The screen's trimmed-mean winner was trimmed_0p2, which sits on
+# the HIGH edge of the row that was searched, [0.1, 0.2]. A winner at the
+# end of its row means the optimum may lie outside it, so the row is
+# widened rather than the result being reported as if the range had been
+# a choice.
+#
+# WHAT TRIMMING ACTUALLY HAPPENS AT 9 CLIENTS. The rule drops
+# int(f * K) updates from each end per coordinate, and only bites when
+# that is at least one. At K = 9:
+#
+#   f=0.1  int(0.9)=0  ->  drops NOTHING, all 9 updates survive
+#   f=0.2  int(1.8)=1  ->  drops 1 each end, 7 survive
+#   f=0.3  int(2.7)=2  ->  drops 2 each end, 5 survive
+#   f=0.4  int(3.6)=3  ->  drops 3 each end, 3 survive
+#
+# READ THAT AGAIN: at nine clients, trim_frac=0.1 is NOT a trimmed mean.
+# int(0.1 * 9) is zero, so trimmed_0p1 computes the plain coordinate-wise
+# mean and is arithmetically identical to con_delta_eta at eta=1. The row
+# the boundary rule saw was therefore effectively [no trimming, drop one]
+# - trimmed_0p2 was the only cell in it that trimmed anything at all.
+# That makes the extension more clearly warranted than the edge alone
+# suggested, and it is worth stating in the write-up rather than leaving
+# a reader to rediscover it from the aggregation source.
+#
+# 0.5 is not reachable: ServerState refuses trim_fraction outside [0, 0.5),
+# and int(0.5 * 9) = 4 would leave a single update, which is not a mean of
+# anything. So 0.4 is the top of the row that can exist here.
+#
+# THE CELLS ARE APPENDED TO THE TABLE, NOT INSERTED INTO THE TRIM ROW.
+# A screening seed is a function of a cell's index, so inserting would
+# have re-seeded every cell after the trim row and made the screen that
+# has already run unreproducible from the table describing it. Appended,
+# the 845 lines of d01_p11.txt are byte for byte what was submitted
+# and these ten are the whole of the new work. The selector groups by id
+# prefix, so it sees all four trim cells as siblings regardless of where
+# they sit, and boundary detection now evaluates the widened range.
+#
+# 2 cells x 5 folds = 10 tasks. Same protocol as the screen:
+# 25 rounds, 9 of 10 per round, digits, g-0 init, --old-fold all,
+# fresh sampler seeds continuing the screen's own scheme.
+#
+#   J=$FOA_PROJECT_DIR/jobs/v4
+#   sbatch --account=$FOA_ACCOUNT --array=1-10 \
+#          $J/study_phase.sbatch $J/d01_p11_ext.txt
+#
+# AFTER THESE RUN, re-run the selection - see d01_p11_ext_README.md. If a
+# new trimmed winner emerges the delta is five full-horizon tasks, emitted
+# as d01_p12_trimmed_patch.txt and gated exactly as P12 was.
+#
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p3_fold1 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703691 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 1 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.3
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p3_fold2 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703692 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 2 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.3
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p3_fold3 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703693 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 3 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.3
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p3_fold4 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703694 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 4 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.3
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p3_fold5 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703695 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 5 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.3
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p4_fold1 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703701 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 1 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.4
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p4_fold2 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703702 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 2 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.4
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p4_fold3 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703703 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 3 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.4
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p4_fold4 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703704 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 4 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.4
+foa final --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model fedavg_cnn --trainer BaseTrainer --parent d01_agg_trimmed_0p4_fold5 --init global --global-name g0 --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --old-fold all --policy uniform --clients-per-round 9 --sampler-seed 703705 --track-clients --rounds 25 --epochs 5 --batch-size 64 --eval-batch-size 256 --save-final-model --seed 5 --aggregation con_delta_trimmed_mean --extended-aggregations --outer-workers 2 --inner-workers 1 --server-eta 1.0 --trim-frac 0.4

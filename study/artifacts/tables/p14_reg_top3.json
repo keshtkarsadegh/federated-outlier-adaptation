@@ -1,0 +1,244 @@
+{
+  "rule": "owner decision A 2026-08-28: test-ranked among fully-reported finalists, one cell per method; the hybrid competes for its own slot",
+  "rank_by": "test",
+  "sources": [
+    "d01_regfull_<family>_",
+    "d01_regfull_"
+  ],
+  "rankings": {
+    "concurrent": {
+      "val": [
+        {
+          "id": "kd_T1_a0p99",
+          "adaptation": 0.9221114403022942,
+          "adaptation_test": 0.913635995369704
+        },
+        {
+          "id": "feature_l2_lam0p1",
+          "adaptation": 0.9220311799416894,
+          "adaptation_test": 0.9171475644736409
+        },
+        {
+          "id": "ntd_b0p01_t0p5",
+          "adaptation": 0.921165466805862,
+          "adaptation_test": 0.9207884059444102
+        },
+        {
+          "id": "hybrid_mix0p75",
+          "adaptation": 0.9158952466446307,
+          "adaptation_test": 0.9100198776588907
+        },
+        {
+          "id": "hybrid_mix0p25",
+          "adaptation": 0.9095054899100043,
+          "adaptation_test": 0.907315036725894
+        },
+        {
+          "id": "hybrid_mix0p5",
+          "adaptation": 0.9085163507908293,
+          "adaptation_test": 0.9064090895636747
+        },
+        {
+          "id": "param_l2_mu0",
+          "adaptation": 0.9076845465094837,
+          "adaptation_test": 0.8927256735688863
+        },
+        {
+          "id": "fisher_scaled_lam1e06",
+          "adaptation": 0.9049786114187438,
+          "adaptation_test": 0.9126824269781635
+        },
+        {
+          "id": "fisher_lam0p1",
+          "adaptation": 0.9012647371862745,
+          "adaptation_test": 0.9108402153633032
+        },
+        {
+          "id": "logit_l2_lam0p1",
+          "adaptation": 0.8923147323322832,
+          "adaptation_test": 0.9053328768817532
+        }
+      ],
+      "test": [
+        {
+          "id": "ntd_b0p01_t0p5",
+          "adaptation": 0.921165466805862,
+          "adaptation_test": 0.9207884059444102
+        },
+        {
+          "id": "feature_l2_lam0p1",
+          "adaptation": 0.9220311799416894,
+          "adaptation_test": 0.9171475644736409
+        },
+        {
+          "id": "kd_T1_a0p99",
+          "adaptation": 0.9221114403022942,
+          "adaptation_test": 0.913635995369704
+        },
+        {
+          "id": "fisher_scaled_lam1e06",
+          "adaptation": 0.9049786114187438,
+          "adaptation_test": 0.9126824269781635
+        },
+        {
+          "id": "fisher_lam0p1",
+          "adaptation": 0.9012647371862745,
+          "adaptation_test": 0.9108402153633032
+        },
+        {
+          "id": "hybrid_mix0p75",
+          "adaptation": 0.9158952466446307,
+          "adaptation_test": 0.9100198776588907
+        },
+        {
+          "id": "hybrid_mix0p25",
+          "adaptation": 0.9095054899100043,
+          "adaptation_test": 0.907315036725894
+        },
+        {
+          "id": "hybrid_mix0p5",
+          "adaptation": 0.9085163507908293,
+          "adaptation_test": 0.9064090895636747
+        },
+        {
+          "id": "logit_l2_lam0p1",
+          "adaptation": 0.8923147323322832,
+          "adaptation_test": 0.9053328768817532
+        },
+        {
+          "id": "param_l2_mu0",
+          "adaptation": 0.9076845465094837,
+          "adaptation_test": 0.8927256735688863
+        }
+      ]
+    },
+    "sequential": {
+      "val": [
+        {
+          "id": "ntd_b0p001_t1",
+          "adaptation": 0.9239241884331633,
+          "adaptation_test": 0.9053824889541183
+        },
+        {
+          "id": "feature_l2_lam0p01",
+          "adaptation": 0.9220959756934791,
+          "adaptation_test": 0.9144133641283683
+        },
+        {
+          "id": "kd_T1_a0p99",
+          "adaptation": 0.9158109028282425,
+          "adaptation_test": 0.9135908239239768
+        },
+        {
+          "id": "kd_T0p25_a0p99",
+          "adaptation": 0.9130601167382885,
+          "adaptation_test": 0.9063465686556538
+        },
+        {
+          "id": "fisher_lam1",
+          "adaptation": 0.9122071269297624,
+          "adaptation_test": 0.9091797696007313
+        },
+        {
+          "id": "hybrid_mix0p5",
+          "adaptation": 0.9113068499067232,
+          "adaptation_test": 0.9099958478622121
+        },
+        {
+          "id": "param_l2_mu0",
+          "adaptation": 0.9103934923919438,
+          "adaptation_test": 0.8981800362586378
+        },
+        {
+          "id": "fisher_scaled_lam100000",
+          "adaptation": 0.9085401927420745,
+          "adaptation_test": 0.9091631057860885
+        },
+        {
+          "id": "hybrid_mix0p25",
+          "adaptation": 0.9076029960728335,
+          "adaptation_test": 0.9072898912331554
+        },
+        {
+          "id": "hybrid_mix0p75",
+          "adaptation": 0.9060130475265509,
+          "adaptation_test": 0.911927059965366
+        },
+        {
+          "id": "logit_l2_lam0p1",
+          "adaptation": 0.8986626939765211,
+          "adaptation_test": 0.9143548842718051
+        }
+      ],
+      "test": [
+        {
+          "id": "feature_l2_lam0p01",
+          "adaptation": 0.9220959756934791,
+          "adaptation_test": 0.9144133641283683
+        },
+        {
+          "id": "logit_l2_lam0p1",
+          "adaptation": 0.8986626939765211,
+          "adaptation_test": 0.9143548842718051
+        },
+        {
+          "id": "kd_T1_a0p99",
+          "adaptation": 0.9158109028282425,
+          "adaptation_test": 0.9135908239239768
+        },
+        {
+          "id": "hybrid_mix0p75",
+          "adaptation": 0.9060130475265509,
+          "adaptation_test": 0.911927059965366
+        },
+        {
+          "id": "hybrid_mix0p5",
+          "adaptation": 0.9113068499067232,
+          "adaptation_test": 0.9099958478622121
+        },
+        {
+          "id": "fisher_lam1",
+          "adaptation": 0.9122071269297624,
+          "adaptation_test": 0.9091797696007313
+        },
+        {
+          "id": "fisher_scaled_lam100000",
+          "adaptation": 0.9085401927420745,
+          "adaptation_test": 0.9091631057860885
+        },
+        {
+          "id": "hybrid_mix0p25",
+          "adaptation": 0.9076029960728335,
+          "adaptation_test": 0.9072898912331554
+        },
+        {
+          "id": "kd_T0p25_a0p99",
+          "adaptation": 0.9130601167382885,
+          "adaptation_test": 0.9063465686556538
+        },
+        {
+          "id": "ntd_b0p001_t1",
+          "adaptation": 0.9239241884331633,
+          "adaptation_test": 0.9053824889541183
+        },
+        {
+          "id": "param_l2_mu0",
+          "adaptation": 0.9103934923919438,
+          "adaptation_test": 0.8981800362586378
+        }
+      ]
+    }
+  },
+  "top": {
+    "concurrent": [
+      "ntd_b0p01_t0p5",
+      "feature_l2_lam0p1",
+      "kd_T1_a0p99"
+    ],
+    "sequential": [
+      "feature_l2_lam0p01",
+      "logit_l2_lam0p1",
+      "kd_T1_a0p99"
+    ]
+  }
+}

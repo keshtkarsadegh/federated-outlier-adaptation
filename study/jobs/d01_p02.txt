@@ -1,0 +1,61 @@
+# d01_p02.txt - Digits_study01, P02: the detector.
+#
+# NIST SD19, DIGITS 0-9 ONLY. --classes digits gives the dataset ten
+# labels and the provider hands FedAvgCNN num_classes=10, so the head is
+# McMahan's exactly rather than the 62-unit by-class head.
+#
+# WHO IS IN THE BOOK, AND THE RULE.
+#
+# The cache holds 3597 writers over the full character set. Restricted to
+# digits, 3580 of them remain: 17 writers contribute no digit at all and
+# are absent from the dataset entirely rather than present with a zero.
+# Those 3580 writers hold 402,953 digit images between them.
+#
+# The splittability rule is the book's own: a writer is splittable when a
+# per-label stratified 60/20/20 leaves it at least one training row AND
+# at least one validation row. Counted against the cache:
+#
+#   digits    3580 of 3580 survive - NONE are dropped
+#   (62-class  3588 of 3597 survive - 9 are dropped)
+#
+# The digit filter is a no-op, and that is not luck. Fewer classes means
+# more rows per class: a digit writer holds ~113 rows over 10 labels,
+# about 11 each, where the same writer holds ~226 over 62, about 3.6
+# each. int(3.6 * 0.6) can be zero; int(11 * 0.6) cannot. The book is
+# therefore built over every writer, and it records any unsplittable
+# writer per fold in its own metadata - which here will be empty.
+#
+# ONE SUBSTITUTION - REQUIRED BEFORE THE LAST LINE.
+#
+# Line 8 prints which of the five g-init folds won. Line 9 scores every
+# writer on the held-out rows OF THAT FOLD, and needs the number:
+#
+#   GINIT_FOLD=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['selected_fold'])" \
+#              $FOA_STUDY_DIR/ginit_selection.json)
+#   export GINIT_FOLD
+#
+# WHY THAT FOLD AND NOT ANOTHER. g-init trained on the whole digit
+# dataset, so every writer contributed training images to it. Scoring a
+# writer on all of its data would be scoring the model on its own
+# training set, and the ranking would measure memorisation rather than
+# difficulty. Each writer is scored on its validation+test rows of the
+# fold g-init was selected from - exactly the rows that model did not
+# train on. The book is what still knows which rows those were.
+#
+# THE BANKING STEP (line 1) is independent of everything: it reads the
+# cache and counts. It writes each writer's digit total and its per-class
+# counts, because a reader will ask whether the worst writers were simply
+# the ones with the least data - and a ranking alone cannot answer that.
+#
+# 9 tasks. The chain is: counts+book -> the five folds -> the winner
+# -> the scores.
+#
+foa writer-counts --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/outliers/writer_counts.json --csv $FOA_STUDY_DIR/outliers/writer_counts.csv
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/all_writers_digits --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_all_writers
+foa global-train --results-dir $FOA_STUDY_DIR/ginit_fold1 --resolution 28 --classes digits --model fedavg_cnn --population all --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 1 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 1
+foa global-train --results-dir $FOA_STUDY_DIR/ginit_fold2 --resolution 28 --classes digits --model fedavg_cnn --population all --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 2 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 2
+foa global-train --results-dir $FOA_STUDY_DIR/ginit_fold3 --resolution 28 --classes digits --model fedavg_cnn --population all --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 3 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 3
+foa global-train --results-dir $FOA_STUDY_DIR/ginit_fold4 --resolution 28 --classes digits --model fedavg_cnn --population all --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 4 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 4
+foa global-train --results-dir $FOA_STUDY_DIR/ginit_fold5 --resolution 28 --classes digits --model fedavg_cnn --population all --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 5 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 5
+foa select-fold --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --root $FOA_STUDY_DIR --prefix ginit --name ginit --folds 1 2 3 4 5
+foa score-writers --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/ginit_model --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold $GINIT_FOLD --batch-size 256 --out $FOA_STUDY_DIR/outliers/writer_scores.json

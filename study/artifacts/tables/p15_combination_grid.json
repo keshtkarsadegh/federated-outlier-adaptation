@@ -1,0 +1,105 @@
+{
+  "rule": "top-3 aggregations x top-3 penalties, within each family",
+  "aggregations": {
+    "concurrent": [
+      "anchor_0p03",
+      "median",
+      "trimmed_0p4"
+    ],
+    "sequential": [
+      "seq_delta_capped",
+      "seq_equal",
+      "seq_order_shuffle"
+    ]
+  },
+  "penalties": {
+    "concurrent": [
+      "ntd_b0p01_t0p5",
+      "feature_l2_lam0p1",
+      "kd_T1_a0p99"
+    ],
+    "sequential": [
+      "feature_l2_lam0p01",
+      "logit_l2_lam0p1",
+      "kd_T1_a0p99"
+    ]
+  },
+  "pairs": {
+    "concurrent": [
+      [
+        "anchor_0p03",
+        "ntd_b0p01_t0p5"
+      ],
+      [
+        "anchor_0p03",
+        "feature_l2_lam0p1"
+      ],
+      [
+        "anchor_0p03",
+        "kd_T1_a0p99"
+      ],
+      [
+        "median",
+        "ntd_b0p01_t0p5"
+      ],
+      [
+        "median",
+        "feature_l2_lam0p1"
+      ],
+      [
+        "median",
+        "kd_T1_a0p99"
+      ],
+      [
+        "trimmed_0p4",
+        "ntd_b0p01_t0p5"
+      ],
+      [
+        "trimmed_0p4",
+        "feature_l2_lam0p1"
+      ],
+      [
+        "trimmed_0p4",
+        "kd_T1_a0p99"
+      ]
+    ],
+    "sequential": [
+      [
+        "seq_delta_capped",
+        "feature_l2_lam0p01"
+      ],
+      [
+        "seq_delta_capped",
+        "logit_l2_lam0p1"
+      ],
+      [
+        "seq_delta_capped",
+        "kd_T1_a0p99"
+      ],
+      [
+        "seq_equal",
+        "feature_l2_lam0p01"
+      ],
+      [
+        "seq_equal",
+        "logit_l2_lam0p1"
+      ],
+      [
+        "seq_equal",
+        "kd_T1_a0p99"
+      ],
+      [
+        "seq_order_shuffle",
+        "feature_l2_lam0p01"
+      ],
+      [
+        "seq_order_shuffle",
+        "logit_l2_lam0p1"
+      ],
+      [
+        "seq_order_shuffle",
+        "kd_T1_a0p99"
+      ]
+    ]
+  }
+}

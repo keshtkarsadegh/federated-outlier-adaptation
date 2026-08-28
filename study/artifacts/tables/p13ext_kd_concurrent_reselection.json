@@ -1,0 +1,15 @@
+{
+  "method": "kd",
+  "family": "concurrent",
+  "cells_in_row": 53,
+  "previous_winner": "kd_T1_a0p99",
+  "winner": "kd_T1_a0p99",
+  "changed": false,
+  "adaptation": 0.9131826660925889,
+  "adaptation_sd": 0.01844217362856251,
+  "preservation": 0.9945491558202991,
+  "considered": 53,
+  "boundary_hits": [
+    "kd_T1_a0p99: lam=0.010101 is the LOW end of [0.01010101010101011, 0.052631578947368474, 0.11111111111111108, 0.42857142857142866, 1.0, 2.3333333333333335, 9.0]"
+  ]
+}

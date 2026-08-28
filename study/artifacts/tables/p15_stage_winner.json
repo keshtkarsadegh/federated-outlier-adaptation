@@ -1,0 +1,292 @@
+{
+  "rule": "owner decision A 2026-08-28: test-ranked among fully-reported finalists, one cell per method on the clients",
+  "rank_by": "test",
+  "rankings": {
+    "val": [
+      {
+        "id": "median_ntd_b0p01_t0p5",
+        "adaptation": 0.9347511202730706,
+        "adaptation_test": 0.9224016688416965
+      },
+      {
+        "id": "median_kd_T1_a0p99",
+        "adaptation": 0.934680295956722,
+        "adaptation_test": 0.9206239606622744
+      },
+      {
+        "id": "trimmed_0p4_ntd_b0p01_t0p5",
+        "adaptation": 0.931289389695265,
+        "adaptation_test": 0.9153556149521165
+      },
+      {
+        "id": "trimmed_0p4_feature_l2_lam0p1",
+        "adaptation": 0.9284424721700115,
+        "adaptation_test": 0.9235862072670838
+      },
+      {
+        "id": "trimmed_0p4_kd_T1_a0p99",
+        "adaptation": 0.9266011394150487,
+        "adaptation_test": 0.9207957279841392
+      },
+      {
+        "id": "median_feature_l2_lam0p1",
+        "adaptation": 0.9256193542756813,
+        "adaptation_test": 0.9177790053664564
+      },
+      {
+        "id": "seq_delta_capped_feature_l2_lam0p01",
+        "adaptation": 0.9247667188348105,
+        "adaptation_test": 0.9197842826525242
+      },
+      {
+        "id": "seq_order_shuffle_feature_l2_lam0p01",
+        "adaptation": 0.9193606542123401,
+        "adaptation_test": 0.9198365577465063
+      },
+      {
+        "id": "seq_equal_feature_l2_lam0p01",
+        "adaptation": 0.9185477317974091,
+        "adaptation_test": 0.9062566558126086
+      },
+      {
+        "id": "anchor_0p03_ntd_b0p01_t0p5",
+        "adaptation": 0.9178014174717054,
+        "adaptation_test": 0.9171498041813876
+      },
+      {
+        "id": "seq_order_shuffle_kd_T1_a0p99",
+        "adaptation": 0.9175850459364385,
+        "adaptation_test": 0.9135616745875483
+      },
+      {
+        "id": "seq_delta_capped_kd_T1_a0p99",
+        "adaptation": 0.9166330438754475,
+        "adaptation_test": 0.9145528823092396
+      },
+      {
+        "id": "anchor_0p03_kd_T1_a0p99",
+        "adaptation": 0.9140441206809728,
+        "adaptation_test": 0.9064329009688793
+      },
+      {
+        "id": "seq_equal_kd_T1_a0p99",
+        "adaptation": 0.912293819524022,
+        "adaptation_test": 0.9116596118208229
+      },
+      {
+        "id": "anchor_0p03_feature_l2_lam0p1",
+        "adaptation": 0.9095434752391509,
+        "adaptation_test": 0.9045116790805224
+      },
+      {
+        "id": "seq_delta_capped_logit_l2_lam0p1",
+        "adaptation": 0.9031650643183528,
+        "adaptation_test": 0.907973424455159
+      },
+      {
+        "id": "seq_equal_logit_l2_lam0p1",
+        "adaptation": 0.9031034586342782,
+        "adaptation_test": 0.9116923349525322
+      },
+      {
+        "id": "seq_order_shuffle_logit_l2_lam0p1",
+        "adaptation": 0.9004091360707893,
+        "adaptation_test": 0.9107745879161784
+      }
+    ],
+    "test": [
+      {
+        "id": "trimmed_0p4_feature_l2_lam0p1",
+        "adaptation": 0.9284424721700115,
+        "adaptation_test": 0.9235862072670838
+      },
+      {
+        "id": "median_ntd_b0p01_t0p5",
+        "adaptation": 0.9347511202730706,
+        "adaptation_test": 0.9224016688416965
+      },
+      {
+        "id": "trimmed_0p4_kd_T1_a0p99",
+        "adaptation": 0.9266011394150487,
+        "adaptation_test": 0.9207957279841392
+      },
+      {
+        "id": "median_kd_T1_a0p99",
+        "adaptation": 0.934680295956722,
+        "adaptation_test": 0.9206239606622744
+      },
+      {
+        "id": "seq_order_shuffle_feature_l2_lam0p01",
+        "adaptation": 0.9193606542123401,
+        "adaptation_test": 0.9198365577465063
+      },
+      {
+        "id": "seq_delta_capped_feature_l2_lam0p01",
+        "adaptation": 0.9247667188348105,
+        "adaptation_test": 0.9197842826525242
+      },
+      {
+        "id": "median_feature_l2_lam0p1",
+        "adaptation": 0.9256193542756813,
+        "adaptation_test": 0.9177790053664564
+      },
+      {
+        "id": "anchor_0p03_ntd_b0p01_t0p5",
+        "adaptation": 0.9178014174717054,
+        "adaptation_test": 0.9171498041813876
+      },
+      {
+        "id": "trimmed_0p4_ntd_b0p01_t0p5",
+        "adaptation": 0.931289389695265,
+        "adaptation_test": 0.9153556149521165
+      },
+      {
+        "id": "seq_delta_capped_kd_T1_a0p99",
+        "adaptation": 0.9166330438754475,
+        "adaptation_test": 0.9145528823092396
+      },
+      {
+        "id": "seq_order_shuffle_kd_T1_a0p99",
+        "adaptation": 0.9175850459364385,
+        "adaptation_test": 0.9135616745875483
+      },
+      {
+        "id": "seq_equal_logit_l2_lam0p1",
+        "adaptation": 0.9031034586342782,
+        "adaptation_test": 0.9116923349525322
+      },
+      {
+        "id": "seq_equal_kd_T1_a0p99",
+        "adaptation": 0.912293819524022,
+        "adaptation_test": 0.9116596118208229
+      },
+      {
+        "id": "seq_order_shuffle_logit_l2_lam0p1",
+        "adaptation": 0.9004091360707893,
+        "adaptation_test": 0.9107745879161784
+      },
+      {
+        "id": "seq_delta_capped_logit_l2_lam0p1",
+        "adaptation": 0.9031650643183528,
+        "adaptation_test": 0.907973424455159
+      },
+      {
+        "id": "anchor_0p03_kd_T1_a0p99",
+        "adaptation": 0.9140441206809728,
+        "adaptation_test": 0.9064329009688793
+      },
+      {
+        "id": "seq_equal_feature_l2_lam0p01",
+        "adaptation": 0.9185477317974091,
+        "adaptation_test": 0.9062566558126086
+      },
+      {
+        "id": "anchor_0p03_feature_l2_lam0p1",
+        "adaptation": 0.9095434752391509,
+        "adaptation_test": 0.9045116790805224
+      }
+    ]
+  },
+  "winner": "trimmed_0p4_feature_l2_lam0p1",
+  "family": "concurrent",
+  "aggregation": "trimmed_0p4",
+  "regulariser": "feature_l2_lam0p1",
+  "adaptation": 0.9284424721700115,
+  "adaptation_sd": 0.017662482148797613,
+  "adaptation_test": 0.9235862072670838,
+  "preservation": 0.9915435080066254,
+  "preservation_sd": 0.000953591157279356,
+  "considered": 18,
+  "ranked": [
+    {
+      "id": "trimmed_0p4_feature_l2_lam0p1",
+      "adaptation": 0.9284424721700115,
+      "preservation": 0.9915435080066254
+    },
+    {
+      "id": "median_ntd_b0p01_t0p5",
+      "adaptation": 0.9347511202730706,
+      "preservation": 0.9882056994735936
+    },
+    {
+      "id": "trimmed_0p4_kd_T1_a0p99",
+      "adaptation": 0.9266011394150487,
+      "preservation": 0.9845276960363267
+    },
+    {
+      "id": "median_kd_T1_a0p99",
+      "adaptation": 0.934680295956722,
+      "preservation": 0.9852755448270715
+    },
+    {
+      "id": "seq_order_shuffle_feature_l2_lam0p01",
+      "adaptation": 0.9193606542123401,
+      "preservation": 0.9816885494667874
+    },
+    {
+      "id": "seq_delta_capped_feature_l2_lam0p01",
+      "adaptation": 0.9247667188348105,
+      "preservation": 0.9847240937234819
+    },
+    {
+      "id": "median_feature_l2_lam0p1",
+      "adaptation": 0.9256193542756813,
+      "preservation": 0.9914529101839812
+    },
+    {
+      "id": "anchor_0p03_ntd_b0p01_t0p5",
+      "adaptation": 0.9178014174717054,
+      "preservation": 0.9963912021227944
+    },
+    {
+      "id": "trimmed_0p4_ntd_b0p01_t0p5",
+      "adaptation": 0.931289389695265,
+      "preservation": 0.9883942393270183
+    },
+    {
+      "id": "seq_delta_capped_kd_T1_a0p99",
+      "adaptation": 0.9166330438754475,
+      "preservation": 0.9835461724689102
+    },
+    {
+      "id": "seq_order_shuffle_kd_T1_a0p99",
+      "adaptation": 0.9175850459364385,
+      "preservation": 0.981779289488407
+    },
+    {
+      "id": "seq_equal_logit_l2_lam0p1",
+      "adaptation": 0.9031034586342782,
+      "preservation": 0.9950244800050742
+    },
+    {
+      "id": "seq_equal_kd_T1_a0p99",
+      "adaptation": 0.912293819524022,
+      "preservation": 0.965594784232879
+    },
+    {
+      "id": "seq_order_shuffle_logit_l2_lam0p1",
+      "adaptation": 0.9004091360707893,
+      "preservation": 0.9968748365488685
+    },
+    {
+      "id": "seq_delta_capped_logit_l2_lam0p1",
+      "adaptation": 0.9031650643183528,
+      "preservation": 0.9969350971218004
+    },
+    {
+      "id": "anchor_0p03_kd_T1_a0p99",
+      "adaptation": 0.9140441206809728,
+      "preservation": 0.9946624120213208
+    },
+    {
+      "id": "seq_equal_feature_l2_lam0p01",
+      "adaptation": 0.9185477317974091,
+      "preservation": 0.9678367120743555
+    },
+    {
+      "id": "anchor_0p03_feature_l2_lam0p1",
+      "adaptation": 0.9095434752391509,
+      "preservation": 0.9966029482712927
+    }
+  ]
+}

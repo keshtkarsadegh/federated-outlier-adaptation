@@ -1,0 +1,24 @@
+# Pinned runtime environment for the published experiments.
+#
+# For the CUDA 12.1 build used on the GPU cluster, install torch/torchvision
+# from the PyTorch index first:
+#
+#   pip install torch==2.3.1 torchvision==0.18.1 \
+#       --index-url https://download.pytorch.org/whl/cu121
+#   pip install -r requirements.txt
+#
+# On CPU-only machines plain `pip install -r requirements.txt` is enough.
+
+torch==2.3.1
+torchvision==0.18.1
+numpy<2
+pandas==2.2.3
+scikit-learn==1.5.2
+tqdm==4.67.1
+requests==2.32.3
+loguru==0.7.3
+matplotlib==3.10.0
+seaborn==0.13.2
+pillow==10.4.0
+joblib==1.4.2
+pytest==8.3.3

@@ -1,0 +1,44 @@
+# d01_p10.txt - Digits_study01, P10: CENTRALIZED ON THE OUTLIERS.
+#
+# The rung between P08 and P09. P08 trains ten private models sharing
+# nothing; P09 federates ten clients that share gradients but never data.
+# This trains ONE model on the union of all ten writers' data, with the
+# privacy constraint simply switched off.
+#
+# So it is the ceiling the federated arm is trying to reach without moving
+# anything: the gap to P09 is the price of the constraint, and the gap to
+# P08 is what pooling buys over isolation.
+#
+# The training set is the union of the cohort's fold-k train rows (579
+# images); the early-stopping set is the union of their fold-k validation
+# rows. One convergence rule applied once to one model, identical to P08's,
+# so the three rungs differ in the arrangement and not in the stopping
+# rule.
+#
+# 2 inits x 5 folds = 10 tasks.
+#
+# INDEPENDENT OF THE OTHER TWO. This file reads only artefacts that already
+# exist - the cohort, its fold book, the old book and g-0 - and writes only
+# its own outputs. P08, P09 and P10 can be submitted at the same time.
+#
+# THE THREE EVALUATIONS every run reports:
+#   own / clients   the cohort's fold-k TEST rows
+#   preservation    EVERY fold of the old book, separately (--old-fold all),
+#                   reported as five accuracies with their mean and spread.
+#                   Five partitions of one population, so the spread across
+#                   them is the error bar - merging them would throw it away.
+#
+#   J=$FOA_PROJECT_DIR/jobs/v4
+#   sbatch --account=$FOA_ACCOUNT --array=1-10 \
+#          $J/study_phase.sbatch $J/d01_p10.txt
+#
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init global --init-checkpoint $FOA_STUDY_DIR/g0_model --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_global_fold1.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init global --init-checkpoint $FOA_STUDY_DIR/g0_model --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_global_fold2.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init global --init-checkpoint $FOA_STUDY_DIR/g0_model --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_global_fold3.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init global --init-checkpoint $FOA_STUDY_DIR/g0_model --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_global_fold4.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init global --init-checkpoint $FOA_STUDY_DIR/g0_model --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_global_fold5.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init scratch --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_scratch_fold1.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init scratch --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_scratch_fold2.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init scratch --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_scratch_fold3.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init scratch --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_scratch_fold4.json
+foa isolated-train --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --pooled --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --old-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --old-fold all --old-clients-file $FOA_STUDY_DIR/outliers/old_data.json --init scratch --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --eval-batch-size 256 --out $FOA_STUDY_DIR/centralized/centralized_outliers_scratch_fold5.json

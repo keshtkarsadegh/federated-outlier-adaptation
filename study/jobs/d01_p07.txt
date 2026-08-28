@@ -1,0 +1,70 @@
+# d01_p07.txt - Digits_study01, P07: g-0 and the starting line.
+#
+# g-0 is the SHIPPED model: trained on the 200 old-data writers P04 drew,
+# five-fold cross-validated on their book, early-stopped on validation
+# with the best weights restored. Every number this study reports is
+# measured against it. g-init is not a baseline and never was - it exists
+# to rank writers, and its job ended when the cohort was cut.
+#
+# THE DATA. 200 writers, 23,898 digit rows per fold:
+# 13,289 train, ~5,296 validation, ~5,313 test. Both books P04 wrote
+# report an EMPTY unsplittable list, so every writer contributes to all
+# three parts of all five folds - the check P02 predicted, now confirmed.
+#
+# LINES 1-5 train one fold each. --population file trains on exactly the
+# drawn writers; the fold book supplies their 60/20/20, so these folds are
+# the folds every later stage reuses.
+#
+# THE FISHER COMES FREE, AND IN THE RIGHT PLACE. global-train computes the
+# Fisher diagonal after training and writes it to
+# <results-dir>/global_results/fisher, so with --results-dir
+# $FOA_STUDY_DIR/g0_fold<k> it lands at
+#   $FOA_STUDY_DIR/g0_fold<k>/global_results/fisher
+# which is exactly where the regularisation stages look. It is computed on
+# the TRAIN loader of that fold - the old-data train split - which is what
+# EWC wants: the curvature of the model on the data it was fitted to. No
+# separate task, and nothing to remember later except the winning fold
+# number, which the reg stages take as $G0_FOLD.
+#
+# LINE 6 picks the winner by VALIDATION accuracy - never test, since the
+# test halves are what the paper reports on - ties to the lower fold. It
+# copies that fold's checkpoint to g0_model and writes g0_selection.json
+# with the sha256, the per-fold table and the fold mean and spread.
+#
+# LINES 7-11 ARE PRESERVATION: g-0 on the old data's test rows, one
+# fold each, into g0_evaluations.json. This is the reference line every
+# later method is measured against - what the shipped model knows before
+# anyone adapts it.
+#
+# LINES 12-16 ARE THE ADAPTATION GAP: g-0 on the cohort's test rows,
+# per fold AND per writer, into g0_perfold_evaluations.json. That is the
+# do-nothing baseline - what each of the 10 outliers already gets from the
+# shipped model - and the gap the whole study exists to close. Only
+# ~225 rows per fold, so these are seconds of work.
+#
+# BOTH EVALUATION GROUPS APPEND to a single JSON each, keyed by tag, and
+# appending is a read-modify-write: two running at once would each read
+# before the other wrote and one result would vanish silently. Submit them
+# %1. They are under a minute each, so it costs nothing.
+#
+# The two files keep the shapes their study-2 counterparts had, so every
+# downstream reader works unchanged.
+#
+# 16 tasks. Chain: the five folds -> the winner -> the evaluations.
+#
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold1 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 1 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 1
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold2 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 2 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 2
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold3 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 3 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 3
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold4 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 4 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 4
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold5 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 5 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 5
+foa select-fold --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --root $FOA_STUDY_DIR --prefix g0 --name g0 --folds 1 2 3 4 5
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 1 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold1 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 2 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold2 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 3 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold3 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 4 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold4 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 5 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold5 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold1 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold2 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold3 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold4 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold5 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
