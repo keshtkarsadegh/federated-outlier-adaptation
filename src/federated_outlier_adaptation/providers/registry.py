@@ -2,12 +2,11 @@
 Provider registry.
 
 ``get_provider(name, **kwargs)`` is the single lookup every entry point uses to
-choose a dataset.  ``"nist"`` (the default) returns the process-wide default
-provider when called without arguments, exactly as before, so unconfigured runs
-keep reproducing the published behaviour and output paths.
-
-The dataset modules are imported lazily: loading the registry must not pull the
-Shakespeare or CIFAR-10 arrays into a NIST run.
+choose a dataset.  This study has one: NIST SD19 by writer.  The indirection is
+kept because the runners, trainers and aggregation rules are written against
+the provider interface rather than against NIST, which is what made the
+dataset replaceable in the first place - and what a reader has to be able to
+check.
 """
 
 from __future__ import annotations
@@ -23,22 +22,8 @@ def _nist(**kwargs) -> DatasetProvider:
     return NistProvider(**kwargs) if kwargs else default_provider()
 
 
-def _shakespeare(**kwargs) -> DatasetProvider:
-    from federated_outlier_adaptation.providers.shakespeare import ShakespeareProvider
-
-    return ShakespeareProvider(**kwargs)
-
-
-def _cifar10(**kwargs) -> DatasetProvider:
-    from federated_outlier_adaptation.providers.cifar10 import Cifar10Provider
-
-    return Cifar10Provider(**kwargs)
-
-
 _FACTORIES: Dict[str, Callable[..., DatasetProvider]] = {
     "nist": _nist,
-    "shakespeare": _shakespeare,
-    "cifar10": _cifar10,
 }
 
 
@@ -52,8 +37,7 @@ def get_provider(name: str = "nist", **kwargs) -> DatasetProvider:
     Look up a dataset provider by name.
 
     Args:
-        name: ``"nist"``, ``"shakespeare"`` or ``"cifar10"``.  An empty value
-            means NIST.
+        name: ``"nist"``.  An empty value means NIST.
         **kwargs: Forwarded to the provider constructor (``results_dir``,
             ``data_dir``, ``cache_dir``, ``outliers_file``, ...).
     """

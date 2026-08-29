@@ -86,6 +86,98 @@ def test_a_line_emitter_without_expect_refuses(emit, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# what each generator reads and writes
+# --------------------------------------------------------------------------- #
+def test_the_derived_io_says_what_the_generators_actually_do(emit):
+    """
+    The relations the ordering check rests on, stated once and out loud.
+
+    The one that matters is the last pair: the hybrid is built from the winners
+    the full-horizon selection writes, which is why packing it first killed a
+    stage.
+    """
+    io = {what: emit.table_io(what) for what in emit.WHAT}
+    assert io["agg-full"]["writes"] == ("p11_agg_method_winners.json",)
+    assert io["agg-top3"]["writes"] == ("p12_agg_top3.json",)
+    assert io["reg-top3"]["writes"] == ("p14_reg_top3.json",)
+    assert io["combos"]["reads"] == ("p12_agg_top3.json",
+                                     "p14_hybrid_construction.json",
+                                     "p14_reg_top3.json")
+    assert io["reg-full"]["writes"] == ("p13_reg_method_winners.json",)
+    assert io["reg-hybrid"]["reads"] == ("p13_reg_method_winners.json",)
+    assert io["reg-hybrid"]["writes"] == ("p14_hybrid_construction.json",)
+
+
+def test_the_derivation_covers_every_table_this_module_touches(emit):
+    """
+    The drift guard.
+
+    ``table_io`` reads the module's syntax tree, so it cannot go stale against a
+    declaration - but it could still go BLIND, if some later generator reached a
+    table through a helper the walk does not follow or a name it cannot see. A
+    blind spot here would not fail loudly; it would make the ordering check pass
+    on a stage it never actually examined, which is the failure mode that put
+    this whole thing in the repository. So every literal table name in the file
+    must be accounted for by some generator's reads or writes.
+    """
+    import ast
+
+    source = ast.parse(Path(emit.__file__).read_text())
+    literals, dynamic = set(), 0
+    for node in ast.walk(source):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "write_table" and len(node.args) >= 3):
+            name = node.args[2]
+            if isinstance(name, ast.Constant) and isinstance(name.value, str):
+                literals.add(name.value)
+            else:
+                dynamic += 1
+        literal = emit._tables_literal(node)
+        if literal is not None and literal != "BOUNDARY_HITS.txt":
+            literals.add(literal)
+
+    accounted = set()
+    for what in emit.WHAT:
+        io = emit.table_io(what)
+        accounted |= set(io["reads"]) | set(io["writes"])
+    assert literals - accounted == set(), sorted(literals - accounted)
+
+    # The names the walk deliberately cannot see: the reg patch record, built
+    # from an f-string over its method and family, and the size-study records
+    # named through a spec dict. Nothing reads either, so they order nothing.
+    # If this count moves, a computed name has been added and the blind spot
+    # needs re-examining before the ordering check can be trusted over it.
+    assert dynamic == 2
+
+
+def test_the_boundary_log_is_not_mistaken_for_an_input(emit):
+    """
+    Every generator appends to tables/BOUNDARY_HITS.txt and none selects from
+    it. Counted as an input it would make each generator look like a reader of
+    a file no generator writes - noise in an ordering check, and the kind of
+    noise that gets a check ignored.
+    """
+    for what in emit.WHAT:
+        assert "BOUNDARY_HITS.txt" not in emit.table_io(what)["reads"]
+
+
+def test_an_ordering_check_over_one_step_is_vacuous_not_broken(emit):
+    """A single-step stage has nothing to order, and must not invent a fault."""
+    single = ["$FOA_PYTHON t/study_emit.py reg-hybrid --root r --out o --expect 3"]
+    assert emit.ordering_violations(single) == []
+    assert emit.ordering_violations([]) == []
+
+
+def test_lines_that_are_not_generators_are_ignored(emit):
+    """
+    A stage may pack a training line beside a generator. Those name no table,
+    and a check that guessed at them would report faults that are not there.
+    """
+    assert emit.step_what("$FOA_PYTHON t/study_emit.py reg-full --root r") == "reg-full"
+    assert emit.step_what("$FOA_PYTHON t/study_emit.py not-a-generator") is None
+
+
+# --------------------------------------------------------------------------- #
 # the top-three artefacts
 # --------------------------------------------------------------------------- #
 def _agg_result(root: Path, cell_id: str, fold: int, adaptation: float):

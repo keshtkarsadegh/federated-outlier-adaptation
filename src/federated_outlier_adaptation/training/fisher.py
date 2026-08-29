@@ -23,7 +23,7 @@ def _backward_context(model, device):
     ("cudnn RNN backward can only be called in training mode").  For models that
     contain a recurrent layer the cuDNN path is therefore switched off for the
     duration of the pass; the native kernels produce the same gradients.  Purely
-    convolutional models - every NIST and CIFAR-10 topology - keep cuDNN
+    convolutional models - every NIST topology - keep cuDNN
     enabled, so their Fisher information is computed exactly as before.
     """
     is_cuda = str(device).startswith("cuda")
@@ -46,7 +46,7 @@ def compute_and_save_fisher_and_params(
 
     The routine is dataset agnostic: it only needs a loader that yields
     ``(inputs, labels)`` and a model whose ``forward`` accepts those inputs, so
-    it serves NIST, LEAF Shakespeare and CIFAR-10 unchanged.
+    it serves any provider unchanged.
 
     Args:
         model (torch.nn.Module): The model to analyze.

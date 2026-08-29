@@ -41,7 +41,7 @@ Everything is driven through a dataset provider.  With the default provider the
 module reproduces the published NIST pipeline unchanged - same phases, same file
 names, same results root.  ``run_provider_global_training`` is the additive
 entry point used by the datasets that have no frozen artefacts to preserve
-(LEAF Shakespeare, CIFAR-10); it writes into the provider's own results root.
+it writes into the provider's own results root.
 """
 
 class GlobalTraining:
@@ -195,7 +195,7 @@ class GlobalTraining:
         make_split = getattr(self.provider, "make_client_split", None)
         if make_split is not None:
             # Datasets that derive their split from the provider (LEAF
-            # Shakespeare, CIFAR-10).  Deterministic for a given seed.
+            # Deterministic for a given seed.
             local_writers, global_writers = make_split(seed=seed)
             NistLogger.info(
                 f"Derived the {self.provider.name} client split "
@@ -570,7 +570,7 @@ def run_provider_global_training(
     instead of sampling it.  The NIST pipeline is untouched.
 
     Args:
-        provider: Dataset provider (``shakespeare``, ``cifar10``, ...).
+        provider: Dataset provider (``nist``).
         epochs: Upper bound on the number of pooled training epochs.
         batch_size: Training batch size.
         eval_batch_size: Batch size of the evaluation passes; defaults to four
@@ -696,7 +696,7 @@ def main(argv: Optional[Sequence[str]] = None):
     Without arguments it runs the published NIST phase 1, exactly as before.
     """
     parser = argparse.ArgumentParser(description="Train the pooled global model of a dataset.")
-    parser.add_argument("--provider", default="nist", help="nist | shakespeare | cifar10")
+    parser.add_argument("--provider", default="nist", help="nist")
     parser.add_argument("--results-dir", default=None)
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--epochs", type=int, default=100)

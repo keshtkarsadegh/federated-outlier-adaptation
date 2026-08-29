@@ -44,6 +44,15 @@ def lines() -> list[str]:
 #: How many cells the screen ran before the boundary extensions were added.
 SCREENED_CELLS = 117
 
+#: How large the table was when THIS study's extension file was emitted.
+#:
+#: A second extension was appended later - the strength floors found on Speech
+#: Commands - and without this bound ``ext_lines`` would silently grow by that
+#: study's cells, which were never part of the digit extension and whose forty
+#: lines have already been submitted and reported. Both ends of the window are
+#: pinned, so this file regenerates byte-identical however far the table grows.
+EXTENDED_CELLS = 125
+
 
 def screened_lines() -> list[str]:
     """The lines the original screen ran - unchanged, and asserted so."""
@@ -60,7 +69,7 @@ def ext_lines() -> list[str]:
     keeps the two files consistent - regenerating an extension can never
     disagree with the screen it extends.
     """
-    return lines()[SCREENED_CELLS * len(SL.FOLDS):]
+    return lines()[SCREENED_CELLS * len(SL.FOLDS): EXTENDED_CELLS * len(SL.FOLDS)]
 
 
 def header(tasks: list[str]) -> list[str]:
@@ -290,7 +299,7 @@ def main() -> int:
 # --------------------------------------------------------------------------- #
 def _ext_groups() -> dict:
     """The extension cells, grouped by the row each one probes."""
-    ext = reg_cells.extension_cells()
+    ext = reg_cells.boundary_extension_cells()
     return {
         "kd": [c for c in ext if c["method"] == "kd"],
         "ntd": [c for c in ext if c["method"] == "ntd"],

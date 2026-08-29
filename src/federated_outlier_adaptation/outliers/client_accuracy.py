@@ -44,7 +44,7 @@ Dependencies:
     - federated_outlier_adaptation.providers
 
 The module is dataset agnostic: every dataset access goes through the provider,
-so it serves NIST, LEAF Shakespeare and CIFAR-10 alike.  With ``provider=None``
+so it serves any provider alike.  With ``provider=None``
 the NIST default provider is used and the behaviour is the published one.
 """
 
@@ -558,14 +558,14 @@ def main(argv=None):
     the provider's eligibility check.
 
         python -m federated_outlier_adaptation.outliers.client_accuracy \\
-            --provider shakespeare --pool-frac 0.05 0.2
+            --pool-frac 0.05 0.2
     """
     import argparse
 
     from federated_outlier_adaptation.providers import get_provider
 
     parser = argparse.ArgumentParser(description="Write the rule-based outlier pools.")
-    parser.add_argument("--provider", default="nist", help="nist | shakespeare | cifar10")
+    parser.add_argument("--provider", default="nist", help="nist")
     parser.add_argument("--results-dir", default=None)
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--pool-frac", type=float, nargs="*", default=[0.05, 0.2])

@@ -10,7 +10,7 @@
 #
 # One task per array element, exactly as `run_matrix.sbatch`, but the element
 # asks for a MIG slice (1g.10gb) instead of a whole A100.  The models of this
-# study are small - FlexibleCNN is ~1 M parameters, CharLSTM and CifarCNN are
+# study are small - FlexibleCNN is ~1 M parameters and FedAvgCNN is
 # of the same order - so a single run fits comfortably into a 10 GB slice, and
 # a partition that hands out slices schedules such a job much sooner than one
 # that has to free a full accelerator.

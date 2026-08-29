@@ -103,7 +103,7 @@ SEVERITIES = ("mild", "moderate", "severe")
 
 #: Dataset providers, mirrored from ``providers.registry`` so that ``--help``
 #: works without importing torch.
-PROVIDERS = ("nist", "shakespeare", "cifar10")
+PROVIDERS = ("nist",)
 
 #: Datasets ``prepare-data`` can build.  ``mnist`` is not a provider: it is the
 #: server-side proxy set of the NIST provider and has no clients of its own.
@@ -142,7 +142,7 @@ RESOLUTIONS = (28, 128)
 CLASS_SETS = ("all", "digits")
 
 #: Model topologies, mirrored from ``config.MODEL_NAMES``.
-MODEL_NAMES = ("fedavg_cnn", "flexible_cnn", "char_lstm")
+MODEL_NAMES = ("fedavg_cnn", "flexible_cnn")
 
 #: Conventions of the ``param_l2`` penalty, mirrored from the anchored trainer.
 PARAM_L2_CONVENTIONS = ("mean_per_tensor", "fedprox")
@@ -633,32 +633,6 @@ def cmd_prepare_data(args: argparse.Namespace) -> int:
 
     if dataset != "mnist" and not args.zip:
         raise SystemExit(f"--zip is required to prepare {dataset}")
-
-    if dataset == "shakespeare":
-        from federated_outlier_adaptation.data.shakespeare import prepare
-
-        summary = prepare(
-            raw_path=args.zip,
-            out_dir=args.out,
-            **({"seq_length": args.seq_length} if args.seq_length else {}),
-        )
-        print(json.dumps(summary, indent=2))
-        return 0
-
-    if dataset == "cifar10":
-        from federated_outlier_adaptation.data.cifar10 import prepare
-
-        summary = prepare(
-            archive_path=args.zip,
-            out_dir=args.out,
-            num_clients=args.num_clients,
-            alpha=args.alpha,
-            seed=args.split_seed,
-            proxy_size=args.proxy_size,
-            clients_name=args.clients_name,
-        )
-        print(json.dumps(summary, indent=2))
-        return 0
 
     if dataset == "mnist":
         from federated_outlier_adaptation.data.mnist import prepare
@@ -1593,6 +1567,26 @@ def cmd_writer_counts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_submit(args: argparse.Namespace) -> int:
+    """Submit a study chain from its manifest, or refuse having submitted none."""
+    from federated_outlier_adaptation.submission import (
+        ManifestError, load_manifest, submit,
+    )
+
+    try:
+        manifest = load_manifest(args.manifest)
+    except ManifestError as error:
+        print(f"REFUSED: {error}", file=sys.stderr)
+        return 78
+
+    result = submit(manifest, dry_run=not args.go)
+    if not result.get("submitted") and result.get("problems"):
+        return 78
+    if not result.get("submitted") and result.get("failed_at"):
+        return 1
+    return 0
+
+
 def cmd_select_eligible(args: argparse.Namespace) -> int:
     """Cut the eligible population from a writer-counts artefact."""
     from federated_outlier_adaptation import config
@@ -1819,6 +1813,13 @@ def cmd_draw_old_data(args: argparse.Namespace) -> int:
     counts = {writer: dataset.get_sample_count(writer) for writer in dataset.all_writers()}
 
     exclude, _ = load_client_pool(args.exclude_file) if args.exclude_file else ([], {})
+    population = population_source = None
+    if args.from_pool:
+        population, _ = load_client_pool(args.from_pool)
+        population_source = str(args.from_pool)
+        if not population:
+            print(f"FATAL: {args.from_pool} names no clients.", file=sys.stderr)
+            return 1
     splittable = None
     if args.require_trainable and hasattr(dataset, "trainable_writers"):
         splittable = dataset.trainable_writers()
@@ -1830,6 +1831,8 @@ def cmd_draw_old_data(args: argparse.Namespace) -> int:
         seed=args.seed,
         min_samples=args.min_samples,
         splittable=splittable,
+        population=population,
+        population_source=population_source,
     )
     results_dir = Path(getattr(provider, "results_dir", config.RESULTS_DIR))
     out = Path(args.out) if args.out else results_dir / "outliers" / "old_data.json"
@@ -2072,24 +2075,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         choices=sorted(PREPARABLE_DATASETS),
         help="Dataset to prepare; defaults to --provider. 'mnist' builds the NIST proxy set.",
-    )
-    p.add_argument("--seq-length", type=int, default=None, help="Shakespeare sequence length.")
-    p.add_argument("--num-clients", type=int, default=200, help="CIFAR-10 client count.")
-    p.add_argument("--alpha", type=float, default=0.3, help="CIFAR-10 Dirichlet concentration.")
-    p.add_argument("--split-seed", type=int, default=42, help="CIFAR-10 partition seed.")
-    p.add_argument(
-        "--proxy-size",
-        type=int,
-        default=0,
-        help=(
-            "CIFAR-10 only: evaluation images reserved as the server-side proxy "
-            "set and assigned to no client (default 0, the earlier partition)."
-        ),
-    )
-    p.add_argument(
-        "--clients-name",
-        default=None,
-        help="CIFAR-10 only: file name of the client index (default cifar10_clients.json).",
     )
     p.add_argument(
         "--raw-dir",
@@ -3005,6 +2990,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Draw only from writers that can form a local training split.",
     )
     p.add_argument("--out", default=None)
+    p.add_argument(
+        "--from-pool",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Draw from the clients named in this file - normally "
+            "outliers/pool_good.json. THIS IS THE SAFE FORM: every other filter "
+            "only narrows it, so the draw is a subset of the pool by "
+            "construction. Without it the population is reconstructed from "
+            "--min-samples and --exclude-file, which equals the good pool only "
+            "when the pools were cut by the same eligibility rule - and when "
+            "they were not, the draw silently takes clients that belong to "
+            "neither pool."
+        ),
+    )
     p.set_defaults(func=cmd_draw_old_data)
 
     # --- draw-cohort ---
@@ -3061,6 +3061,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=None, help="Destination JSON.")
     p.add_argument("--csv", default=None, help="Destination CSV (default: next to --out).")
     p.set_defaults(func=cmd_writer_counts)
+
+    # --- submit ---
+    p = sub.add_parser(
+        "submit",
+        help="Submit a study chain from its manifest (preflight first, or nothing).",
+    )
+    p.add_argument("manifest", help="The chain manifest (TOML).")
+    p.add_argument(
+        "--go", action="store_true",
+        help=(
+            "Actually submit. Without it the invocations are printed and "
+            "nothing is submitted."
+        ),
+    )
+    p.set_defaults(func=cmd_submit)
+
+    # --- speaker-table ---
 
     # --- select-eligible ---
     p = sub.add_parser(

@@ -6,7 +6,7 @@ title: federated-outlier-adaptation
 abstract: >-
   Reproducible pipeline for knowledge-preserving adaptation to outlier clients
   in federated learning, covering communication scheduling, aggregation forms
-  and regularisation on NIST SD19 by writer, LEAF Shakespeare and CIFAR-10.
+  and regularisation on NIST SD19 by writer.
 type: software
 version: 0.3.0
 license: MIT

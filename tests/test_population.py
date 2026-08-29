@@ -499,11 +499,9 @@ def test_sequential_rejects_an_unknown_client_order(synthetic_provider):
 # --------------------------------------------------------------------------- #
 def test_every_provider_exposes_the_pool_accessors():
     """The pool contract is the same for the published dataset and the others."""
-    from federated_outlier_adaptation.providers.cifar10 import Cifar10Provider
     from federated_outlier_adaptation.providers.nist import NistProvider
-    from federated_outlier_adaptation.providers.shakespeare import ShakespeareProvider
 
-    for provider_cls in (NistProvider, ShakespeareProvider, Cifar10Provider):
+    for provider_cls in (NistProvider,):
         for accessor in (
             "pool_path",
             "outlier_pool",

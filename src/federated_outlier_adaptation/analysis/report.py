@@ -342,9 +342,6 @@ def provider_of(config: Mapping[str, Any], path: Path) -> str:
     provider = (config or {}).get("provider")
     if provider:
         return str(provider)
-    for part in path.parts:
-        if part in ("shakespeare", "cifar10"):
-            return part
     return "nist"
 
 
@@ -695,7 +692,7 @@ class References:
     def __init__(self, root, datasets: Optional[Sequence[str]] = None):
         self.root = Path(root)
         self.providers: dict[str, ProviderReferences] = {}
-        for provider in datasets or ("nist", "shakespeare", "cifar10"):
+        for provider in datasets or ("nist",):
             sub = self.root if provider == "nist" else self.root / provider
             if not sub.is_dir():
                 continue

@@ -114,13 +114,6 @@ def test_a_dataset_without_a_compact_form_falls_back_to_expansion():
     assert cached_labels.tolist() == labels.tolist()
 
 
-def test_an_augmenting_dataset_declines_to_be_cached():
-    """A fresh crop per sample has no fixed tensor, so the loader is kept."""
-    from federated_outlier_adaptation.data.cifar10 import Cifar10ImageDataset
-
-    images = np.zeros((3, 32, 32, 3), dtype=np.uint8)
-    dataset = Cifar10ImageDataset(images, np.arange(3), np.zeros(3, dtype=np.int64), augment=True)
-    assert dataset.eval_payload() is None
 
 
 def test_a_non_standard_transform_declines_to_be_cached(tmp_path):

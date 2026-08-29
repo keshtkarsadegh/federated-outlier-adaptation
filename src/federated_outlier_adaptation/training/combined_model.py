@@ -27,7 +27,7 @@ Main components:
     - Stores results and model checkpoints under the provider's results root
 
 Every dataset access goes through the provider, so the module serves NIST, LEAF
-Shakespeare and CIFAR-10 alike.  With the default provider it reads the frozen
+any provider alike.  With the default provider it reads the frozen
 `writer_split.json` and `selected_outliers.json` exactly as before and writes
 the published file names.
 """
@@ -207,7 +207,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Train the combined reference model (global clients + participants)."
     )
-    parser.add_argument("--provider", default="nist", help="nist | shakespeare | cifar10")
+    parser.add_argument("--provider", default="nist", help="nist")
     parser.add_argument("--results-dir", default=None)
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--epochs", type=int, default=100)

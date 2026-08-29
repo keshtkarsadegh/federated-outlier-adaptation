@@ -49,7 +49,7 @@ Plans
 ``lean_agg_hypotheses``   the aggregation redesign reduced to the ten arms that
                     carry a hypothesis, against the two trainer arms.
 ``lean_replica``    the whole lean protocol on one further dataset
-                    (``--provider shakespeare|cifar10``).
+                    (one provider: NIST).
 ``smoke``           cheap end-to-end checks of every code path (two rounds, one
                     local epoch); it produces no scientific result and writes
                     only under ``smoke_*`` folders.
@@ -136,7 +136,7 @@ DEFAULT_MINUTES_PER_TASK = 12.0
 DEFAULT_PROVIDER = "nist"
 
 #: Datasets the main plans are replicated over.
-MAIN_PROVIDERS = ("nist", "shakespeare", "cifar10")
+MAIN_PROVIDERS = ("nist",)
 
 # --------------------------------------------------------------------------- #
 # the pool setting (main configuration)
@@ -256,10 +256,6 @@ SMOKE_ANCHOR_KIND = "current"
 #: Distance space and anchor of the smoke sweep.
 SMOKE_GRID_SPACE = "logit_l2"
 SMOKE_GRID_ANCHOR = "frozen"
-
-#: Datasets the smoke plan additionally touches, with one trainer each.
-SMOKE_EXTRA_PROVIDERS = ("shakespeare", "cifar10")
-
 
 def _pool_args(clients: int, policy: str, seed: int, track: bool = True) -> str:
     """
@@ -1003,16 +999,6 @@ def plan_smoke(
         f" --seed {SMOKE_SEED}{_smoke_budget()} --skip-existing"
     )
 
-    # The two additional datasets, on the same pool setting.
-    for extra in SMOKE_EXTRA_PROVIDERS:
-        tasks.append(
-            _smoke_final(
-                "DistillationTrainer",
-                f"{SMOKE_PREFIX}_final_{extra}",
-                " --aggregation fedavg",
-                provider=extra,
-            )
-        )
 
     # The constrained selection, reading the sweep that just ran, and the
     # signal analysis over everything the plan produced.  Both only read, so
@@ -1062,10 +1048,6 @@ LEAN_EPS = 0.005
 #: Policies compared in the lean selection study.
 LEAN_POLICIES = ("uniform", "worst_first")
 
-#: Local epochs of a Shakespeare task.  The character model converges in a few
-#: passes over a role's windows, so the NIST budget would spend most of its time
-#: past the best validation epoch.
-SHAKESPEARE_EPOCHS = 5
 
 #: The early-stopped FedAvg baseline, as a ``--set`` override.
 EARLY_STOPPED = ' --set early_stopping=true'
@@ -1100,7 +1082,7 @@ LEAN_REPLICA_HYPOTHESES = LEAN_HYPOTHESES[:6]
 
 def _epochs_args(provider: str) -> str:
     """Local-epoch override of a provider, empty where the published one holds."""
-    return f" --epochs {SHAKESPEARE_EPOCHS}" if provider == "shakespeare" else ""
+    return ""
 
 
 def _lean_trainers() -> tuple[tuple[str, str], ...]:

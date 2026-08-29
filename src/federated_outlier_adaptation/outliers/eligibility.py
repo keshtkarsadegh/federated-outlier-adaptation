@@ -23,7 +23,7 @@ The schema, stated once
      "per_writer_per_class": {writer: {label: int}},
      "class_totals", "summary"}
 
-and every dataset writes the same keys - the digits and Shakespeare artefacts
+and every dataset writes the same keys - the digits artefacts
 differ only in their values.  :func:`per_writer_totals` is the one place that
 knows this, and it **refuses an unrecognised shape** rather than degrading to a
 default, because a silent default is what turned a typo into a dead chain.

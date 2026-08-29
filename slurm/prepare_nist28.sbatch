@@ -37,8 +37,34 @@
 #   foa prepare-data --dataset nist --zip <by_write.zip> --out <cache dir> \
 #       --resolution 28 --classes all
 
-_here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-: "${FOA_SLURM_DIR:=$_here}"
+# WHERE env.sh IS.  Slurm COPIES a batch script into its spool directory before
+# running it, so ${BASH_SOURCE[0]} is /var/spool/slurmd/job<N>/slurm_script and
+# its dirname holds no env.sh.  Deriving the location from the script's own path
+# therefore works when you run it directly - every dry run in this repository -
+# and fails under sbatch, which is the one case that matters.  It cost a whole
+# re-run: 11 of 11 elements exited 127 with "-u: command not found", because
+# sourcing env.sh had silently failed and $FOA_PYTHON was empty.
+#
+# So: an explicit FOA_SLURM_DIR wins, then the script's own directory when it
+# really holds env.sh, then the checkout under FOA_PROJECT_DIR.  And if none of
+# them does, refuse - an unsourced env.sh leaves every later line running under
+# whatever the node happened to provide.
+_here="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+if [ -z "${FOA_SLURM_DIR:-}" ]; then
+    if [ -f "$_here/env.sh" ]; then
+        FOA_SLURM_DIR="$_here"
+    elif [ -f "${FOA_REPO:-$FOA_PROJECT_DIR/repo_foa}/slurm/env.sh" ]; then
+        FOA_SLURM_DIR="${FOA_REPO:-$FOA_PROJECT_DIR/repo_foa}/slurm"
+    fi
+fi
+if [ ! -f "${FOA_SLURM_DIR:-}/env.sh" ]; then
+    echo "REFUSED: no env.sh. Looked in FOA_SLURM_DIR=${FOA_SLURM_DIR:-unset}," >&2
+    echo "in this script's directory ($_here - which under sbatch is Slurm's" >&2
+    echo "spool copy, not the checkout), and in" >&2
+    echo "  ${FOA_REPO:-$FOA_PROJECT_DIR/repo_foa}/slurm" >&2
+    echo "Set FOA_SLURM_DIR or FOA_REPO and resubmit." >&2
+    exit 78
+fi
 export FOA_SLURM_DIR
 # shellcheck source=env.sh
 source "$FOA_SLURM_DIR/env.sh"

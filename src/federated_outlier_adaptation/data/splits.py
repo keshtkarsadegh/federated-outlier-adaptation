@@ -9,8 +9,8 @@ becomes the test split.  Rates of ``0.0`` are meaningful and are used throughout
 the code base to obtain a pure test loader.
 
 This module re-implements exactly that rule over plain integer index arrays so
-that datasets which are not backed by a file manifest (LEAF Shakespeare,
-CIFAR-10) follow the identical protocol.  ``datasets.py`` itself is untouched,
+that a dataset which is not backed by a file manifest would follow the
+identical protocol.  ``datasets.py`` itself is untouched,
 so the published NIST numbers cannot move.
 """
 

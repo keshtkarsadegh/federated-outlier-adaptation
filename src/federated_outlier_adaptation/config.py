@@ -99,11 +99,7 @@ NIST28_DIR: Path = _env_path("NIST28_DIR", DATA_DIR / "nist28")
 NIST_RESOLUTIONS = (28, 128)
 
 #: Model topologies selectable per run.
-#: ``char_lstm`` is the LEAF Shakespeare topology. It is chosen by the
-#: provider rather than by this flag - a sequence dataset has no use for a
-#: CNN - but it is nameable so a task line can declare what it expects and
-#: be refused when the two disagree.
-MODEL_NAMES = ("fedavg_cnn", "flexible_cnn", "char_lstm")
+MODEL_NAMES = ("fedavg_cnn", "flexible_cnn")
 
 
 def nist_resolution() -> int:
@@ -189,17 +185,9 @@ def model_name() -> str:
 # Both live under ``FOA_DATA_DIR/<name>/`` by default and can be relocated
 # individually.  They are additive: no NIST path depends on them.
 #
-#     FOA_SHAKESPEARE_DIR   LEAF Shakespeare root   (default <data>/shakespeare)
-#     FOA_CIFAR10_DIR       CIFAR-10 root           (default <data>/cifar10)
 
-SHAKESPEARE_DIR: Path = _env_path("SHAKESPEARE_DIR", DATA_DIR / "shakespeare")
-SHAKESPEARE_RAW_TXT: Path = SHAKESPEARE_DIR / "pg100.txt"
-SHAKESPEARE_RAW_ZIP: Path = SHAKESPEARE_DIR / "1994-01-100.zip"
-SHAKESPEARE_NPZ_NAME = "shakespeare.npz"
-SHAKESPEARE_INDEX_NAME = "shakespeare_index.json"
-SHAKESPEARE_NPZ: Path = SHAKESPEARE_DIR / SHAKESPEARE_NPZ_NAME
-SHAKESPEARE_INDEX_JSON: Path = SHAKESPEARE_DIR / SHAKESPEARE_INDEX_NAME
-SHAKESPEARE_RESULTS_DIR: Path = RESULTS_DIR / "shakespeare"
+
+
 
 # The MNIST proxy set of the NIST provider lives next to them and follows the
 # same shape (one array file plus one JSON index):
@@ -212,19 +200,10 @@ MNIST_INDEX_NAME = "mnist_index.json"
 MNIST_NPZ: Path = MNIST_DIR / MNIST_NPZ_NAME
 MNIST_INDEX_JSON: Path = MNIST_DIR / MNIST_INDEX_NAME
 
-CIFAR10_DIR: Path = _env_path("CIFAR10_DIR", DATA_DIR / "cifar10")
-CIFAR10_RAW_ARCHIVE: Path = CIFAR10_DIR / "cifar-10-python.tar.gz"
-CIFAR10_NPZ_NAME = "cifar10.npz"
-CIFAR10_CLIENTS_NAME = "cifar10_clients.json"
-CIFAR10_NPZ: Path = CIFAR10_DIR / CIFAR10_NPZ_NAME
-CIFAR10_CLIENTS_JSON: Path = CIFAR10_DIR / CIFAR10_CLIENTS_NAME
-CIFAR10_RESULTS_DIR: Path = RESULTS_DIR / "cifar10"
 
 #: Results root of every provider that is not the default NIST one.
 PROVIDER_RESULTS_DIRS = {
     "nist": RESULTS_DIR,
-    "shakespeare": SHAKESPEARE_RESULTS_DIR,
-    "cifar10": CIFAR10_RESULTS_DIR,
 }
 
 

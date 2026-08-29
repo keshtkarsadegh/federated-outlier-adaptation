@@ -1,0 +1,59 @@
+# Template chain manifest. Copy, rename, fill in.
+#
+#   foa submit <manifest>          # preflight and print; submits nothing
+#   foa submit <manifest> --go     # preflight, then submit the whole chain
+#
+# The preflight runs first and always. If anything fails, NO job is submitted:
+# a half-submitted chain has to be found and cancelled, which is worse than one
+# that never started.
+#
+# WHAT IS CHECKED BEFORE THE FIRST sbatch
+#   - FOA_PROJECT_DIR, FOA_STUDY_DIR and FOA_ACCOUNT are set
+#   - the study directory and every runner script exist
+#   - every task file exists, and its runnable-line count matches `count`
+#     (the array width is written from the manifest, so a mismatch means one of
+#     them is wrong)
+#   - no task file names a path outside $FOA_STUDY_DIR, which the runner refuses
+#   - every `requires` path exists, unless an earlier stage `produces` it
+#   - no GPU request lands on the CPU partition, and every partition expands
+#   - every GPU request names a type, so the scheduler cannot satisfy it with a
+#     MIG slice (41 screen elements died of that class of ambiguity once)
+#
+# WHAT IS PASSED TO EVERY JOB
+#   --export=ALL plus every FOA_* variable that is set, BY VALUE. `ALL` alone is
+#   not enough on a site whose default is NONE - it is the default being
+#   overridden.
+
+study    = "YourStudy_study01"     # the name in training/study_config.py
+jobs_dir = "jobs/v4"               # relative to $FOA_PROJECT_DIR
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"        # NAME THE TYPE - a bare "gpu:1" is refused
+# time    = "04:00:00"             # study_phase.sbatch's own default
+
+[[stage]]
+name     = "p01_first"
+tasks    = "yy01_p01_first.txt"    # in jobs_dir
+count    = 4                       # runnable lines; checked against the file
+array    = "1-4%1"                 # %1 when each step reads the last one's output
+# time      = "08:00:00"           # override for a long stage
+# partition = "$FOA_CPU_PARTITION" # a CPU stage...
+# gres      = ""                   # ...must ask for no GPU
+# constraint = "80gb_vram"         # a gres names the GPU FAMILY, not its memory.
+#                                  # Where a site's cards of one family differ in
+#                                  # VRAM, only the node feature chooses.
+# gres_ambiguous_ok = true         # accept an untyped gres deliberately
+# runner    = "slurm/study_phase.sbatch"   # a stage writing OUTSIDE the study
+#                                          # root needs its own script instead
+requires = ["$FOA_DATA_DIR/your_cache/index.json"]
+produces = ["$FOA_STUDY_DIR/fold_books/all.foldbook.npz"]
+
+[[stage]]
+name     = "p02_second"
+tasks    = "yy01_p02_second.txt"
+count    = 1
+array    = "1-1"
+# Waits on p01 by default. `root = true` starts a branch; `after = "p01_first"`
+# names a different predecessor.
+requires = ["$FOA_STUDY_DIR/fold_books/all.foldbook.npz"]

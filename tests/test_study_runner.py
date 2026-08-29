@@ -341,3 +341,121 @@ def test_the_dry_run_resolves_variables_the_runner_expands(tmp_path):
     )
     assert "STUDY_TASK_DRY_RUN_OK" in result.stdout, (result.stdout, result.stderr)
     assert "GINIT_FOLD" in result.stdout, "an unresolved variable should be named"
+
+
+# --------------------------------------------------------------------------- #
+# Slurm copies the script
+# --------------------------------------------------------------------------- #
+#
+# sbatch does not run the file you hand it. It copies the script into
+# /var/spool/slurmd/job<N>/ and runs the copy, so ${BASH_SOURCE[0]} inside it is
+# the spool path and its dirname holds no env.sh. A runner that located env.sh
+# from its own path therefore worked in every dry run in this repository - which
+# invokes it in place - and failed under sbatch, which is the only case that
+# matters. Eleven of eleven re-run elements exited 127 with
+# "-u: command not found": sourcing env.sh had failed silently and $FOA_PYTHON
+# was empty.
+#
+# These tests run the script the way Slurm does: from a copy, somewhere else.
+def _spool_copy(tmp_path):
+    """The runner, copied out of the checkout the way sbatch copies it."""
+    import shutil
+
+    spool = tmp_path / "spool" / "job12345"
+    spool.mkdir(parents=True)
+    target = spool / "slurm_script"
+    shutil.copy(REAL_SBATCH, target)
+    return target
+
+
+def test_the_runner_finds_env_sh_when_run_from_a_spool_copy(tmp_path):
+    repo = Path(__file__).resolve().parents[1]
+    workspace = _workspace(tmp_path, sys.executable)
+    study = tmp_path / "study"
+    study.mkdir()
+    tasks = tmp_path / "t.txt"
+    # --trainer is required by `foa final`; the dry run parses the line, so a
+    # task that would not parse tests the wrong thing here.
+    tasks.write_text(
+        "foa final --results-dir $FOA_STUDY_DIR --classes digits "
+        "--trainer BaseTrainer --aggregation fedavg\n"
+    )
+    environment = dict(os.environ)
+    environment.pop("FOA_ENV", None)
+    environment.pop("FOA_SLURM_DIR", None)
+    environment.update({
+        "FOA_PROJECT_DIR": str(workspace), "FOA_REPO": str(repo),
+        "FOA_STUDY_DIR": str(study), "FOA_DRY_RUN": "1",
+        "SLURM_ARRAY_TASK_ID": "1",
+    })
+    result = subprocess.run(
+        ["bash", str(_spool_copy(tmp_path)), str(tasks)],
+        capture_output=True, text=True, env=environment,
+    )
+    assert "No such file or directory" not in result.stderr, result.stderr
+    assert "STUDY_TASK_DRY_RUN_OK" in result.stdout, (result.stdout, result.stderr)
+    # And the interpreter really got resolved, which is what was empty before.
+    assert "python=" in result.stdout
+
+
+def test_the_runner_refuses_when_env_sh_cannot_be_found_at_all(tmp_path):
+    """
+    Silently continuing is what turned a missing env.sh into `-u: command not
+    found` eleven times. An unsourced env.sh means every later line runs under
+    whatever the node happened to provide.
+    """
+    workspace = _workspace(tmp_path, sys.executable)
+    study = tmp_path / "study"
+    study.mkdir()
+    tasks = tmp_path / "t.txt"
+    tasks.write_text("foa final --results-dir $FOA_STUDY_DIR --classes digits "
+                     "--trainer BaseTrainer\n")
+    environment = dict(os.environ)
+    for name in ("FOA_ENV", "FOA_SLURM_DIR", "FOA_REPO"):
+        environment.pop(name, None)
+    environment.update({
+        "FOA_PROJECT_DIR": str(tmp_path / "nowhere"),
+        "FOA_STUDY_DIR": str(study), "FOA_DRY_RUN": "1",
+        "SLURM_ARRAY_TASK_ID": "1",
+    })
+    result = subprocess.run(
+        ["bash", str(_spool_copy(tmp_path)), str(tasks)],
+        capture_output=True, text=True, env=environment,
+    )
+    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
+    assert "no env.sh" in result.stderr
+    assert "spool" in result.stderr, "the message should name the actual cause"
+
+
+def test_an_explicit_slurm_dir_still_wins(tmp_path):
+    repo = Path(__file__).resolve().parents[1]
+    workspace = _workspace(tmp_path, sys.executable)
+    study = tmp_path / "study"
+    study.mkdir()
+    tasks = tmp_path / "t.txt"
+    tasks.write_text("foa final --results-dir $FOA_STUDY_DIR --classes digits "
+                     "--trainer BaseTrainer\n")
+    environment = dict(os.environ)
+    environment.pop("FOA_ENV", None)
+    environment.update({
+        "FOA_PROJECT_DIR": str(workspace), "FOA_SLURM_DIR": str(repo / "slurm"),
+        "FOA_STUDY_DIR": str(study), "FOA_DRY_RUN": "1",
+        "SLURM_ARRAY_TASK_ID": "1",
+    })
+    environment.pop("FOA_REPO", None)
+    result = subprocess.run(
+        ["bash", str(_spool_copy(tmp_path)), str(tasks)],
+        capture_output=True, text=True, env=environment,
+    )
+    assert "STUDY_TASK_DRY_RUN_OK" in result.stdout, result.stderr
+
+
+def test_the_submitter_carries_what_locates_the_checkout():
+    """
+    A job that cannot find env.sh cannot run. FOA_SLURM_DIR and FOA_REPO are how
+    it is found, so they travel with every submission by value.
+    """
+    from federated_outlier_adaptation.submission import CARRY
+
+    assert "FOA_SLURM_DIR" in CARRY
+    assert "FOA_REPO" in CARRY

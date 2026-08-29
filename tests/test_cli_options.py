@@ -287,30 +287,10 @@ def test_provider_defaults_to_nist():
         assert build_parser().parse_args(argv).provider == "nist"
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-def test_provider_is_selectable(provider):
-    args = build_parser().parse_args(
-        ["final", "--trainer", "BaseTrainer", "--provider", provider]
-    )
-    assert args.provider == provider
 
 
-def test_prepare_data_dataset_option():
-    args = build_parser().parse_args(
-        ["prepare-data", "--zip", "x.tar.gz", "--dataset", "cifar10", "--num-clients", "200"]
-    )
-    assert args.dataset == "cifar10"
-    assert args.num_clients == 200
 
 
-def test_prepare_data_proxy_reserve_defaults_to_zero():
-    args = build_parser().parse_args(["prepare-data", "--zip", "x.tar.gz", "--dataset", "cifar10"])
-    assert args.proxy_size == 0
-    assert args.clients_name is None
-    with_reserve = build_parser().parse_args(
-        ["prepare-data", "--zip", "x.tar.gz", "--dataset", "cifar10", "--proxy-size", "1000"]
-    )
-    assert with_reserve.proxy_size == 1000
 
 
 def test_prepare_data_accepts_the_mnist_proxy_set():
@@ -331,7 +311,7 @@ def test_signals_defaults():
 
 def test_global_train_accepts_several_selection_sizes():
     args = build_parser().parse_args(
-        ["global-train", "--provider", "shakespeare", "--k-values", "5", "20", "50"]
+        ["global-train", "--provider", "nist", "--k-values", "5", "20", "50"]
     )
     assert args.k_values == [5, 20, 50]
 

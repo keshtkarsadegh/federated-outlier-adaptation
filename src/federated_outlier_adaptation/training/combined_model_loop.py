@@ -26,8 +26,8 @@ Key features:
 
 The loop is dataset agnostic: it consumes loaders that yield ``(inputs,
 labels)`` and a model whose ``forward`` accepts those inputs, so the same
-routine produces the combined reference model of NIST, LEAF Shakespeare and
-CIFAR-10.  The variable name ``images`` is kept from the published code.
+routine produces the combined reference model.  The variable name
+``images`` is kept from the published code.
 
 Dependencies:
     - torch, tqdm, matplotlib

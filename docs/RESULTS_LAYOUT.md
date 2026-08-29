@@ -10,8 +10,6 @@ What a results tree contains and how to read a stored run. The full narrative is
 artefacts); this page is the map.
 
 The root is `$FOA_RESULTS_DIR` (default `<repo>/results`, per command `--results-dir`).
-`results/shakespeare` and `results/cifar10` hold the same shape for the other two
-providers and follow the same root.
 
 ---
 

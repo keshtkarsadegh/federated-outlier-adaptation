@@ -21,7 +21,7 @@
 #          slurm/run_speed_check.sbatch nist 20
 #
 # Arguments:
-#   $1  provider: nist | shakespeare | cifar10   (default nist)
+#   $1  provider: nist   (default nist)
 #   $2  rounds                                   (default 20)
 #   $3+ extra CLI arguments
 #
@@ -68,9 +68,6 @@ else
 fi
 
 EPOCH_ARGS=()
-if [ "$PROVIDER" = "shakespeare" ]; then
-    EPOCH_ARGS=(--epochs 5)
-fi
 
 for EVAL_PATH in loader cache; do
     echo "=== provider=$PROVIDER eval_path=$EVAL_PATH rounds=$ROUNDS ==="

@@ -157,30 +157,10 @@ DIGITS_STUDY01 = StudyConfig(
     seed_base=700000,
 )
 
-#: The transfer study: the digit winners, unchanged, on a different modality.
-#:
-#: One hundred old users rather than two hundred, because a Shakespeare user is
-#: a (play, role) pair holding thousands of sequences where a NIST writer holds
-#: a hundred images - a hundred users is already forty times the digit study's
-#: old-data volume.  No cross-validation: the question is whether the winners
-#: transfer at all, and that is answered by one split.
-SHAKESPEARE_STUDY01 = StudyConfig(
-    name="Shakespeare_study01",
-    cohort_size=10,
-    old_size=100,
-    clients_per_round=participants(10, DROPOUT_RATE),
-    classes="",
-    tag="s01",
-    seed_base=800000,
-    provider="shakespeare",
-    model="char_lstm",
-    cross_validated=False,
-)
 
 #: Every study this pipeline knows about.
 STUDIES: Dict[str, StudyConfig] = {
     DIGITS_STUDY01.name: DIGITS_STUDY01,
-    SHAKESPEARE_STUDY01.name: SHAKESPEARE_STUDY01,
 }
 
 # The study's own participation is the formula's, not a second statement of it.

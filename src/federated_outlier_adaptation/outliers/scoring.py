@@ -142,21 +142,46 @@ def eligible_for_old_data(
     exclude: Iterable[str],
     min_samples: int,
     splittable: Optional[Iterable[str]] = None,
+    population: Optional[Iterable[str]] = None,
 ) -> List[str]:
     """
     Writers the old-data draw may take from, sorted.
 
-    Three conditions, all of them recorded with the draw: not in the outlier
-    cohort, at least ``min_samples`` images, and - when a list is given - able to
-    form a training split at all.
+    Args:
+        population: The population to draw from, named outright.  **This is the
+            safe way to call it.**  Every other argument only ever *narrows*
+            what is passed here, so a draw made this way is a subset of the
+            population by construction.
+
+    Why ``population`` exists
+    ------------------------
+    Without it the eligible set is reconstructed - "everyone with at least
+    ``min_samples`` who is not in ``exclude``" - and that reconstruction is only
+    the same set as the good pool when the pools were cut by the *same*
+    eligibility rule.  Where they are not, the pools
+    were cut over the 387 speakers holding at least five clips of at least ten
+    keywords, while the draw's floor was a flat fifty clips.  Twenty-three
+    speakers passed the floor, were not in the bad pool, and so were drawn -
+    while belonging to neither pool.  ``old_data`` was then not a subset of
+    ``pool_good``, which is the property the whole preservation argument rests
+    on: the old data must come from the writers the detector called *good*.
+
+    Excluding the bad is not the same as taking from the good, and the
+    difference is invisible until two steps disagree about who is eligible.  So
+    the draw now takes its population from the artefact that defines it.
     """
     banned = set(exclude)
     allowed = set(splittable) if splittable is not None else None
+    candidates = (
+        sorted(set(population) & set(samples_by_writer))
+        if population is not None
+        else sorted(samples_by_writer)
+    )
     return sorted(
         writer
-        for writer, count in samples_by_writer.items()
+        for writer in candidates
         if writer not in banned
-        and count >= int(min_samples)
+        and samples_by_writer[writer] >= int(min_samples)
         and (allowed is None or writer in allowed)
     )
 
@@ -168,6 +193,8 @@ def draw_old_data(
     seed: int = 20260824,
     min_samples: int = 100,
     splittable: Optional[Iterable[str]] = None,
+    population: Optional[Iterable[str]] = None,
+    population_source: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Draw the old-data population, once and reproducibly.
@@ -182,7 +209,8 @@ def draw_old_data(
         The payload, including the eligibility rule and the seed, ready to write.
     """
     eligible = eligible_for_old_data(
-        samples_by_writer, exclude=exclude, min_samples=min_samples, splittable=splittable
+        samples_by_writer, exclude=exclude, min_samples=min_samples,
+        splittable=splittable, population=population,
     )
     if len(eligible) < int(size):
         raise ValueError(
@@ -201,6 +229,11 @@ def draw_old_data(
         "min_samples": int(min_samples),
         "splittable_only": splittable is not None,
         "excluded": sorted(set(exclude)),
+        # Where the population came from, so the artefact itself says whether it
+        # was taken from a pool or reconstructed. A reader should not have to
+        # infer that from the command line that produced it.
+        "population_source": population_source,
+        "population_size": len(set(population)) if population is not None else None,
         "eligible_clients": len(eligible),
         "clients": drawn,
         "samples": {writer: samples_by_writer[writer] for writer in drawn},

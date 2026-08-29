@@ -53,17 +53,6 @@ def tools_path():
 # --------------------------------------------------------------------------- #
 # The grids
 # --------------------------------------------------------------------------- #
-def test_the_screen_is_the_documented_size():
-    """
-    125 now: the kd and ntd rows gained boundary extensions.
-
-    They are appended rather than inserted, so every earlier cell keeps its
-    index - and therefore the sampler seed a screen derives from it.
-    """
-    grouped = cells_by_method()
-    assert len(screen_cells()) == 125
-    assert [len(grouped[m]) for m in methods()] == [7, 8, 8, 5, 5, 53, 39]
-    assert SCREEN_ROUNDS == 25
 
 
 def test_every_cell_id_is_unique():
@@ -575,3 +564,16 @@ def test_the_emitted_hyperparameters_round_trip_exactly(tools_path):
         overrides = _trainer_overrides(args)
         for name, value in cell["hypers"].items():
             assert float(overrides[name]) == float(value), (cell["id"], name)
+
+
+def test_the_screen_is_the_documented_size():
+    """
+    125 now: the kd and ntd rows gained boundary extensions.
+
+    They are appended rather than inserted, so every earlier cell keeps its
+    index - and therefore the sampler seed a screen derives from it.
+    """
+    grouped = cells_by_method()
+    assert len(screen_cells()) == 125
+    assert [len(grouped[m]) for m in methods()] == [7, 8, 8, 5, 5, 53, 39]
+    assert SCREEN_ROUNDS == 25

@@ -435,19 +435,6 @@ def test_a_sweep_is_read_from_its_config_block(tmp_path):
     assert run.metrics["mean_comm_bytes"] == pytest.approx(1.0)
 
 
-def test_the_dataset_filter_keeps_one_provider(tmp_path):
-    write_references(tmp_path)
-    write_references(tmp_path, "shakespeare")
-    write_final(tmp_path, "p", "BaseTrainer", 1,
-                {experiment(FEDAVG): payload("BaseTrainer", FEDAVG, "concurrent", "weights", 1,
-                                             forgetting=0.01, gain=0.1)})
-    write_final(tmp_path / "shakespeare", "p", "BaseTrainer", 1,
-                {experiment(FEDAVG): payload("BaseTrainer", FEDAVG, "concurrent", "weights", 1,
-                                             forgetting=0.01, gain=0.1, provider="shakespeare")})
-    references = report.References(tmp_path)
-    assert len(report.collect_runs(tmp_path, references)) == 2
-    only = report.collect_runs(tmp_path, references, datasets=["shakespeare"])
-    assert [run.provider for run in only] == ["shakespeare"]
 
 
 # --------------------------------------------------------------------------- #

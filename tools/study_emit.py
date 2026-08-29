@@ -29,11 +29,13 @@ and the caller carries on.
 from __future__ import annotations
 
 import argparse
+import ast
 import inspect
 import json
+import shlex
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -1485,6 +1487,125 @@ WHAT = {
     "reg-top3": reg_top3,
     "reg-hybrid": reg_hybrid,
 }
+
+
+# --------------------------------------------------------------------------- #
+# what each generator reads, what it writes, and the ordering that follows
+# --------------------------------------------------------------------------- #
+#: Not descended into when working out a generator's inputs.  ``write_table``
+#: names its file through a parameter, so its own ``root / "tables" / name`` is
+#: about nothing in particular; ``note_boundaries`` appends to a LOG - nothing
+#: selects from BOUNDARY_HITS.txt and every generator touches it, so counting it
+#: as an input would make every generator look like a reader of a file no
+#: generator writes.
+_IO_OPAQUE = frozenset({"write_table", "note_boundaries"})
+
+_MODULE = ast.parse(Path(__file__).resolve().read_text())
+_DEFS = {node.name: node for node in _MODULE.body
+         if isinstance(node, ast.FunctionDef)}
+
+
+def _reachable(name: str, seen: Optional[set] = None) -> set:
+    """Every module-level function ``name`` can reach, itself included."""
+    seen = set() if seen is None else seen
+    if name in seen or name in _IO_OPAQUE or name not in _DEFS:
+        return seen
+    seen.add(name)
+    for node in ast.walk(_DEFS[name]):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            _reachable(node.func.id, seen)
+    return seen
+
+
+def _tables_literal(node: ast.AST) -> Optional[str]:
+    """The literal ``NAME`` of a ``root / "tables" / "NAME"``, else None."""
+    if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+        return None
+    left, right = node.left, node.right
+    if not (isinstance(right, ast.Constant) and isinstance(right.value, str)):
+        return None
+    if not (isinstance(left, ast.BinOp) and isinstance(left.op, ast.Div)
+            and isinstance(left.right, ast.Constant)
+            and left.right.value == "tables"):
+        return None
+    return right.value
+
+
+def table_io(what: str) -> Dict[str, Tuple[str, ...]]:
+    """
+    Which ``tables/`` artefacts a generator reads, and which it writes.
+
+    Read off this module's own syntax tree rather than declared beside it. A
+    declaration would be a second place to be wrong, and going stale is exactly
+    how it would fail - quietly, leaving the ordering check below asserting
+    something true about a table nobody updated. The source cannot drift from
+    itself.
+
+    A name reached through an f-string is not seen: the patch emitters write
+    ``p13ext_{method}_{family}_reselection.json`` and nothing reads it, so the
+    blind spot costs nothing today. If some later generator ever selects from a
+    computed name, this stops covering it - hence the test that asserts the
+    derived writes account for every ``write_table`` call in the file.
+    """
+    writes, touched = set(), set()
+    for name in _reachable(WHAT[what].__name__):
+        for node in ast.walk(_DEFS[name]):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == "write_table" and len(node.args) >= 3
+                    and isinstance(node.args[2], ast.Constant)
+                    and isinstance(node.args[2].value, str)):
+                writes.add(node.args[2].value)
+            literal = _tables_literal(node)
+            if literal is not None:
+                touched.add(literal)
+    return {"reads": tuple(sorted(touched - writes)),
+            "writes": tuple(sorted(writes))}
+
+
+def step_what(line: str) -> Optional[str]:
+    """Which generator a task line invokes, or None when it invokes none."""
+    try:
+        words = shlex.split(line)
+    except ValueError:
+        return None
+    for previous, word in zip(words, words[1:]):
+        if previous.endswith("study_emit.py"):
+            return word if word in WHAT else None
+    return None
+
+
+def ordering_violations(steps: Sequence[str]) -> List[str]:
+    """
+    Consumers packed ahead of their producers, within ONE stage's task file.
+
+    A stage is an array and an array runs by index, so a step that reads what a
+    LATER step of the same file writes is not merely untidy: element 1 runs
+    first and dies on an artefact element 2 has not written yet. That is how
+    ``gen_reg`` died - the hybrid emitter, which is built from the reg-full
+    winners, was packed at element 1 and the selection that produces them at
+    element 2, under ``%1``. The selection completed; the hybrid had already
+    failed, and every dependent stage went with it.
+
+    Only steps of the same stage are compared. Across stages the chain's
+    ``afterok`` edges are what order things, and those are checked elsewhere.
+    """
+    kinds = [step_what(line) for line in steps]
+    io = {what: table_io(what) for what in kinds if what is not None}
+    problems = []
+    for index, what in enumerate(kinds):
+        if what is None:
+            continue
+        for later in range(index + 1, len(kinds)):
+            other = kinds[later]
+            if other is None:
+                continue
+            for name in sorted(set(io[what]["reads"]) & set(io[other]["writes"])):
+                problems.append(
+                    f"element {index + 1} ({what}) reads {name}, which element "
+                    f"{later + 1} ({other}) writes: the consumer is packed "
+                    f"ahead of its producer and would run first."
+                )
+    return problems
 
 
 def main() -> int:

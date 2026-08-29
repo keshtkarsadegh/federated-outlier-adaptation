@@ -39,8 +39,8 @@ EXPECTED_COUNTS = {
     "lean_replica": 5 + 1 + 6 + 4,
     # pool + federated pre-training + local fine-tuning + 9 trainers
     # + 2 extended rules + 1 cyclic order + 1 extreme + 1 sweep
-    # + 2 datasets + the constrained selection + the signal analysis
-    "smoke": 1 + 1 + 1 + 9 + 2 + 1 + 1 + 1 + 2 + 1 + 1,
+    # + the constrained selection + the signal analysis
+    "smoke": 1 + 1 + 1 + 9 + 2 + 1 + 1 + 1 + 1 + 1,
     "dual": 3,
     "regen_base": 4,
     "regen_grids": 9 + 3,
@@ -404,12 +404,6 @@ def test_smoke_covers_the_extreme_case_and_the_sweep():
     assert f"--anchor {matrix.SMOKE_GRID_ANCHOR}" in grids[0]
 
 
-def test_smoke_visits_the_additional_datasets():
-    tasks = _smoke_tasks()
-    for provider in matrix.SMOKE_EXTRA_PROVIDERS:
-        matching = [t for t in tasks if f"--provider {provider}" in t]
-        assert len(matching) == 1, provider
-        assert "--trainer DistillationTrainer" in matching[0]
 
 
 def test_smoke_ends_with_the_two_read_only_analyses():
@@ -434,10 +428,6 @@ def test_smoke_starts_with_the_pool_and_the_reference_points():
     assert any(t.startswith("foa local-finetune") for t in tasks)
 
 
-def test_replicating_the_smoke_plan_never_duplicates_the_provider_flag():
-    for provider in ("shakespeare", "cifar10"):
-        for task in matrix.plan_tasks("smoke", provider=provider):
-            assert task.count("--provider") <= 1, task
 
 
 # --------------------------------------------------------------------------- #
@@ -525,14 +515,6 @@ def test_lean_reg_finals_defer_to_the_selection():
     assert f"--eps {matrix.LEAN_EPS:g}" in tasks[0]
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-def test_lean_replica_carries_the_provider_and_its_budget(provider):
-    tasks = matrix.plan_tasks("lean_replica", provider=provider)
-    training = [t for t in tasks if not t.startswith("foa select ")]
-    assert training
-    for task in training:
-        assert f"--provider {provider}" in task
-        assert ("--epochs 5" in task) == (provider == "shakespeare"), task
 
 
 def test_lean_replica_sweeps_one_space_per_mechanism():
@@ -668,44 +650,34 @@ def test_the_published_dataset_emits_unchanged_task_lines():
         assert all("--provider" not in task for task in matrix.plan_tasks(plan))
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-@pytest.mark.parametrize("plan", ["e1_seeds", "regen_finals", "aggregation_hypotheses"])
-def test_other_datasets_tag_every_task(plan, provider):
-    tasks = matrix.plan_tasks(plan, provider=provider)
-    assert tasks
-    for task in tasks:
-        assert f" --provider {provider} " in task + " "
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-def test_the_provider_flag_follows_the_subcommand(provider):
-    task = matrix.with_provider("foa final --trainer BaseTrainer --seed 1", provider)
-    assert task == f"foa final --provider {provider} --trainer BaseTrainer --seed 1"
-    assert matrix.with_provider("foa figures", provider) == f"foa figures --provider {provider}"
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-def test_pool_files_follow_the_dataset(provider):
-    """The provider flag is what routes a task to the right pool."""
-    for task in matrix.plan_tasks("regen_finals", provider=provider):
-        assert f"--pool-frac {matrix.POOL_FRAC:g}" in task
-        assert f"--provider {provider}" in task
 
 
-@pytest.mark.parametrize("provider", ["nist", "shakespeare", "cifar10"])
+@pytest.mark.parametrize("provider", ["nist"])
 @pytest.mark.parametrize("plan", sorted(EXPECTED_COUNTS))
 def test_task_counts_do_not_depend_on_the_dataset(plan, provider):
     assert len(matrix.plan_tasks(plan, provider=provider)) == EXPECTED_COUNTS[plan]
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-def test_every_dataset_task_parses(provider):
-    import shlex
 
-    parser = build_parser()
-    for plan in ("e1_seeds", "references", "pool", "regularisation_family"):
-        for task in matrix.plan_tasks(plan, provider=provider):
-            parser.parse_args(shlex.split(task)[1:])
+
+def test_main_providers_are_registered():
+    """
+    The matrix must not name a provider the registry cannot build - that would
+    be a plan for a dataset nothing can load.
+
+    The converse is not required, and used to be asserted by mistake. The matrix
+    is the prior pipeline's experiment planner; a provider added for a study of
+    its own has no place in it, and forcing one in would generate plans nobody
+    intends to run.
+    """
+    from federated_outlier_adaptation.providers import available_providers
+
+    assert set(matrix.MAIN_PROVIDERS) <= set(available_providers())
+    assert set(matrix.MAIN_PROVIDERS)
 
 
 def test_main_providers_are_the_registered_ones():

@@ -143,7 +143,7 @@ def run_adaptation(
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Run one adaptation configuration of a dataset.")
-    parser.add_argument("--provider", default="nist", help="nist | shakespeare | cifar10")
+    parser.add_argument("--provider", default="nist", help="nist")
     parser.add_argument("--results-dir", default=None)
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--trainer", default="BaseTrainer")

@@ -11,9 +11,8 @@ the ordered list of commands and nothing else.
 
 Two conventions hold throughout:
 
-- **No archive is ever extracted.** `by_write.zip`, `cifar-10-python.tar.gz` and LEAF's
-  `1994-01-100.zip` are read in place; each dataset becomes one array file plus one JSON
-  index. Running `unzip` on `by_write.zip` (≈ 400 000 PNG files) exhausts the inode quota
+- **No archive is ever extracted.** `by_write.zip` is read in place; the dataset
+  becomes one array file plus one JSON index. Running `unzip` on `by_write.zip` (≈ 400 000 PNG files) exhausts the inode quota
   of most shared file systems.
 - **Frozen artefacts under `results/` are inputs.** `writer_split.json`, `global_model`,
   the Fisher directory and the selected-outlier list define the experimental setting and
@@ -52,19 +51,11 @@ what the Slurm templates use so no `PATH` assumption is needed.
 curl -o data/nist/by_write.zip https://s3.amazonaws.com/nist-srd/SD19/by_write.zip
 foa prepare-data --zip data/nist/by_write.zip
 
-# optional additional datasets
-curl -o data/shakespeare/pg100.txt https://www.gutenberg.org/cache/epub/100/pg100.txt
-curl -o data/cifar10/cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
-python -m federated_outlier_adaptation.data.shakespeare \
-    --raw data/shakespeare/pg100.txt --out-dir data/shakespeare
-python -m federated_outlier_adaptation.data.cifar10 \
-    --raw data/cifar10/cifar-10-python.tar.gz --out-dir data/cifar10 \
-    --num-clients 200 --alpha 0.3 --seed 42 --proxy-size 1000
 ```
 
 The NIST cache lands in `$FOA_CACHE_DIR` (default `data/cache`) as
 `nist_digits_u8.npy` + `nist_digits_index.json`. See README section 2 for the file
-contents and section 12.2 for the additional datasets.
+contents.
 
 ## 3. Pipeline
 

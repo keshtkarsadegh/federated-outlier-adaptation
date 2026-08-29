@@ -163,6 +163,19 @@ def ntd_extension_cells() -> List[Dict[str, Any]]:
     return cells
 
 
+def boundary_extension_cells() -> List[Dict[str, Any]]:
+    """
+    The FIRST extension only: the KD temperature and NTD tau/beta rows.
+
+    Named apart from :func:`extension_cells` because the digit study emitted
+    exactly these as its own task file, and that file's header counts its cells.
+    Left reading the whole extension block, it would have re-counted itself
+    upwards the moment a second study appended anything - reporting six KD cells
+    in a file that contains four.
+    """
+    return kd_extension_cells() + ntd_extension_cells()
+
+
 def extension_cells() -> List[Dict[str, Any]]:
     """
     Every cell added after the screen, appended so existing indices never move.
@@ -173,7 +186,7 @@ def extension_cells() -> List[Dict[str, Any]]:
     that describes it.  Appending costs nothing: the selector groups by the
     cell's ``method``, not by where it sits.
     """
-    return kd_extension_cells() + ntd_extension_cells()
+    return boundary_extension_cells()
 
 
 def kd_lam_of_alpha(alpha: float) -> float:

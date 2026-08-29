@@ -235,14 +235,6 @@ def test_a_sweep_the_budget_rejected_produces_no_final(sweeps):
     assert matrix.emit_regularisation_finals(sweeps, eps_values=(-1.0,), seeds=(1,)) == []
 
 
-@pytest.mark.parametrize("provider", ["shakespeare", "cifar10"])
-def test_emitted_finals_follow_the_dataset(sweeps, provider):
-    for folder, _, _ in selection.discover_sweeps(sweeps):
-        selection.select_for_sweep(folder, eps=0.005)
-    tasks = matrix.emit_regularisation_finals(
-        sweeps, eps_values=(0.005,), seeds=(1,), provider=provider
-    )
-    assert all(f"--provider {provider}" in task for task in tasks)
 
 
 def test_every_emitted_final_parses_as_a_cli_invocation(sweeps):

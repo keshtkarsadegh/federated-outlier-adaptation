@@ -77,21 +77,6 @@ def parsed(p13):
 # --------------------------------------------------------------------------- #
 # the table and the counts
 # --------------------------------------------------------------------------- #
-def test_the_screen_is_the_same_cell_table_as_ever(p13):
-    """
-    The table is 125 now; the screen that ran is still its first 117.
-
-    The eight extra cells are the kd and ntd rows' boundary extensions,
-    appended after the fact - see the extension tests below.
-    """
-    assert len(reg_cells.screen_cells()) == 125
-    assert p13.SCREENED_CELLS == 117
-    assert len(p13.screened_lines()) == 585
-    assert SL.counts(DIGITS_STUDY01)["reg_screen"] == 625
-    assert SL.REG_METHODS == [
-        "param_l2", "fisher", "fisher_scaled", "logit_l2", "feature_l2",
-        "kd", "ntd",
-    ]
 
 
 def test_the_hybrid_stays_out_of_the_screen():
@@ -548,10 +533,11 @@ def test_the_hybrid_refuses_when_only_one_half_was_measured(emit, tmp_path):
 # the boundary extensions of the kd and ntd rows
 # --------------------------------------------------------------------------- #
 def test_the_extensions_are_eight_cells_and_forty_tasks(p13):
-    ext = reg_cells.extension_cells()
+    """THIS study's extension. A later one appended eight more cells."""
+    ext = reg_cells.boundary_extension_cells()
     assert len(ext) == 8
     assert len(p13.ext_lines()) == 40
-    assert len(reg_cells.screen_cells()) == 117 + 8 == 125
+    assert reg_cells.screen_cells()[117:125] == ext
 
 
 def test_the_kd_extension_is_narrowed_to_the_top_of_the_alpha_row():
@@ -562,7 +548,7 @@ def test_the_kd_extension_is_narrowed_to_the_top_of_the_alpha_row():
     is not the axis in question; 0.95 comes along only to catch it drifting as
     T falls.
     """
-    kd = [c for c in reg_cells.extension_cells() if c["method"] == "kd"]
+    kd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "kd"]
     assert len(kd) == 4
     assert reg_cells.KD_EXT_TEMPERATURES == (0.5, 0.25)
     assert reg_cells.KD_EXT_ALPHAS == (0.95, 0.99)
@@ -575,13 +561,13 @@ def test_the_kd_extension_is_narrowed_to_the_top_of_the_alpha_row():
 
 
 def test_the_kd_extension_goes_below_the_row_it_extends():
-    kd = [c for c in reg_cells.extension_cells() if c["method"] == "kd"]
+    kd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "kd"]
     assert max(c["hypers"]["T"] for c in kd) < min(reg_cells.KD_TEMPERATURES)
 
 
 def test_the_two_ntd_extensions_are_deduplicated():
     """They extend one (beta, tau) grid, so it is 4 cells and not 4 + 4."""
-    ntd = [c for c in reg_cells.extension_cells() if c["method"] == "ntd"]
+    ntd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "ntd"]
     assert len(ntd) == 4
     pairs = {(c["hypers"]["lam"], c["hypers"]["T"]) for c in ntd}
     assert len(pairs) == 4
@@ -591,7 +577,7 @@ def test_the_two_ntd_extensions_are_deduplicated():
 
 
 def test_the_ntd_extensions_go_below_the_rows_they_extend():
-    ntd = [c for c in reg_cells.extension_cells() if c["method"] == "ntd"]
+    ntd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "ntd"]
     taus = {c["hypers"]["T"] for c in ntd}
     betas = {c["hypers"]["lam"] for c in ntd}
     assert min(taus) < min(reg_cells.NTD_TAUS)
@@ -606,8 +592,11 @@ def test_the_extension_cells_keep_their_methods():
     ]
     assert SL.counts(DIGITS_STUDY01)["reg_full"] == 70
     grouped = reg_cells.cells_by_method()
-    assert len(grouped["kd"]) == 49 + 4
+    assert len(grouped["kd"]) == 49 + 4          # screen + boundary
     assert len(grouped["ntd"]) == 35 + 4
+    assert len(grouped["fisher"]) == 8
+    assert len(grouped["fisher_scaled"]) == 8
+    assert len(grouped["logit_l2"]) == 5
 
 
 def test_the_screen_file_regenerates_byte_identical(p13):
@@ -623,6 +612,22 @@ def test_the_screen_file_regenerates_byte_identical(p13):
     for line in screened:
         for new in ("kd_T0p5_", "kd_T0p25_", "_t0p25", "b0p0001_"):
             assert new not in line
+
+
+
+
+def test_the_digit_extension_counts_only_its_own_cells(p13):
+    """
+    Its header and README count the cells they describe.
+
+    Reading the whole extension block, they would have re-counted themselves
+    upwards the moment another study appended anything - reporting six KD cells
+    in a file that contains four.
+    """
+    groups = p13._ext_groups()
+    assert len(groups["kd"]) == 4
+    assert len(groups["ntd"]) == 4
+    assert sum(len(cells) for cells in groups.values()) == 8
 
 
 def test_the_extension_seeds_are_fresh_and_continue_the_scheme(p13):
@@ -750,6 +755,8 @@ def test_the_patch_says_whether_the_winner_moved(emit, tmp_path, capsys):
     )
     assert record["changed"] is False
     assert record["winner"] == record["previous_winner"] == "kd_T1_a0p99"
+    # 49 screened + 4 boundary: a re-selection ranks the row as it stands
+    # now, which is the whole point of running one.
     assert record["cells_in_row"] == 53
 
 
@@ -834,3 +841,20 @@ def test_top3_ranks_a_patched_result_against_the_one_it_supersedes(emit, tmp_pat
     chosen = json.loads(out.read_text())
     assert chosen["concurrent"][0] == "kd_T0p25_a0p99"
     assert by_id[chosen["concurrent"][0]]["method"] == "kd"
+
+
+def test_the_screen_is_the_same_cell_table_as_ever(p13):
+    """
+    The table is 125 now; the screen that ran is still its first 117.
+
+    The eight extra cells are the kd and ntd rows' boundary extensions,
+    appended after the fact - see the extension tests below.
+    """
+    assert len(reg_cells.screen_cells()) == 125
+    assert p13.SCREENED_CELLS == 117
+    assert len(p13.screened_lines()) == 585
+    assert SL.counts(DIGITS_STUDY01)["reg_screen"] == 625
+    assert SL.REG_METHODS == [
+        "param_l2", "fisher", "fisher_scaled", "logit_l2", "feature_l2",
+        "kd", "ntd",
+    ]

@@ -37,7 +37,7 @@ def rows_dataset(dataset, rows, labels):
         dataset: The provider's dataset.
         rows: Row indices, already filtered to ones the dataset knows.
         labels: Label per row, in the same order. A dataset that recovers its
-            own labels from the row (Shakespeare: the next character) may
+            own labels from the row may
             ignore them.
     """
     build = getattr(dataset, "rows_dataset", None)

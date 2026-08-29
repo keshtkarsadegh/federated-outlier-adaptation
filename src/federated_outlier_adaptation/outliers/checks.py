@@ -3,7 +3,7 @@ Assertions a study chain makes about its own artefacts, as testable functions.
 
 A chain stage is only as good as what it refuses to pass on.  The digit study
 made these checks with inline ``python -c`` steps in its task files, and the
-Shakespeare chain inherited the habit; one of them read a key that did not
+second chain inherited the habit; one of them read a key that did not
 exist and the chain died on a GPU rather than in the suite.
 
 So the checks live here, where a test can call them with a deliberately broken

@@ -1,0 +1,102 @@
+# Digits_study01 - the main sequence, for re-runs and patches.
+#
+# The study is complete; this exists so that any future submission against it
+# goes through the same preflight as a new one. Patch files (d01_p12_trimmed_
+# patch, the four d01_p14_*_patch files, d01_p11_ext, d01_p13_ext, ...) are
+# added as [[stage]] entries when they are needed, with their own counts.
+#
+#   foa submit study/jobs/digits.chain.toml          # print
+#   foa submit study/jobs/digits.chain.toml --go     # submit
+
+study    = "Digits_study01"
+jobs_dir = "jobs/v4"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+
+[[stage]]
+name     = "p02_ginit"
+tasks    = "d01_p02.txt"
+count    = 9
+array    = "1-9%1"
+produces = ["$FOA_STUDY_DIR/ginit_model"]
+
+[[stage]]
+name     = "p05v2_cohort"
+tasks    = "d01_p05v2.txt"
+count    = 26
+array    = "1-26%1"
+requires = ["$FOA_STUDY_DIR/ginit_model"]
+produces = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+    "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz",
+]
+
+[[stage]]
+name     = "p07_baselines"
+tasks    = "d01_p07.txt"
+count    = 16
+array    = "1-16%1"
+requires = ["$FOA_STUDY_DIR/g0_model"]
+
+[[stage]]
+name     = "p08_isolated"
+tasks    = "d01_p08.txt"
+count    = 100
+array    = "1-100"
+requires = ["$FOA_STUDY_DIR/g0_model"]
+
+[[stage]]
+name     = "p09_fl"
+tasks    = "d01_p09.txt"
+count    = 10
+array    = "1-10"
+requires = ["$FOA_STUDY_DIR/g0_model"]
+
+[[stage]]
+name     = "p10_centralized"
+tasks    = "d01_p10.txt"
+count    = 10
+array    = "1-10"
+requires = ["$FOA_STUDY_DIR/g0_model"]
+
+[[stage]]
+name     = "p11_agg_screen"
+tasks    = "d01_p11.txt"
+count    = 845
+array    = "1-845"
+requires = ["$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"]
+
+[[stage]]
+name     = "p12_agg_full"
+tasks    = "d01_p12.txt"
+count    = 90
+array    = "1-90"
+
+[[stage]]
+name     = "p13_reg_screen"
+tasks    = "d01_p13.txt"
+count    = 585
+array    = "1-585"
+root     = true
+requires = ["$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"]
+
+[[stage]]
+name     = "p14_reg_full"
+tasks    = "d01_p14.txt"
+count    = 70
+array    = "1-70"
+
+[[stage]]
+name     = "p15_combos"
+tasks    = "d01_p15.txt"
+count    = 90
+array    = "1-90"
+
+[[stage]]
+name     = "p16_extreme"
+tasks    = "d01_p16.txt"
+count    = 15
+array    = "1-15"
