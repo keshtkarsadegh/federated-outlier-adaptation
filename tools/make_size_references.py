@@ -55,23 +55,32 @@ def build(clients, cohort, book, per_round, tag, seed_base, full_participation):
             f"--out $FOA_STUDY_DIR/g0_{tag}_evaluations.json"
         )
 
-    for client in clients:
+    for position, client in enumerate(clients):
         for fold in FOLDS:
             for init, extra in INITS:
+                # The seed the private arm never carried. It is a pure function
+                # of the cohort's seed base, the client's position, the init and
+                # the fold, so it is stable across regenerations and distinct
+                # for every cell.
+                seed = seed_base + position * 200 + (0 if init == "global" else 100) + fold
                 lines.append(
                     f"foa isolated-train {COMMON} --clients-file {cohort} "
                     f"--only-client {client} --fold-book {book} --fold {fold} "
                     f"--old-book {OLD_BOOK} --old-fold all --old-clients-file {OLD} "
-                    f"--init {init}{extra} {TRAIN} "
+                    f"--init {init}{extra} {TRAIN} --seed {seed} "
                     f"--out $FOA_STUDY_DIR/isolated_{tag}/isolated_{init}_{client}_fold{fold}.json"
                 )
 
     for fold in FOLDS:
         for init, extra in INITS:
+            # Offset well clear of the per-client block above so the pooled arm
+            # can never collide with a client's seed.
+            seed = seed_base + 90000 + (0 if init == "global" else 100) + fold
             lines.append(
                 f"foa isolated-train {COMMON} --pooled --clients-file {cohort} "
                 f"--fold-book {book} --fold {fold} --old-book {OLD_BOOK} "
                 f"--old-fold all --old-clients-file {OLD} --init {init}{extra} {TRAIN} "
+                f"--seed {seed} "
                 f"--out $FOA_STUDY_DIR/centralized_{tag}/centralized_{init}_fold{fold}.json"
             )
 

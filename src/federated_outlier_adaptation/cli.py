@@ -1909,6 +1909,15 @@ def cmd_isolated_train(args: argparse.Namespace) -> int:
         isolated_training,
         write_payload,
     )
+    from federated_outlier_adaptation.utils.seeding import set_run_seed
+
+    # THE ISOLATED ARM WAS THE ONE THAT DID NOT SEED. global-train and the
+    # federated runner both call this; isolated-train did not, so the private
+    # baselines drew a fresh initialisation and a fresh shuffle every run. They
+    # are two of the four rungs every reported number is read against, which
+    # made the comparison itself irreproducible while the arms being compared
+    # were fine.
+    set_run_seed(args.seed)
 
     _require_book_and_fold(args, "isolated-train")
     provider = _resolve_provider(args)
@@ -2965,6 +2974,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Per client: stop after N epochs without a validation improvement.",
     )
     p.add_argument("--min-epochs", type=int, default=20, metavar="M")
+    p.add_argument(
+        "--seed", type=int, default=None,
+        help="Run seed: the initialisation and the training shuffle. The split "
+             "is not drawn from it - that comes from the fold book.",
+    )
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_isolated_train)
 

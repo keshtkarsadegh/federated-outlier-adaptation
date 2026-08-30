@@ -121,6 +121,35 @@ def lines() -> list[str]:
         f" --out {BOOKS}/cohort{COHORT_SIZE} --clients-file {COHORT_FILE}"
         f" --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2"
         f" --tag digits_cohort{COHORT_SIZE}_v2",
+        # 13a-13d. THE OTHER FEDERATION SIZES, CUT FROM THE SAME RANKING.
+        #
+        # g-0 scored the bad pool once, so the worst five, the worst ten and the
+        # worst twenty are three cuts of one list - not three selections. Making
+        # them here keeps that obvious, and it means every later stage finds its
+        # cohort and its folds already built instead of depending on a file
+        # somebody made by hand between runs.
+        #
+        # Each size gets its own five-fold book, and the three agree by
+        # construction: a writer's split is seeded on
+        # sha256(seed | fold | writer), so it does not depend on who else is in
+        # the book. The five worst hold the same rows in the five-, ten- and
+        # twenty-client books, which is what makes the sizes comparable.
+        f"foa select-outliers --results-dir {ROOT} {SETTING} --mode worst"
+        f" --k 5 --scores {BAD_FLAT} --require-trainable"
+        f" --tag digits_cohort5_v2 --force --no-accuracy-table"
+        f" --out {POOLS}/cohort_worst5.json",
+        f"foa fold-book --results-dir {ROOT} {SETTING}"
+        f" --out {BOOKS}/cohort5 --clients-file {POOLS}/cohort_worst5.json"
+        f" --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2"
+        f" --tag digits_cohort5_v2",
+        f"foa select-outliers --results-dir {ROOT} {SETTING} --mode worst"
+        f" --k 20 --scores {BAD_FLAT} --require-trainable"
+        f" --tag digits_cohort20_v2 --force --no-accuracy-table"
+        f" --out {POOLS}/cohort_worst20.json",
+        f"foa fold-book --results-dir {ROOT} {SETTING}"
+        f" --out {BOOKS}/cohort20 --clients-file {POOLS}/cohort_worst20.json"
+        f" --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2"
+        f" --tag digits_cohort20_v2",
         # 14. the paper's table, ranked within the bad pool, carrying both scores.
         f"foa cohort-table --results-dir {ROOT} {SETTING}"
         f" --clients-file {COHORT_FILE} --fold-book {COHORT_BOOK}"

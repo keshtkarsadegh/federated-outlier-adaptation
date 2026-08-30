@@ -286,12 +286,14 @@ def test_the_chain_is_archive_pools_draw_book_folds_winner_score_cohort(p05, par
     assert names == (
         ["[shell]", "cmd_split_pools", "cmd_draw_old_data", "cmd_fold_book"]
         + ["cmd_global_train"] * 5
-        + ["cmd_select_fold", "cmd_score_pool", "cmd_select_outliers",
-           "cmd_fold_book", "cmd_cohort_table", "cmd_draw_cohort",
-           "cmd_outlier_figure"]
+        + ["cmd_select_fold", "cmd_score_pool"]
+        # g-0 scores the bad pool ONCE; the three federation sizes are three
+        # cuts of that one ranking, each with its own five-fold book.
+        + ["cmd_select_outliers", "cmd_fold_book"] * 3
+        + ["cmd_cohort_table", "cmd_draw_cohort", "cmd_outlier_figure"]
         + ["cmd_evaluate_book"] * 10
     )
-    assert len(names) == 26
+    assert len(names) == 30
 
 
 def test_every_foa_line_is_digits_and_inside_the_study(parsed):
