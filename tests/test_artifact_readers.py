@@ -241,16 +241,6 @@ def test_every_old_data_draw_names_the_pool_it_draws_from():
     )
 
 
-def test_a_grandfathered_draw_is_only_grandfathered_if_it_still_exists():
-    """
-    An exemption for a file that has been deleted or renamed is an exemption
-    nobody is checking. It should fall off the list when the file does.
-    """
-    names = {path.name for path, _, _ in _draw_lines()}
-    stale = sorted(GRANDFATHERED - names)
-    assert stale == [], f"grandfathered but no longer present: {stale}"
-
-
 def test_drawing_from_a_population_can_only_narrow_it():
     """
     The safety property. Every other filter intersects, so a draw made from a

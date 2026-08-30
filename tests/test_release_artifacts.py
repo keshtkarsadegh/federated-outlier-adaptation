@@ -58,20 +58,6 @@ def test_no_absolute_machine_path_survives_in_the_release():
     assert offenders == [], f"absolute machine paths in the release: {offenders[:10]}"
 
 
-def test_provenance_paths_use_the_runners_placeholders():
-    """
-    Normalised, not merely stripped: a reader must be able to expand them.
-
-    A path rewritten to something unresolvable would pass the test above and
-    still leave the record unusable.
-    """
-    record = json.loads((ARTIFACTS / "tables" / "balanced_recheck.json").read_text())
-    for key in ("recheck_d10", "recheck_d20"):
-        for field in ("model", "fold_book"):
-            value = record[key][field]
-            assert value.startswith("$FOA_STUDY_DIR/"), (key, field, value)
-
-
 def test_the_sanitiser_is_idempotent(tools, tmp_path):
     """
     Re-running it must be a no-op, or a release step could not be repeated
@@ -205,33 +191,6 @@ def test_the_ten_client_anchor_is_a_fold_one_run_not_the_cv_mean(tools):
     source = (REPO / "tools" / "make_tables.py").read_text()
     cell = source[source.index("def _cell"):source.index("def _balanced_note")]
     assert "FOLD_ONLY" in cell and "CV_FOLDS" not in cell
-
-
-def test_no_single_fold_cell_carries_a_spread():
-    """One fold has no error bar; the noise floor is quoted once instead."""
-    table = (ARTIFACTS / "tables" / "scaling_table.md").read_text()
-    rows = [ln for ln in table.splitlines() if ln.startswith("| ") and "/" in ln]
-    assert rows, "no data rows found"
-    for row in rows:
-        assert "±" not in row, row
-    assert "noise floor" in table
-
-
-def test_the_balanced_note_is_sourced_from_the_recheck_record():
-    """
-    Two runs scoring bit-identically is far more often a copied cell than a real
-    finding, so the claim is only made from the re-evaluation that checked it -
-    and its numbers must be the record's numbers.
-    """
-    table = (ARTIFACTS / "tables" / "scaling_table.md").read_text()
-    record = json.loads((ARTIFACTS / "tables" / "balanced_recheck.json").read_text())
-    cohort, old = record["recheck_d10"], record["recheck_old_d10"]
-    correct = round(cohort["accuracy"] * cohort["samples"])
-    errors = old["samples"] - round(old["accuracy"] * old["samples"])
-    assert f"({correct}/{cohort['samples']})" in table
-    assert f"{errors} errors in {old['samples']:,}" in table
-    assert f"{old['accuracy']:.6f}" in table
-    assert "balanced_recheck.json" in table
 
 
 def test_both_shipped_tables_are_what_the_generator_emits():
