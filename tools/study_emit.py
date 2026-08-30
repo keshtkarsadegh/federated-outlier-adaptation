@@ -161,6 +161,25 @@ def ranked_by(rows: List[Dict[str, Any]], key: str) -> List[Dict[str, Any]]:
     return sorted(rows, key=lambda r: (-r[key]["mean"], r["id"]))
 
 
+def ranked_by_trade(rows: List[Dict[str, Any]], key: str,
+                    a0: float, p0: float) -> List[Dict[str, Any]]:
+    """
+    ``rows`` best first by what each gained less what it spent.
+
+    THE SAME RULE THE WINNERS WERE CHOSEN BY. These lists decide which cells go
+    into the combination stage, so ranking them on adaptation while every other
+    selection ranks on gain less spend would build the cross out of the greediest
+    cells - the ones that reach furthest by preserving least - and then report
+    the composition as a property of the methods.
+
+    Ties break on the cell id, so the ordering is reproducible from the numbers
+    alone rather than from whatever order the rows arrived in.
+    """
+    def score(row):
+        return (row[key]["mean"] - a0) - (p0 - row["preservation"]["mean"])
+    return sorted(rows, key=lambda r: (-score(r), r["id"]))
+
+
 def both_rankings(rows: List[Dict[str, Any]]) -> Dict[str, list]:
     """
     Every finalist ordered both ways, for the record.
@@ -472,6 +491,7 @@ def agg_trimmed_patch(cfg, root: Path, out: Path, expect: int) -> int:
 def agg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> int:
     """The three best aggregations per family, for a later combination stage."""
     key = rank_key(rank_by)
+    a0, p0 = shipped_baselines(root)
     cells = agg_cells.screen_cells()
     rows = agg_selector.summarise(
         agg_selector.collect(root, cells, prefixes(cfg)["agg_full"])
@@ -484,7 +504,7 @@ def agg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> i
             row for row in rows
             if by_id[row["id"]]["path"] == family and row[key]["mean"] is not None
         ]
-        ranked = ranked_by(scored, key)
+        ranked = ranked_by_trade(scored, key, a0, p0)
         orderings[family] = both_rankings(scored)
         # One cell per METHOD, as the regularisation side already does. Two
         # things make this necessary rather than tidy. A patched method leaves
@@ -678,6 +698,7 @@ def reg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> i
     did not produce it.
     """
     key = rank_key(rank_by)
+    a0, p0 = shipped_baselines(root)
     cells = reg_cells.screen_cells() + hybrid_cells(root)
     by_id = {cell["id"]: cell for cell in cells}
     chosen: Dict[str, List[str]] = {}
@@ -701,7 +722,7 @@ def reg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> i
             row for row in rows
             if row["family"] == family and row[key]["mean"] is not None
         ]
-        ranked = ranked_by(scored, key)
+        ranked = ranked_by_trade(scored, key, a0, p0)
         orderings[family] = both_rankings(scored)
         # one cell per method: a family's three slots must be three methods,
         # not three settings of the same one.
@@ -1024,11 +1045,12 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
 def stage_winner(cfg, root: Path, out: Path, expect: int,
                  rank_by: str = "test") -> int:
     """
-    Crown the combination with the best fold-mean validation adaptation.
+    Crown the combination that gained most, less what it spent.
 
-    Both columns are recorded, not just the one that decided: a winner chosen on
-    adaptation has spent something on preservation, and a table that reports
-    only the criterion hides the trade it made.
+    Both columns are recorded, not only the one that decided. A crowning on
+    adaptation alone would pick the pair that reaches furthest by preserving
+    least, which is how every earlier winner in this study came to be the cell
+    closest to plain FedAvg.
     """
     agg_top, reg_top = _top_lists(root)
     pseudo = [
@@ -1050,12 +1072,12 @@ def stage_winner(cfg, root: Path, out: Path, expect: int,
         )
         return 1
 
-    best = ranked_by(scored, key)[0]
+    a0, p0 = shipped_baselines(root)
+    ranked = ranked_by_trade(scored, key, a0, p0)
+    best = ranked[0]
     by_id = {cell["id"]: cell for cell in pseudo}
     family = by_id[best["id"]]["path"]
     agg_id, reg_id = _split_combo(best["id"], agg_top, reg_top, family)
-
-    ranked = ranked_by(scored, key)
     path = write_table(
         {"rule": RANK_RULES[rank_by] + " on the clients",
          "rank_by": rank_by,

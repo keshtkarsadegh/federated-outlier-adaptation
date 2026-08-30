@@ -76,6 +76,20 @@ def read_runs(root: Path, prefix: str) -> dict:
         folder = next(p for p in Path(path).parts if p.startswith(prefix))
         cell = folder[len(prefix):].split("_fold")[0]
         family = "parallel" if Path(path).parent.name == "concurrent_delta" else "cyclic"
+
+        # A REGULARISATION RUN COMPUTES BOTH SCHEDULES, and the folder is named
+        # for the one it was selected to serve. Reading the other half is
+        # reading a result the selection never chose - the same penalty judged
+        # under a schedule it was not picked for. The folder's own tag decides.
+        for tag, schedule in (("concurrent_", "parallel"), ("sequential_", "cyclic")):
+            if cell.startswith(tag):
+                if family != schedule:
+                    cell = None
+                else:
+                    cell = cell[len(tag):]
+                break
+        if cell is None:
+            continue
         body = next(iter(json.loads(Path(path).read_text()).values()))
         adaptation = body.get("heldout_client_accuracies") or []
         preservation = body.get("pool_test_accuracies") or []
