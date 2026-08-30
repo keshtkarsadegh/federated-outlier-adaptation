@@ -48,7 +48,13 @@ def lines() -> list[str]:
         f" --out {POOLS}/writer_counts.json --csv {POOLS}/writer_counts.csv",
         # 2. the book every later stage reads its splits from.
         f"foa fold-book --results-dir {ROOT} --resolution 28 --classes digits"
-        f" --out {BOOKS}/all_writers_digits --folds 5 --seed 42"
+        # ONE FOLD, because only the detector reads this book and the detector
+        # uses one fold. Every writer's split is seeded on
+        # sha256(seed | fold | writer), so fold 1 here is the same fold 1 a
+        # five-fold book would give - the count changes what is stored, never
+        # what fold 1 is. The experiments' five-fold books are built later, over
+        # the cohorts and the source population, and are untouched by this.
+        f" --out {BOOKS}/all_writers_digits --folds 1 --seed 42"
         f" --train-rate 0.6 --eval-rate 0.2 --tag digits_all_writers",
     ]
     # 3. g-init, on ONE fold of the whole digit dataset.
