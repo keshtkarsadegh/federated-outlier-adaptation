@@ -119,11 +119,23 @@ def main() -> int:
         for value in continue_row(row, end):
             flags = dict(base["flags"])
             flags[flag] = value
-            parts = [base["rule"].split("_")[-1]]
+            # THE ID DECIDES WHICH METHOD THE CELL BELONGS TO. Grouping is by
+            # id prefix, not by rule, so a cell named from the rule's last word
+            # forms its own method of one and is never compared against the row
+            # it was meant to extend. It runs, it is collected, and it loses to
+            # nothing.
+            method = SL.agg_method_of(base)
+            parts = [method]
             parts += [f"{k.split('_')[-1]}{tag(v)}" for k, v in sorted(flags.items())]
             cell_id = "_".join(parts)
             if cell_id in by_id or cell_id in seen:
                 continue
+            if SL.agg_method_of({"id": cell_id}) != method:
+                raise SystemExit(
+                    f"{cell_id} would group under "
+                    f"{SL.agg_method_of({'id': cell_id})!r}, not {method!r}; "
+                    "the extension would never be compared against its own row."
+                )
             seen.add(cell_id)
             new_cells.append({
                 "id": cell_id,
@@ -167,10 +179,21 @@ def main() -> int:
     # time is spent and the answer is not used. Recording them beside the
     # results lets the selection pick them up without the cell table having to
     # anticipate every extension it might one day need.
+    # ACCUMULATE, never replace. The boundary rule can fire more than once - a
+    # reopened range can itself end at its new edge - and each round only knows
+    # about its own hits. Overwriting would drop the cells of every earlier
+    # round from the selector's candidate list while their results sat on disk,
+    # which is the same silent loss this file exists to prevent.
     import json as _json
     record = args.root / "tables" / "boundary_ext_cells.json"
     record.parent.mkdir(parents=True, exist_ok=True)
-    record.write_text(_json.dumps(new_cells, indent=2) + "\n")
+    kept = []
+    if record.is_file():
+        kept = [c for c in _json.loads(record.read_text())
+                if c["id"] not in {n["id"] for n in new_cells}]
+    record.write_text(_json.dumps(kept + new_cells, indent=2) + "\n")
+    if kept:
+        print(f"  kept {len(kept)} cell(s) from earlier boundary rounds")
 
     print(f"wrote {args.out}: {len(new_cells)} cells x {len(SL.folds_of(cfg))} folds "
           f"= {len(lines)} tasks")
