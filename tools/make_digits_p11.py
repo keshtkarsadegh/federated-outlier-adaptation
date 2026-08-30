@@ -17,7 +17,19 @@ from pathlib import Path
 
 from federated_outlier_adaptation.training import agg_cells
 from federated_outlier_adaptation.training import study_lines as SL
-from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01 as CFG
+from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01 as _STUDY
+
+#: The grid is searched at ONE participation rate and the winners are carried to
+#: the others. Searching every rate would multiply the most expensive stage in
+#: the programme by the number of rates, to answer a question the transfer
+#: already answers: whether a configuration chosen under heavier dropout still
+#: holds when fewer clients drop.
+#:
+#: The search runs at the HARDER rate - two of ten dropped rather than one - so
+#: the winners are chosen where the averaging is noisiest and the anchor matters
+#: most. A rule that survives 8-of-10 has a better claim on 9-of-10 than the
+#: reverse would.
+CFG = _STUDY
 
 #: Sampler seeds of the screen. Well clear of P09's 30001-30505 and of every
 #: hand-written seed in the earlier digit stages, so no two lines anywhere in
@@ -252,7 +264,17 @@ cell-fold keeps a failure to one element and matches every other stage.
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jobs-dir", required=True)
+    parser.add_argument(
+        "--clients-per-round", type=int, default=None, metavar="M",
+        help="Participation the grid is searched at. Defaults to the study's "
+             "own rate; the programme searches at the harder rate and carries "
+             "the winners to the others.",
+    )
     args = parser.parse_args()
+    if args.clients_per_round is not None:
+        import dataclasses
+        global CFG
+        CFG = dataclasses.replace(CFG, clients_per_round=args.clients_per_round)
     jobs = Path(args.jobs_dir)
     jobs.mkdir(parents=True, exist_ok=True)
     screened = screened_lines()
