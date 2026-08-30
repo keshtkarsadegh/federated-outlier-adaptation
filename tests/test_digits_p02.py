@@ -187,7 +187,9 @@ def test_the_chain_is_counts_book_folds_winner_scores(p02):
     assert names == (
         ["cmd_writer_counts", "cmd_fold_book"]
         + ["cmd_global_train"] * 5
-        + ["cmd_select_fold", "cmd_score_writers"]
+        + ["cmd_select_fold"]
+        + ["cmd_score_writers"] * 5
+        + ["cmd_average_scores"]
     )
 
 
@@ -209,22 +211,54 @@ def test_ginit_trains_on_the_whole_digit_dataset(p02):
         assert (t.epochs, t.early_stopping_patience, t.min_epochs) == (100, 10, 20)
 
 
-def test_the_detector_scores_the_winning_fold_s_held_out_rows(p02):
+def test_every_fold_scores_its_own_held_out_rows(p02):
     """
-    Scoring a writer on rows g-init trained on would measure memorisation.
+    Each fold judges the writers on rows that fold did not train on.
 
-    Every writer contributed training images to g-init, so the ranking is only
-    meaningful on the fold g-init was selected from.
+    Every writer contributed training images to g-init, so scoring a writer on
+    rows the scoring model trained on would measure memorisation rather than
+    difficulty. Fold k therefore scores with fold k's model, on fold k's
+    held-out rows, and the book is what still knows which rows those were.
     """
     from federated_outlier_adaptation.cli import build_parser
 
-    line = p02.lines()[-1]
-    assert "$GINIT_FOLD" in line
-    args = build_parser().parse_args(shlex.split(line.replace("$GINIT_FOLD", "4"))[1:])
-    assert args.func.__name__ == "cmd_score_writers"
-    assert args.fold == 4
-    assert args.model_path.endswith("ginit_model")
-    assert args.fold_book.endswith("all_writers_digits.foldbook.npz")
+    parser = build_parser()
+    scorers = [
+        parser.parse_args(shlex.split(line)[1:])
+        for line in p02.lines() if " score-writers " in line
+    ]
+    assert len(scorers) == 5
+    assert {s.fold for s in scorers} == {1, 2, 3, 4, 5}
+    for s in scorers:
+        # the model of that fold, never the crowned one
+        assert s.model_path.endswith(f"ginit_fold{s.fold}/global_model")
+        assert s.fold_book.endswith("all_writers_digits.foldbook.npz")
+        assert s.out.endswith(f"writer_scores_fold{s.fold}.json")
+
+
+def test_the_ranking_is_the_mean_and_no_fold_is_crowned(p02):
+    """
+    The defect this guards against.
+
+    The five folds sit within six ten-thousandths of a point of one another, so
+    crowning one and ranking with it lets floating-point error choose the
+    study's clients: a rebuild crowned a different fold and re-derived a cohort
+    sharing three writers of ten with the published one. Nothing in the chain
+    may depend on which fold won.
+    """
+    from federated_outlier_adaptation.cli import build_parser
+
+    lines = p02.lines()
+    assert not any("$GINIT_FOLD" in line for line in lines)
+    assert not any(line.rstrip().endswith("ginit_model") or "/ginit_model " in line
+                   for line in lines if " score-writers " in line)
+
+    args = build_parser().parse_args(shlex.split(lines[-1])[1:])
+    assert args.func.__name__ == "cmd_average_scores"
+    assert len(args.inputs) == 5
+    for fold in (1, 2, 3, 4, 5):
+        assert any(f"writer_scores_fold{fold}.json" in i for i in args.inputs)
+    assert args.out.endswith("writer_scores.json")
 
 
 def test_the_stated_survival_numbers_are_in_the_readme(p02):

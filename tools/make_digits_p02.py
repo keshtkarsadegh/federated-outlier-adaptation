@@ -60,11 +60,35 @@ def lines() -> list[str]:
         f"foa select-fold --results-dir {ROOT} --resolution 28 --classes digits"
         f" --root {ROOT} --prefix ginit --name ginit --folds 1 2 3 4 5"
     )
-    # 9. the detector: every writer on its own held-out digit rows of that fold.
-    tasks.append(
+    # 9-13. the detector: every writer on its own held-out digit rows, scored
+    #       once per fold. NOT once with the winning fold.
+    #
+    #       The five folds of g-init sit within six ten-thousandths of a point
+    #       of one another, so which one wins is decided by the order in which
+    #       floating-point error accumulates, and a rebuild crowned a different
+    #       fold than the first run did. A different detector ranks writers
+    #       differently, and the ranking is what chooses the study's clients:
+    #       a rebuild from an empty root re-derived a cohort sharing three
+    #       writers of ten with the published one.
+    #
+    #       The detector exists only to rank, so there is no reason to pick a
+    #       winner at all. Each fold scores every writer on rows that fold held
+    #       out, and the ranking is the mean of the five.
+    tasks += [
         f"foa score-writers --results-dir {ROOT} --resolution 28 --classes digits"
-        f" --model-path {ROOT}/ginit_model --fold-book {BOOK} --fold $GINIT_FOLD"
-        f" --batch-size 256 --out {POOLS}/writer_scores.json"
+        f" --model-path {ROOT}/ginit_fold{fold}/global_model --fold-book {BOOK}"
+        f" --fold {fold} --batch-size 256"
+        f" --out {POOLS}/writer_scores_fold{fold}.json"
+        f" --accuracies-name clients_acc_fold{fold}.json"
+        for fold in FOLDS
+    ]
+    # 14. one ranking from the five. A writer is kept only when every fold
+    #     scored it, so nobody is ranked on less evidence than anybody else.
+    inputs = " ".join(f"{POOLS}/writer_scores_fold{fold}.json" for fold in FOLDS)
+    tasks.append(
+        f"foa average-scores --results-dir {ROOT} --resolution 28 --classes digits"
+        f" --inputs {inputs} --out {POOLS}/writer_scores.json"
+        f" --accuracies-name clients_acc_on_global.json"
     )
     return tasks
 
@@ -98,22 +122,31 @@ def header(tasks: list[str]) -> list[str]:
         "# therefore built over every writer, and it records any unsplittable",
         "# writer per fold in its own metadata - which here will be empty.",
         "#",
-        "# ONE SUBSTITUTION - REQUIRED BEFORE THE LAST LINE.",
+        "# NO SUBSTITUTION IS NEEDED, AND THAT IS DELIBERATE.",
         "#",
-        "# Line 8 prints which of the five g-init folds won. Line 9 scores every",
-        "# writer on the held-out rows OF THAT FOLD, and needs the number:",
+        "# Line 8 still records which of the five g-init folds scored best, for",
+        "# the centralized-max row. It no longer decides anything: lines 9-13",
+        "# score every writer once per fold and line 14 takes the mean.",
         "#",
-        '#   GINIT_FOLD=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))[\'selected_fold\'])" \\',
-        "#              $FOA_STUDY_DIR/ginit_selection.json)",
-        "#   export GINIT_FOLD",
+        "# WHY NOT SCORE WITH THE WINNER. The five folds sit within six",
+        "# ten-thousandths of a point of each other, so which one wins is settled",
+        "# by the order in which floating-point error accumulates, not by any",
+        "# property of the data. A rebuild of this study crowned fold 4 where the",
+        "# first run crowned fold 3, and a different detector ranks writers",
+        "# differently - the rebuilt cohort shared three writers of ten with the",
+        "# published one. The detector exists only to rank, so there is no reason",
+        "# to pick a winner at all, and the mean of five equally good models is",
+        "# both steadier and the more honest summary of what they jointly say.",
         "#",
-        "# WHY THAT FOLD AND NOT ANOTHER. g-init trained on the whole digit",
-        "# dataset, so every writer contributed training images to it. Scoring a",
-        "# writer on all of its data would be scoring the model on its own",
-        "# training set, and the ranking would measure memorisation rather than",
-        "# difficulty. Each writer is scored on its validation+test rows of the",
-        "# fold g-init was selected from - exactly the rows that model did not",
-        "# train on. The book is what still knows which rows those were.",
+        "# WHY EACH FOLD SCORES ON ITS OWN ROWS. g-init trained on the whole",
+        "# digit dataset, so every writer contributed training images to it.",
+        "# Scoring a writer on all of its data would be scoring the model on its",
+        "# own training set, and the ranking would measure memorisation rather",
+        "# than difficulty. Fold k scores each writer on its validation+test rows",
+        "# of fold k - exactly the rows that fold did not train on. The book is",
+        "# what still knows which rows those were. A writer is kept only when",
+        "# every fold scored it, so nobody is ranked on less evidence than",
+        "# anybody else.",
         "#",
         "# THE BANKING STEP (line 1) is independent of everything: it reads the",
         "# cache and counts. It writes each writer's digit total and its per-class",
@@ -176,16 +209,16 @@ $A --array=1-2%1 $SB $J/d01_p02.txt
 # 3-7. the five g-init folds (independent of each other)
 $A --array=3-7%5 $SB $J/d01_p02.txt
 
-# 8. the winner, by VALIDATION accuracy - never test
+# 8. the best fold, by VALIDATION accuracy - never test. Recorded for the
+#    centralized-max row; it does not decide the ranking.
 $A --array=8 $SB $J/d01_p02.txt
 
-# then, before the last line:
-GINIT_FOLD=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['selected_fold'])" \\
-           $FOA_V4_RESULTS_DIR/studies/{STUDY}/ginit_selection.json)
-export GINIT_FOLD
+# 9-13. the detector: every writer on its held-out rows, once per fold.
+#       Nothing is exported and no fold is substituted - see the task file.
+$A --array=9-13%5 $SB $J/d01_p02.txt
 
-# 9. the detector: every writer on its held-out rows of the winning fold
-$A --export=ALL,GINIT_FOLD=$GINIT_FOLD --array=9 $SB $J/d01_p02.txt
+# 14. one ranking from the five, by the mean.
+$A --array=14 $SB $J/d01_p02.txt
 ```
 
 ## Cost
@@ -210,7 +243,8 @@ studies/{STUDY}/
   fold_books/all_writers_digits.foldbook.npz
   ginit_fold1..5/                     the five folds and their metrics
   ginit_model, ginit_selection.json   the detector and the "centralized max" row
-  outliers/writer_scores.json         the full record
+  outliers/writer_scores_fold1..5.json  each fold's opinion of every writer
+  outliers/writer_scores.json         the mean of the five: the ranking
   outliers/clients_acc_on_global.json the flat ranking every later stage reads
   outliers/writer_counts.json/.csv    per-writer totals and per-class counts
 ```
