@@ -17,7 +17,13 @@ from pathlib import Path
 
 from federated_outlier_adaptation.training import reg_cells
 from federated_outlier_adaptation.training import study_lines as SL
-from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01 as CFG
+from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01 as _STUDY
+
+#: Searched at one participation rate, like the aggregation grid, and at the
+#: same one - two of ten dropped. The winners are carried to the other rates.
+#: Searching both grids at the same rate is what lets their tables be read
+#: against each other.
+CFG = _STUDY
 
 #: Sampler seeds of the screen. Disjoint from every earlier range in this study:
 #: P09 30001-30505, P11 702001-703685, P11-ext 703691-703705, P12 704001-704175.
@@ -273,7 +279,15 @@ honest way round.
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jobs-dir", required=True)
+    parser.add_argument(
+        "--clients-per-round", type=int, default=None, metavar="M",
+        help="Participation the grid is searched at; defaults to the study's.",
+    )
     args = parser.parse_args()
+    if getattr(args, "clients_per_round", None) is not None:
+        import dataclasses
+        global CFG
+        CFG = dataclasses.replace(CFG, clients_per_round=args.clients_per_round)
     jobs = Path(args.jobs_dir)
     jobs.mkdir(parents=True, exist_ok=True)
     screened, ext = screened_lines(), ext_lines()
