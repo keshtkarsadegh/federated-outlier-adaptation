@@ -1,0 +1,30 @@
+# The reproducibility test: the repaired front end, run a second time.
+#
+# v5 and v6 use the same code, the same seeds and the same data. Everything that
+# differs between them is GPU arithmetic. If the cohort agrees, the selection
+# reproduces; if it does not, the repair is not enough and we would be shipping
+# a study whose clients depend on which machine ran it.
+#
+# The detector is retrained here rather than reused: it is the stochastic step,
+# so reusing it would test only the deterministic half and prove nothing.
+study    = "Digits_study01"
+jobs_dir = "results_v6/studies/Digits_study01/jobs"
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "12:00:00"
+[[stage]]
+name     = "v6_detector"
+tasks    = "s01_detector.txt"
+count    = 14
+array    = "1-14%1"
+[[stage]]
+name     = "v6_selection"
+tasks    = "s02_selection.txt"
+count    = 26
+array    = "1-26%1"
+[[stage]]
+name     = "v6_cohorts"
+tasks    = "s03_cohorts.txt"
+count    = 8
+array    = "1-8%1"

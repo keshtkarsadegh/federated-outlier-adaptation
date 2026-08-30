@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+import hashlib
 import random
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
@@ -186,6 +187,16 @@ def eligible_for_old_data(
     )
 
 
+
+def _draw_key(seed: int, writer: str) -> str:
+    """
+    Where a writer sits in a seeded draw.
+
+    Keyed on the writer alone, so the order of the others cannot move it.
+    """
+    return hashlib.sha256(f"{int(seed)}:{writer}".encode("utf-8")).hexdigest()
+
+
 def draw_old_data(
     samples_by_writer: Dict[str, int],
     exclude: Iterable[str],
@@ -220,10 +231,19 @@ def draw_old_data(
             + "). Lower --old-size or --min-samples."
         )
 
-    generator = random.Random(int(seed))
-    drawn = sorted(generator.sample(eligible, int(size)))
+    # STABLE UNDER A CHANGING POOL. random.sample draws from the list as a
+    # whole, so adding or removing a few candidates reshuffles everyone: a pool
+    # that overlapped by ninety percent once produced a draw that overlapped by
+    # five. Ordering by a hash of (seed, writer) gives every writer a position
+    # that depends on its own id and the seed and on nothing else, so the draw
+    # moves only as much as the pool does. It is still uniform - the hash is not
+    # correlated with anything about the writer - and still reproducible from
+    # the seed alone.
+    drawn = sorted(sorted(eligible, key=lambda w: _draw_key(seed, w))[: int(size)])
     return {
-        "rule": "seeded uniform draw without replacement from the eligible writers",
+        "rule": ("deterministic draw: the eligible writers ordered by "
+                 "sha256(seed:writer), the first N taken; stable under changes "
+                 "to the eligible set"),
         "seed": int(seed),
         "size": int(size),
         "min_samples": int(min_samples),
@@ -700,3 +720,42 @@ def write_scores_csv(payload: Dict[str, Any], path) -> Path:
                 payload["samples"][name], payload["rank"][name],
             ])
     return path
+
+
+def average_score_files(payloads: "list[dict]") -> Dict[str, Any]:
+    """
+    One ranking from every fold of the detector, instead of from the winner.
+
+    The detector is trained once per fold and its folds are statistically
+    indistinguishable, so crowning one and ranking with it lets a difference of
+    a ten-thousandth of a point choose the study's cohort. Averaging asks all
+    five what they think of each writer and takes the mean, which is stable and
+    is also the more honest summary of five equally good models.
+
+    A writer is kept only when every payload scored it: a mean over a varying
+    number of folds would rank writers on different evidence.
+    """
+    per_writer: Dict[str, list] = {}
+    for payload in payloads:
+        entries = payload["scores"] if isinstance(payload, dict) else payload
+        flat: Dict[str, float] = {}
+        for entry in entries:
+            flat.update(entry)
+        for writer, value in flat.items():
+            per_writer.setdefault(writer, []).append(float(value))
+
+    folds = len(payloads)
+    complete = {w: v for w, v in per_writer.items() if len(v) == folds}
+    dropped = sorted(set(per_writer) - set(complete))
+    scores = {w: sum(v) / len(v) for w, v in complete.items()}
+    spread = {w: (max(v) - min(v)) for w, v in complete.items()}
+    return {
+        "rule": (f"mean accuracy over the {folds} detector folds; a writer is "
+                 "kept only when every fold scored it"),
+        "folds": folds,
+        "writers": len(scores),
+        "dropped_incomplete": dropped,
+        "scores": [{w: scores[w]} for w in sorted(scores)],
+        "fold_spread": {"max": max(spread.values()) if spread else None,
+                        "mean": (sum(spread.values()) / len(spread)) if spread else None},
+    }

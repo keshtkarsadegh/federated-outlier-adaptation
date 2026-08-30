@@ -1,0 +1,31 @@
+# Digits_study01 rebuild - wave 1 on the repaired selection.
+#
+# The detector is no longer crowned for the purpose of ranking: each of its five
+# folds scores every writer and the rankings are averaged, so a difference of a
+# ten-thousandth of a point can no longer choose the cohort. The old-data draw
+# is keyed on the writer id, so a pool that moves slightly moves the draw
+# slightly rather than entirely.
+#
+# The five detector models are kept - the repair changes how they are USED, not
+# what they are - so this re-enters at the scoring step.
+study    = "Digits_study01"
+jobs_dir = "results_v5/studies/Digits_study01/jobs"
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "12:00:00"
+[[stage]]
+name     = "s01_rank"
+tasks    = "s01_detector.txt"
+count    = 14
+array    = "9-14%1"
+[[stage]]
+name     = "s02_selection"
+tasks    = "s02_selection.txt"
+count    = 26
+array    = "1-26%1"
+[[stage]]
+name     = "s03_cohorts"
+tasks    = "s03_cohorts.txt"
+count    = 8
+array    = "1-8%1"

@@ -1448,6 +1448,33 @@ def cmd_score_writers(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def cmd_average_scores(args: argparse.Namespace) -> int:
+    """Merge per-fold writer scores into one ranking."""
+    import json as _json
+
+    from federated_outlier_adaptation.outliers.scoring import (
+        average_score_files,
+        write_json,
+    )
+
+    payloads = []
+    for path in args.inputs:
+        with open(path) as handle:
+            payloads.append(_json.load(handle))
+    merged = average_score_files(payloads)
+
+    out = Path(args.out)
+    write_json(merged, out)
+    flat = out.with_name(args.accuracies_name)
+    write_json(merged["scores"], flat)
+    print(_json.dumps({k: merged[k] for k in
+                       ("rule", "folds", "writers", "fold_spread")}, indent=2))
+    if merged["dropped_incomplete"]:
+        print(f"dropped (not scored by every fold): {len(merged['dropped_incomplete'])}")
+    return 0
+
+
 def cmd_split_pools(args: argparse.Namespace) -> int:
     """Cut the population into a bad pool and a good pool by the coarse detector."""
     from federated_outlier_adaptation import config
@@ -2082,6 +2109,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="MNIST only: directory holding the four idx .gz archives.",
     )
     p.set_defaults(func=cmd_prepare_data)
+
+    # --- average-scores ---
+    p = sub.add_parser(
+        "average-scores",
+        help="Merge per-fold writer scores into one ranking.",
+    )
+    _add_common(p)
+    p.add_argument("--inputs", nargs="+", required=True,
+                   help="One score file per fold.")
+    p.add_argument("--out", required=True)
+    p.add_argument("--accuracies-name", default="clients_acc_on_global.json",
+                   help="Flat accuracy file written beside --out.")
+    p.set_defaults(func=cmd_average_scores)
 
     # --- global-train ---
     p = sub.add_parser("global-train", help="Train the global model and its artefacts.")

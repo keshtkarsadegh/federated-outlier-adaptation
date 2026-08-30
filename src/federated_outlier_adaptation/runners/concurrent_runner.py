@@ -758,6 +758,23 @@ class BaseConcurrentRunner:
             info["stopped_early"] = self.stopped_early
         return info
 
+
+    def _signal_fisher_dir(self, global_name):
+        """
+        The Fisher directory the SIGNALS should read.
+
+        A run may name a Fisher explicitly - the per-fold directory belonging to
+        the fold's own shipped model - and when it does, that is the only file
+        whose curvature matches the anchor the signals measure distance from.
+        The trainer already honours it; this makes the observation agree with
+        the thing it observes. Without this the tracker silently recorded
+        nothing while the penalty worked, which is the worst of both.
+        """
+        explicit = getattr(getattr(self, "trainer", None), "fisher_path", None)
+        if explicit and Path(explicit).is_dir():
+            return Path(explicit)
+        return artefacts.fisher_dir(self.provider, global_name)
+
     def simulate(
         self,
         exp_name,
@@ -856,7 +873,7 @@ class BaseConcurrentRunner:
             provider=self.provider,
             model=self.global_model,
             device=self.device,
-            fisher_dir=artefacts.fisher_dir(self.provider, global_name),
+            fisher_dir=self._signal_fisher_dir(global_name),
             batch_size=batch_size,
             cache=self.eval_cache,
         )

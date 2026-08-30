@@ -1,0 +1,18 @@
+# Digits_study01 - the full-horizon arms re-run with the signal tracker fixed.
+#
+#   foa submit study/jobs/digits_signals_rerun.chain.toml --go
+
+study    = "Digits_study01"
+jobs_dir = "results_v4/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "08:00:00"
+
+[[stage]]
+name     = "d01_signals"
+tasks    = "d01_signals_rerun.txt"
+count    = 285
+array    = "1-285"
+requires = ["$FOA_STUDY_DIR/g0_model"]

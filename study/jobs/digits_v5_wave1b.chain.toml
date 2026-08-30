@@ -1,0 +1,26 @@
+# Digits_study01 rebuild - wave 1 continued.
+#
+# The detector stage is re-entered at its ninth task only: the first eight
+# trained and crowned the detector, and the ninth died because GINIT_FOLD was
+# never derived. It is derived now.
+study    = "Digits_study01"
+jobs_dir = "results_v5/studies/Digits_study01/jobs"
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "12:00:00"
+[[stage]]
+name     = "s01_score"
+tasks    = "s01_detector.txt"
+count    = 9
+array    = "9-9"
+[[stage]]
+name     = "s02_selection"
+tasks    = "s02_selection.txt"
+count    = 26
+array    = "1-26%1"
+[[stage]]
+name     = "s03_cohorts"
+tasks    = "s03_cohorts.txt"
+count    = 8
+array    = "1-8%1"

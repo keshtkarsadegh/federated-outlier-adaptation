@@ -141,6 +141,18 @@ if [ -z "${G0_FOLD:-}" ] && [ -f "$FOA_STUDY_DIR/g0_selection.json" ]; then
 fi
 export G0_FOLD="${G0_FOLD:-}"
 
+# The winning g-init fold, on exactly the same footing. The detector crowns a
+# fold as the shipped model does and writes it to its own selection record, and
+# the writer-scoring task reads it. Leaving it to an export meant the programme
+# could not rebuild itself from a fresh results root: the ninth task died with
+# "GINIT_FOLD: unbound variable" having just trained five detector folds it
+# could then not use. An explicit GINIT_FOLD still wins.
+if [ -z "${GINIT_FOLD:-}" ] && [ -f "$FOA_STUDY_DIR/ginit_selection.json" ]; then
+    GINIT_FOLD=$("$FOA_PYTHON" -c "import json,sys; print(json.load(open(sys.argv[1]))['selected_fold'])" \
+        "$FOA_STUDY_DIR/ginit_selection.json" 2>/dev/null || true)
+fi
+export GINIT_FOLD="${GINIT_FOLD:-}"
+
 LOG_DIR="${FOA_MATRIX_LOG_DIR:-$FOA_STUDY_DIR/logs}"
 mkdir -p "$LOG_DIR"
 

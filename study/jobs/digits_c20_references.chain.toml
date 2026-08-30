@@ -1,0 +1,26 @@
+# Digits_study01 - the reference rungs of the twenty-client point.
+#
+# The scaling table reports transferred configurations at twenty clients with no
+# floor and no ceiling beneath them; every other federation size in the study has
+# both. These are the missing rungs.
+#
+#   foa submit study/jobs/digits_c20_references.chain.toml --go
+
+study    = "Digits_study01"
+jobs_dir = "results_v4/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "08:00:00"
+
+[[stage]]
+name     = "c20_refs"
+tasks    = "d01_c20_references.txt"
+count    = 235
+array    = "1-235"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/outliers/cohort_worst20.json",
+    "$FOA_STUDY_DIR/fold_books/cohort20.foldbook.npz",
+]

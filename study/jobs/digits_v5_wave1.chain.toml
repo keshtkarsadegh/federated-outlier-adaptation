@@ -1,0 +1,39 @@
+# Digits_study01, rebuilt from zero - wave 1: the front end.
+#
+# Nothing is inherited. The detector is retrained, the population is re-cut, the
+# shipped model is retrained and the cohorts are re-derived from its own scores.
+# If the cohort that comes out matches the one the published tables were built
+# on, that is the reproducibility result; if it does not, the selection sits on
+# a knife edge and we need to know before anything is written.
+#
+#   foa submit study/jobs/digits_v5_wave1.chain.toml --go
+
+study    = "Digits_study01"
+jobs_dir = "results_v5/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "12:00:00"
+
+# Throttled: the detector trains five folds and then selects among them, and the
+# selection reads what the five wrote.
+[[stage]]
+name     = "s01_detector"
+tasks    = "s01_detector.txt"
+count    = 9
+array    = "1-9%1"
+
+# Also throttled: this stage is a chain in itself - pools, then the draw, then
+# the book, then five models, then the crowning, then the scoring, then the cut.
+[[stage]]
+name     = "s02_selection"
+tasks    = "s02_selection.txt"
+count    = 26
+array    = "1-26%1"
+
+[[stage]]
+name     = "s03_cohorts"
+tasks    = "s03_cohorts.txt"
+count    = 8
+array    = "1-8%1"
