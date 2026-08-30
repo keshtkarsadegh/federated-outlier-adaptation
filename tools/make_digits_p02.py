@@ -28,6 +28,9 @@ CONVERGE = "--early-stopping-patience 10 --min-epochs 20"
 BOOK = f"{BOOKS}/all_writers_digits.foldbook.npz"
 FOLDS = (1, 2, 3, 4, 5)
 
+#: The detector trains on one fold. See the note beside task 3.
+DETECTOR_FOLD = 1
+
 #: Measured from the cache: writers holding at least one digit, and their rows.
 DIGIT_WRITERS = 3580
 DIGIT_ROWS = 402953
@@ -48,46 +51,47 @@ def lines() -> list[str]:
         f" --out {BOOKS}/all_writers_digits --folds 5 --seed 42"
         f" --train-rate 0.6 --eval-rate 0.2 --tag digits_all_writers",
     ]
-    # 3-7. g-init, one fold each, on the WHOLE digit dataset.
-    tasks += [
-        f"foa global-train --results-dir {ROOT}/ginit_fold{fold} {SETTING}"
-        f" --population all --fold-book {BOOK} --fold {fold}"
-        f" --epochs 100 {CONVERGE} --batch-size 64 --split-seed 42 --seed {fold}"
-        for fold in FOLDS
-    ]
-    # 8. the winner, by validation.
+    # 3. g-init, on ONE fold of the whole digit dataset.
+    #
+    #    THE DETECTOR IS NOT AN EXPERIMENT. It exists to draw one coarse line:
+    #    the worst DETECTOR_CUT of writers become the bad pool. The study's ten
+    #    clients are cut from that pool later, by g-0, so g-init only has to put
+    #    the badly served writers *inside a net of about a thousand* - it does
+    #    not have to rank them precisely.
+    #
+    #    Measured, and this is why one fold is enough: re-ranking with a whole
+    #    fold dropped - a far larger perturbation than retraining the same fold
+    #    - the net still contained 100% of the reference worst-fifty, at every
+    #    width tried. The pool's boundary does move, but the writers who move
+    #    are its least bad members, and g-0 would never select them.
+    #
+    #    One fold also removes a defect rather than managing it. With five, a
+    #    fold had to be crowned, and the five sat within six ten-thousandths of
+    #    a point of one another - so floating-point accumulation order chose the
+    #    study's clients. A rebuild crowned a different fold and re-derived a
+    #    cohort sharing three writers of ten with the published one. With one
+    #    fold there is nothing to crown.
+    #
+    #    The split itself is not a seed that gets re-derived: the fold book
+    #    stores the per-row assignment, so every later stage reads the same
+    #    rows this model held out.
     tasks.append(
-        f"foa select-fold --results-dir {ROOT} --resolution 28 --classes digits"
-        f" --root {ROOT} --prefix ginit --name ginit --folds 1 2 3 4 5"
+        f"foa global-train --results-dir {ROOT}/ginit_fold{DETECTOR_FOLD} {SETTING}"
+        f" --population all --fold-book {BOOK} --fold {DETECTOR_FOLD}"
+        f" --epochs 100 {CONVERGE} --batch-size 64 --split-seed 42"
+        f" --seed {DETECTOR_FOLD}"
     )
-    # 9-13. the detector: every writer on its own held-out digit rows, scored
-    #       once per fold. NOT once with the winning fold.
+    # 4. the detector: every writer on the rows this model did not train on.
     #
-    #       The five folds of g-init sit within six ten-thousandths of a point
-    #       of one another, so which one wins is decided by the order in which
-    #       floating-point error accumulates, and a rebuild crowned a different
-    #       fold than the first run did. A different detector ranks writers
-    #       differently, and the ranking is what chooses the study's clients:
-    #       a rebuild from an empty root re-derived a cohort sharing three
-    #       writers of ten with the published one.
-    #
-    #       The detector exists only to rank, so there is no reason to pick a
-    #       winner at all. Each fold scores every writer on rows that fold held
-    #       out, and the ranking is the mean of the five.
-    tasks += [
-        f"foa score-writers --results-dir {ROOT} --resolution 28 --classes digits"
-        f" --model-path {ROOT}/ginit_fold{fold}/global_model --fold-book {BOOK}"
-        f" --fold {fold} --batch-size 256"
-        f" --out {POOLS}/writer_scores_fold{fold}.json"
-        f" --accuracies-name clients_acc_fold{fold}.json"
-        for fold in FOLDS
-    ]
-    # 14. one ranking from the five. A writer is kept only when every fold
-    #     scored it, so nobody is ranked on less evidence than anybody else.
-    inputs = " ".join(f"{POOLS}/writer_scores_fold{fold}.json" for fold in FOLDS)
+    #    Every writer contributed training images to g-init, so scoring a writer
+    #    on all of its data would score the model against its own training set,
+    #    and the ranking would measure memorisation rather than difficulty. The
+    #    book is what still knows which rows fold DETECTOR_FOLD held out.
     tasks.append(
-        f"foa average-scores --results-dir {ROOT} --resolution 28 --classes digits"
-        f" --inputs {inputs} --out {POOLS}/writer_scores.json"
+        f"foa score-writers --results-dir {ROOT} --resolution 28 --classes digits"
+        f" --model-path {ROOT}/ginit_fold{DETECTOR_FOLD}/global_model"
+        f" --fold-book {BOOK} --fold {DETECTOR_FOLD} --batch-size 256"
+        f" --out {POOLS}/writer_scores.json"
         f" --accuracies-name clients_acc_on_global.json"
     )
     return tasks
@@ -122,31 +126,40 @@ def header(tasks: list[str]) -> list[str]:
         "# therefore built over every writer, and it records any unsplittable",
         "# writer per fold in its own metadata - which here will be empty.",
         "#",
-        "# NO SUBSTITUTION IS NEEDED, AND THAT IS DELIBERATE.",
+        "# ONE FOLD, AND WHY THAT IS ENOUGH.",
         "#",
-        "# Line 8 still records which of the five g-init folds scored best, for",
-        "# the centralized-max row. It no longer decides anything: lines 9-13",
-        "# score every writer once per fold and line 14 takes the mean.",
+        "# The detector is not an experiment. It draws one coarse line: the",
+        "# worst writers become the bad pool. The study's ten clients are cut",
+        "# from that pool later, by g-0, so g-init only has to put the badly",
+        "# served writers inside a net of about a thousand - it does not have to",
+        "# rank them precisely.",
         "#",
-        "# WHY NOT SCORE WITH THE WINNER. The five folds sit within six",
-        "# ten-thousandths of a point of each other, so which one wins is settled",
-        "# by the order in which floating-point error accumulates, not by any",
-        "# property of the data. A rebuild of this study crowned fold 4 where the",
-        "# first run crowned fold 3, and a different detector ranks writers",
-        "# differently - the rebuilt cohort shared three writers of ten with the",
-        "# published one. The detector exists only to rank, so there is no reason",
-        "# to pick a winner at all, and the mean of five equally good models is",
-        "# both steadier and the more honest summary of what they jointly say.",
+        "# Measured: re-ranking with a whole fold dropped, which is a far larger",
+        "# perturbation than retraining the same fold, the net still contained",
+        "# 100% of the reference worst-fifty at every width tried. The pool's",
+        "# boundary moves, but the writers who move are its least bad members,",
+        "# and g-0 would never select them.",
         "#",
-        "# WHY EACH FOLD SCORES ON ITS OWN ROWS. g-init trained on the whole",
-        "# digit dataset, so every writer contributed training images to it.",
-        "# Scoring a writer on all of its data would be scoring the model on its",
-        "# own training set, and the ranking would measure memorisation rather",
-        "# than difficulty. Fold k scores each writer on its validation+test rows",
-        "# of fold k - exactly the rows that fold did not train on. The book is",
-        "# what still knows which rows those were. A writer is kept only when",
-        "# every fold scored it, so nobody is ranked on less evidence than",
-        "# anybody else.",
+        "# One fold also removes a defect instead of managing it. With five, one",
+        "# had to be crowned, and the five sat within six ten-thousandths of a",
+        "# point of one another - so the order in which floating-point error",
+        "# accumulates chose the study's clients. A rebuild crowned fold 4 where",
+        "# the first run crowned fold 3 and re-derived a cohort sharing three",
+        "# writers of ten with the published one. With one fold there is nothing",
+        "# to crown, and no fold number to substitute anywhere in the chain.",
+        "#",
+        "# THE EXPERIMENTS ARE STILL FIVE-FOLD. This is the detector only. Every",
+        "# adaptation and preservation number in the study is a mean over the",
+        "# five folds of this same book, with fold-matched tests against FedAvg.",
+        "#",
+        "# WHY THE SCORING USES HELD-OUT ROWS. g-init trained on the whole digit",
+        "# dataset, so every writer contributed training images to it. Scoring a",
+        "# writer on all of its data would be scoring the model on its own",
+        "# training set, and the ranking would measure memorisation rather than",
+        "# difficulty. Each writer is scored on its validation+test rows of the",
+        "# detector's fold - exactly the rows that model did not train on. The",
+        "# book stores that assignment, so it is not re-derived from a seed: the",
+        "# rows are the same rows for every later stage that reads the book.",
         "#",
         "# THE BANKING STEP (line 1) is independent of everything: it reads the",
         "# cache and counts. It writes each writer's digit total and its per-class",
@@ -206,19 +219,12 @@ SB=$J/study_phase.sbatch
 # 1-2. the paper trail and the book (a chain: nothing else can start first)
 $A --array=1-2%1 $SB $J/d01_p02.txt
 
-# 3-7. the five g-init folds (independent of each other)
-$A --array=3-7%5 $SB $J/d01_p02.txt
+# 3. g-init, on the detector's single fold
+$A --array=3 $SB $J/d01_p02.txt
 
-# 8. the best fold, by VALIDATION accuracy - never test. Recorded for the
-#    centralized-max row; it does not decide the ranking.
-$A --array=8 $SB $J/d01_p02.txt
-
-# 9-13. the detector: every writer on its held-out rows, once per fold.
-#       Nothing is exported and no fold is substituted - see the task file.
-$A --array=9-13%5 $SB $J/d01_p02.txt
-
-# 14. one ranking from the five, by the mean.
-$A --array=14 $SB $J/d01_p02.txt
+# 4. the detector: every writer on the rows that model did not train on.
+#    Nothing is exported and no fold is substituted - see the task file.
+$A --array=4 $SB $J/d01_p02.txt
 ```
 
 ## Cost
@@ -241,15 +247,13 @@ sbatch's 4-hour default covers the 100-epoch ceiling with room to spare.
 ```
 studies/{STUDY}/
   fold_books/all_writers_digits.foldbook.npz
-  ginit_fold1..5/                     the five folds and their metrics
-  ginit_model, ginit_selection.json   the detector and the "centralized max" row
-  outliers/writer_scores_fold1..5.json  each fold's opinion of every writer
-  outliers/writer_scores.json         the mean of the five: the ranking
+  ginit_fold1/                        the detector and its metrics
+  outliers/writer_scores.json         the ranking
   outliers/clients_acc_on_global.json the flat ranking every later stage reads
   outliers/writer_counts.json/.csv    per-writer totals and per-class counts
 ```
 
-`ginit_selection.json` carries the per-fold validation and test accuracies with
+`ginit_fold1/` carries the detector's validation and test accuracies with
 their mean and spread - the paper's "centralized max" row.
 """
 

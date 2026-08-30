@@ -47,7 +47,10 @@ TRACKED = [
     ("outliers/cohort_worst5.json", False),
     ("outliers/cohort_worst10.json", True),
     ("outliers/cohort_worst20.json", False),
-    ("ginit_selection.json", True),
+    # Only written when several detector folds are trained and one is
+    # crowned. The detector uses a single fold, so there is nothing to
+    # crown and nothing to record.
+    ("ginit_selection.json", False),
     ("g0_selection.json", True),
 ]
 

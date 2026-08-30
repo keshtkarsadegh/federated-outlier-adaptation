@@ -18,16 +18,16 @@ gres      = "gpu:A100:1"
 [[stage]]
 name     = "p02_ginit"
 tasks    = "d01_p02.txt"
-count    = 9
-array    = "1-9%1"
-produces = ["$FOA_STUDY_DIR/ginit_model"]
+count    = 4
+array    = "1-4%1"
+produces = ["$FOA_STUDY_DIR/outliers/writer_scores.json"]
 
 [[stage]]
 name     = "p05v2_cohort"
 tasks    = "d01_p05v2.txt"
 count    = 26
 array    = "1-26%1"
-requires = ["$FOA_STUDY_DIR/ginit_model"]
+requires = ["$FOA_STUDY_DIR/outliers/writer_scores.json"]
 produces = [
     "$FOA_STUDY_DIR/g0_model",
     "$FOA_STUDY_DIR/outliers/cohort_worst10.json",

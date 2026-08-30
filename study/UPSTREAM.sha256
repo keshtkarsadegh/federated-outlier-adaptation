@@ -13,16 +13,12 @@ b2a76dfb555a1fc3764672bb8514455727d28fbdd18df4ce5abbd85a879f430c  by_class_md5.l
 # --- packed cache, the output of `foa prepare-data` (docs/DATA.md) ---------
 # Reproducing these four exactly is the byte-level check that your conversion
 # matched ours. nist28_images.npy is 638 MB and is the one that matters.
-b9e8217362ee1227ed6c79bd742f71db84d9bbcaac2d0c2a9e21155b7ca27f6f  nist28_index.json
+00a12c6a51d89bb7e606069afb1c37db4f1e7935975f978857978d3d94b6edb3  nist28_index.json
 66ed05d90aad2d31e01c94aadfc458fcf4ad3f4407bc3845ace8792cbf868aaf  nist28_labels.npy
 55a72acff7304b0c3c6f694e662254995092352c9fecfad15d8db2c45f04e943  nist28_writers.npy
 52ac9ac79a6149a69505eb7fad02309eedd7bf61437d1b30342f686d55d53b0f  nist28_images.npy
 #
-# --- trained models (6.6 MB each; SHIPPED in study/artifacts/models/) ------
-# ginit_model  the coarse detector: trained on every writer, used ONLY to split
-#              the population into a BAD and a GOOD pool.
-# g0_model     the shipped model: trained on the 200 old writers of the winning
-#              fold, never saw a cohort writer. Every adaptation run starts here
-#              and every penalty anchors on it.
-48689ec85d5921b8bd36fa53545fc368f8e9441f4acbec158da36c4e8b09f950  ginit_model
-cb06fb83b17b3f85730e3763b70560b293b689068d1adc96774f15bd0f2989ed  g0_model
+# --- trained models -------------------------------------------------------
+# Not listed any more. The study no longer ships trained models: they are
+# outputs of the programme, and a committed copy is how a stale artefact
+# outlives the ranking that produced it.
