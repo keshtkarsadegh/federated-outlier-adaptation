@@ -299,7 +299,7 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     # Cells the boundary rule added after the screen ran. Without this they are
     # trained and then ignored, because the candidate list is fixed at import
     # time and cannot know which ranges a particular cohort will push against.
-    extra = root / "tables" / "boundary_ext_cells.json"
+    extra = root / "tables" / "boundary_ext_cells_agg.json"
     if extra.is_file():
         known = {c["id"] for c in cells}
         added = [c for c in json.loads(extra.read_text()) if c["id"] not in known]
@@ -540,6 +540,17 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     being useless on the other.
     """
     cells = reg_cells.screen_cells()
+
+    # Cells the boundary rule added after the screen ran; without this they are
+    # trained and then ignored, the candidate list being fixed at import time.
+    extra = root / "tables" / "boundary_ext_cells_reg.json"
+    if extra.is_file():
+        known = {c["id"] for c in cells}
+        added = [c for c in json.loads(extra.read_text()) if c["id"] not in known]
+        if added:
+            print(f"  boundary extension: {len(added)} extra cell(s) considered")
+            cells = cells + added
+
     rows = reg_selector.summarise(
         reg_selector.collect(root, cells, prefixes(cfg)["reg_screen"])
     )

@@ -30,7 +30,7 @@ import re
 import sys
 from pathlib import Path
 
-from federated_outlier_adaptation.training import agg_cells
+from federated_outlier_adaptation.training import agg_cells, reg_cells
 from federated_outlier_adaptation.training import study_lines as SL
 from federated_outlier_adaptation.training.study_config import STUDIES
 
@@ -61,6 +61,13 @@ def continue_row(row: list, end: str, steps: int = 2) -> list:
     row = sorted(row)
     if len(row) < 2:
         return []
+    # A STRENGTH OF ZERO IS ALREADY THE END OF THE ROAD. When the low end is
+    # zero the winner is "no penalty at all", and there is nothing below it to
+    # try: a negative strength is not a weaker penalty, it is a penalty applied
+    # backwards. The finding is that the penalty earns nothing, and reopening
+    # the range would only bury it.
+    if end == "LOW" and row[0] <= 0:
+        return []
     if end == "LOW":
         ratio = row[1] / row[0]
         out, value = [], row[0]
@@ -86,6 +93,8 @@ def main() -> int:
     ap.add_argument("--clients-per-round", type=int, default=None)
     ap.add_argument("--label", default="p11/agg-full",
                     help="Only act on hits recorded under this label.")
+    ap.add_argument("--grid", choices=("agg", "reg"), default="agg",
+                    help="Which grid's cells the hits refer to.")
     args = ap.parse_args()
 
     cfg = STUDIES[args.study]
@@ -97,7 +106,13 @@ def main() -> int:
     if not report.is_file():
         raise SystemExit(f"no boundary report at {report}")
 
-    by_id = {c["id"]: c for c in agg_cells.screen_cells()}
+    if args.grid == "agg":
+        catalogue = agg_cells.screen_cells()
+        flag_home = "flags"
+    else:
+        catalogue = reg_cells.screen_cells()
+        flag_home = "hypers"
+    by_id = {c["id"]: c for c in catalogue}
     seen, new_cells = set(), []
 
     for line in report.read_text().splitlines():
@@ -117,44 +132,55 @@ def main() -> int:
         flag, end = m["flag"], m["end"]
         row = ast.literal_eval(m["row"])
         for value in continue_row(row, end):
-            flags = dict(base["flags"])
+            flags = dict(base[flag_home])
             flags[flag] = value
             # THE ID DECIDES WHICH METHOD THE CELL BELONGS TO. Grouping is by
             # id prefix, not by rule, so a cell named from the rule's last word
             # forms its own method of one and is never compared against the row
             # it was meant to extend. It runs, it is collected, and it loses to
             # nothing.
-            method = SL.agg_method_of(base)
-            parts = [method]
-            parts += [f"{k.split('_')[-1]}{tag(v)}" for k, v in sorted(flags.items())]
-            cell_id = "_".join(parts)
+            if args.grid == "agg":
+                # Grouping is by id PREFIX here, not by any field, so the name
+                # decides the method. A cell named from anything else forms a
+                # method of one and is never compared against the row it was
+                # meant to extend.
+                method = SL.agg_method_of(base)
+                parts = [method]
+                parts += [f"{k.split('_')[-1]}{tag(v)}" for k, v in sorted(flags.items())]
+                cell_id = "_".join(parts)
+                if cell_id not in by_id and cell_id not in seen:
+                    if SL.agg_method_of({"id": cell_id}) != method:
+                        raise SystemExit(
+                            f"{cell_id} would group under "
+                            f"{SL.agg_method_of({'id': cell_id})!r}, not {method!r}."
+                        )
+            else:
+                # Regularisation cells carry their method explicitly, so the id
+                # only has to be unique.
+                method = base["method"]
+                parts = [method]
+                parts += [f"{k}{tag(v)}" for k, v in sorted(flags.items())]
+                cell_id = "_".join(parts)
             if cell_id in by_id or cell_id in seen:
                 continue
-            if SL.agg_method_of({"id": cell_id}) != method:
-                raise SystemExit(
-                    f"{cell_id} would group under "
-                    f"{SL.agg_method_of({'id': cell_id})!r}, not {method!r}; "
-                    "the extension would never be compared against its own row."
-                )
             seen.add(cell_id)
-            new_cells.append({
-                "id": cell_id,
-                "path": base["path"],
-                "rule": base["rule"],
-                "flags": flags,
-                "note": (f"boundary extension of {base['id']}: {flag}={value}, "
-                         f"{end.lower()} of the swept row"),
-            })
+            cell = dict(base)
+            cell["id"] = cell_id
+            cell[flag_home] = flags
+            cell["note"] = (f"boundary extension of {base['id']}: {flag}={value}, "
+                            f"{end.lower()} of the swept row")
+            new_cells.append(cell)
 
     if not new_cells:
         print("no extension needed: no winner sits at a grid edge.")
         args.out.write_text("# no boundary extension needed\n")
         return 0
 
+    emit_line = SL.agg_line if args.grid == "agg" else SL.reg_line
     lines = []
     for index, cell in enumerate(new_cells):
         for fold in SL.folds_of(cfg):
-            lines.append(SL.agg_line(
+            lines.append(emit_line(
                 cfg, cell, fold, SL.SCREEN_ROUNDS,
                 cfg.seed_base + SEED_OFFSET + index * 10 + fold,
             ))
@@ -185,7 +211,7 @@ def main() -> int:
     # round from the selector's candidate list while their results sat on disk,
     # which is the same silent loss this file exists to prevent.
     import json as _json
-    record = args.root / "tables" / "boundary_ext_cells.json"
+    record = args.root / "tables" / f"boundary_ext_cells_{args.grid}.json"
     record.parent.mkdir(parents=True, exist_ok=True)
     kept = []
     if record.is_file():
