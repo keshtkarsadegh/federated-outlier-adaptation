@@ -233,6 +233,59 @@ def write_table(payload: Any, root: Path, name: str) -> Path:
 # --------------------------------------------------------------------------- #
 # the screen's winners, and the full-horizon file they would feed
 # --------------------------------------------------------------------------- #
+def shipped_baselines(root: Path) -> tuple:
+    """
+    The shipped model's own two accuracies, measured, not assumed.
+
+    A_0  g-0 on the cohort's test rows: what the shipped model already gets
+         right on the new clients, before anything is adapted.
+    P_0  g-0 on the source population's test rows: what it knows about the old
+         writers, before anything touches it.
+
+    Both come from evaluate-book in the selection stage, one record per fold.
+    """
+    def mean_accuracy(name: str):
+        path = root / name
+        if not path.is_file():
+            return None
+        payload = json.loads(path.read_text())
+        records = payload if isinstance(payload, list) else list(payload.values())
+        values = [r["accuracy"] for r in records
+                  if isinstance(r, dict) and isinstance(r.get("accuracy"), (int, float))]
+        return sum(values) / len(values) if values else None
+
+    a0 = mean_accuracy("g0_perfold_evaluations.json")
+    p0 = mean_accuracy("g0_evaluations.json")
+    if a0 is None or p0 is None:
+        raise SystemExit(
+            "FATAL: the shipped model's own accuracies are missing "
+            f"({root}/g0_perfold_evaluations.json, g0_evaluations.json). "
+            "Selection is measured against them and cannot be guessed."
+        )
+    return a0, p0
+
+
+def trade_score(row, a0: float, p0: float) -> float:
+    """
+    What a configuration gained, less what it spent to get it.
+
+    THE RULE. A run is worth choosing when the adaptation it ADDS on the new
+    clients exceeds the source knowledge it SPENDS. Selecting on adaptation
+    alone picks, for every method, the setting that constrains least - the
+    weakest anchor, the largest server step - so every "winner" is the cell
+    closest to plain FedAvg and the table reports that no method preserves
+    anything. That is an artefact of the rule, not a property of the methods.
+
+    Weighting a point of forgetting equally against a point of adaptation is a
+    choice, but not a delicate one: on this study the same cell wins at one,
+    two and three points, so the answer does not turn on the number.
+    """
+    a = row["adaptation"]["mean"]
+    p = row["preservation"]["mean"]
+    return (a - a0) - (p0 - p)
+
+
+
 def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = False) -> int:
     """
     Each aggregation method's best cell, as a full-horizon task file.
@@ -262,6 +315,9 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     for cell in cells:
         by_method.setdefault((cell["path"], SL.agg_method_of(cell)), []).append(cell)
 
+    a0, p0 = shipped_baselines(root)
+    print(f"  shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}")
+
     winners, record, hits = [], {}, []
     for key in SL.AGG_METHODS:
         siblings = by_method[key]
@@ -275,13 +331,16 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
             best = siblings[0]
             record["/".join(key)] = {"winner": best["id"], "measured": False}
         else:
-            top = max(scored, key=lambda r: r["adaptation"]["mean"])
+            top = max(scored, key=lambda r: trade_score(r, a0, p0))
             best = by_id[top["id"]]
             record["/".join(key)] = {
                 "winner": best["id"], "measured": True,
                 "adaptation": top["adaptation"]["mean"],
                 "adaptation_sd": top["adaptation"]["sd"],
                 "preservation": top["preservation"]["mean"],
+                "gained": top["adaptation"]["mean"] - a0,
+                "spent": p0 - top["preservation"]["mean"],
+                "trade_score": trade_score(top, a0, p0),
                 "considered": len(scored),
             }
             hits.extend(numeric_boundary(best, siblings, "flags"))
@@ -328,7 +387,8 @@ def _method_winner(cfg, root: Path, method: str):
     ]
     if not scored:
         raise SystemExit(f"Nothing measured for method {method!r}; cannot re-select.")
-    top = max(scored, key=lambda r: r["adaptation"]["mean"])
+    a0, p0 = shipped_baselines(root)
+    top = max(scored, key=lambda r: trade_score(r, a0, p0))
     by_id = {c["id"]: c for c in cells}
     return by_id[top["id"]], siblings, top, len(scored)
 
@@ -486,6 +546,9 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     by_id = {cell["id"]: cell for cell in cells}
     by_method = reg_cells.cells_by_method()
 
+    a0, p0 = shipped_baselines(root)
+    print(f"  shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}")
+
     winners, record, hits = [], {}, []
     for method in SL.REG_METHODS:
         siblings = by_method[method]
@@ -501,7 +564,7 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
                 best = siblings[0]
                 record[f"{method}/{family}"] = {"winner": best["id"], "measured": False}
             else:
-                top = max(scored, key=lambda r: r["adaptation"]["mean"])
+                top = max(scored, key=lambda r: trade_score(r, a0, p0))
                 best = by_id[top["id"]]
                 record[f"{method}/{family}"] = {
                     "winner": best["id"], "measured": True,
@@ -694,7 +757,8 @@ def reg_patch(cfg, root: Path, out: Path, expect: int,
         )
         return 1
 
-    top = max(scored, key=lambda r: r["adaptation"]["mean"])
+    a0, p0 = shipped_baselines(root)
+    top = max(scored, key=lambda r: trade_score(r, a0, p0))
     by_id = {cell["id"]: cell for cell in cells}
     winner = by_id[top["id"]]
 

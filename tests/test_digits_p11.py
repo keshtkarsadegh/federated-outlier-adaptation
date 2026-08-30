@@ -27,6 +27,25 @@ from federated_outlier_adaptation.training.study_config import (
 TOOLS = str(Path(__file__).resolve().parents[1] / "tools")
 
 
+@pytest.fixture(autouse=True)
+def _shipped_baselines(tmp_path):
+    """
+    Every synthetic study root carries g-0's own two accuracies.
+
+    Selection is measured against them - what a run ADDED on the new clients,
+    less the source knowledge it SPENT - so a root without them is not a study
+    root, and the emitters refuse it rather than guess. The real programme
+    writes these in the selection stage, one record per fold.
+    """
+    for name, accuracy in (("g0_perfold_evaluations.json", 0.8225),
+                           ("g0_evaluations.json", 0.9986)):
+        (tmp_path / name).write_text(json.dumps({
+            str(fold): {"fold": fold, "part": "test", "accuracy": accuracy}
+            for fold in (1, 2, 3, 4, 5)
+        }))
+    return tmp_path
+
+
 @pytest.fixture()
 def tools_path():
     if TOOLS not in sys.path:
