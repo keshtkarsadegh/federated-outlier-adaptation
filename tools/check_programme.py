@@ -41,6 +41,16 @@ SIDE_EFFECTS = {
 }
 
 
+#: Producers that are not `foa` commands, and what they write.
+SCRIPT_EFFECTS = {
+    "make_extreme_cohorts.py": [
+        "outliers/extreme_single.json",
+        "outliers/extreme_double.json",
+        "outliers/extreme_dual.json",
+    ],
+}
+
+
 def tokens(line):
     return line.split()
 
@@ -67,10 +77,32 @@ print(f"stages: {len(stages)}\n")
 for stage in stages:
     reads, writes = set(), set()
     for line in stage.read_text().splitlines():
-        if not line.startswith("foa "):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
             continue
         parts = tokens(line)
+
+        # NOT EVERY PRODUCER IS A `foa` COMMAND. The extreme cohorts are cut by
+        # a script, and a checker that only reads `foa` lines would report the
+        # stage that consumes them as unmet - which is exactly the kind of false
+        # alarm that teaches people to ignore the checker.
+        if not line.startswith("foa "):
+            for name, made in SCRIPT_EFFECTS.items():
+                if name in line:
+                    writes.update(made)
+            continue
         cmd = parts[1]
+
+        # `global-train --results-dir D` writes D/global_model. Most stages
+        # point --results-dir at the study root, but the detector folds each get
+        # their own, so the flag has to be read rather than assumed.
+        if cmd == "global-train":
+            for value in flag_value(parts, "--results-dir"):
+                if value.startswith("$FOA_STUDY_DIR"):
+                    base = normalise(value).rstrip("/")
+                    if base and base != "$FOA_STUDY_DIR":
+                        writes.add(f"{base}/global_model")
+                        writes.add(f"{base}/global_results/fisher")
         for flag in READS:
             for value in flag_value(parts, flag):
                 if value.startswith(EXTERNAL_OK):
