@@ -546,6 +546,9 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     by_id = {cell["id"]: cell for cell in cells}
     by_method = reg_cells.cells_by_method()
 
+    a0, p0 = shipped_baselines(root)
+    print(f"  shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}")
+
     winners, record, hits = [], {}, []
     for method in SL.REG_METHODS:
         siblings = by_method[method]
@@ -561,13 +564,16 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
                 best = siblings[0]
                 record[f"{method}/{family}"] = {"winner": best["id"], "measured": False}
             else:
-                # THE REGULARISATION RULE IS NOT SETTLED. The aggregation
-                # grid chooses on gain less spend; whether a penalty should be
-                # judged the same way is a separate question, because a penalty
-                # is bought FOR preservation - spending it is not a side effect
-                # but a contradiction. Left on adaptation until that is decided,
-                # so the choice is made once, deliberately, and not inherited.
-                top = max(scored, key=lambda r: r["adaptation"]["mean"])
+                # ONE RULE FOR BOTH GRIDS. A penalty is bought for
+                # preservation, so the temptation is to weight preservation
+                # more heavily here - but that fails the same way selecting on
+                # adaptation failed, only from the other side: it would crown
+                # the most constraining penalty, the one that spends nothing
+                # because it lets the model move nowhere. At equal weight a
+                # penalty that really protects preservation wins on its merits,
+                # by spending less for a comparable gain, and the two tables
+                # stay comparable with each other.
+                top = max(scored, key=lambda r: trade_score(r, a0, p0))
                 best = by_id[top["id"]]
                 record[f"{method}/{family}"] = {
                     "winner": best["id"], "measured": True,
@@ -760,8 +766,8 @@ def reg_patch(cfg, root: Path, out: Path, expect: int,
         )
         return 1
 
-    # Pending the regularisation rule; see reg_full.
-    top = max(scored, key=lambda r: r["adaptation"]["mean"])
+    a0, p0 = shipped_baselines(root)
+    top = max(scored, key=lambda r: trade_score(r, a0, p0))
     by_id = {cell["id"]: cell for cell in cells}
     winner = by_id[top["id"]]
 

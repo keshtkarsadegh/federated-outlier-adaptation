@@ -118,31 +118,32 @@ def test_a_root_without_the_baselines_is_refused(tmp_path):
         study_emit.shipped_baselines(tmp_path)
 
 
-def test_both_aggregation_selections_use_the_rule():
+def test_every_selection_in_the_programme_uses_the_same_rule():
     """
-    Two places choose an aggregation winner: the finals and the patch that
-    re-selects one method. A rule applied to one of them is a table whose rows
-    were not chosen the same way.
+    Four places pick a winner: the aggregation finals and their patch, the
+    regularisation finals and theirs. One rule for all four, or the two tables
+    were not chosen the same way and cannot be read against each other.
     """
     source = Path(study_emit.__file__).read_text()
     picks = [line for line in source.splitlines() if "max(scored" in line]
     assert len(picks) == 4, f"expected four selection sites, found {len(picks)}"
-    using = [line for line in picks if "trade_score" in line]
-    assert len(using) == 2, (
-        "the two aggregation sites must select on gain less spend; "
-        f"found {len(using)}"
-    )
+    for line in picks:
+        assert "trade_score" in line, f"selects without the rule: {line.strip()}"
 
 
-def test_the_regularisation_rule_is_still_open_and_says_so():
+def test_weighting_preservation_higher_would_crown_the_most_constraining_cell():
     """
-    The penalties are judged on adaptation for now, deliberately.
+    Why the weight stays at one for the penalties too.
 
-    Whether a penalty should be chosen the same way as a server rule is a
-    separate question: a penalty is bought FOR preservation, so spending
-    preservation is not a side effect of it but a contradiction of it. The
-    marker keeps that an open decision rather than an inherited one.
+    A penalty is bought for preservation, so weighting preservation more looks
+    natural. It fails the way selecting on adaptation failed, from the other
+    side: the winner becomes the cell that spends least because it moves least.
     """
-    source = Path(study_emit.__file__).read_text()
-    assert "THE REGULARISATION RULE IS NOT SETTLED" in source
-    assert "Pending the regularisation rule" in source
+    strong = _row("penalty_very_strong", A0 + 0.005, P0 - 0.001)   # barely moves
+    useful = _row("penalty_balanced", A0 + 0.090, P0 - 0.010)      # real adaptation
+
+    at_one = lambda r: (r["adaptation"]["mean"] - A0) - 1.0 * (P0 - r["preservation"]["mean"])
+    at_ten = lambda r: (r["adaptation"]["mean"] - A0) - 10.0 * (P0 - r["preservation"]["mean"])
+
+    assert at_one(useful) > at_one(strong)
+    assert at_ten(strong) > at_ten(useful), "a heavy weight really does crown timidity"
