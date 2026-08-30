@@ -555,7 +555,16 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
         reg_selector.collect(root, cells, prefixes(cfg)["reg_screen"])
     )
     by_id = {cell["id"]: cell for cell in cells}
-    by_method = reg_cells.cells_by_method()
+
+    # GROUP THE LIST WE ACTUALLY HAVE. cells_by_method() rebuilds the grouping
+    # from the fixed catalogue, so an extension cell was collected, scored, and
+    # then left out of every method's sibling set - considered by the summary
+    # and compared against nothing. The range it was made to reopen stayed shut
+    # and the selector reported the same edge again, which is precisely the
+    # failure this extension exists to end.
+    by_method: Dict[str, List[Dict[str, Any]]] = {name: [] for name in reg_cells.methods()}
+    for cell in cells:
+        by_method.setdefault(cell["method"], []).append(cell)
 
     a0, p0 = shipped_baselines(root)
     print(f"  shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}")

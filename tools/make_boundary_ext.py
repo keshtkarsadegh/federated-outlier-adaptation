@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import sys
 from pathlib import Path
@@ -112,6 +113,18 @@ def main() -> int:
     else:
         catalogue = reg_cells.screen_cells()
         flag_home = "hypers"
+    # THE RULE CAN FIRE MORE THAN ONCE. A reopened range can end at its own new
+    # edge, and the second round's hit names a cell the FIRST round invented -
+    # which the fixed catalogue has never heard of. Without its own record in
+    # the catalogue the generator reports "unknown cell" and stops, exactly
+    # where the search was still moving.
+    record = args.root / "tables" / f"boundary_ext_cells_{args.grid}.json"
+    if record.is_file():
+        known = {c["id"] for c in catalogue}
+        earlier = [c for c in json.loads(record.read_text()) if c["id"] not in known]
+        if earlier:
+            print(f"  {len(earlier)} cell(s) from earlier rounds are extendable too")
+            catalogue = catalogue + earlier
     by_id = {c["id"]: c for c in catalogue}
     seen, new_cells = set(), []
 
