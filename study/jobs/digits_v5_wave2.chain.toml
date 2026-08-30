@@ -1,0 +1,67 @@
+# Wave 2: everything the screens do not gate.
+#
+# The references first, because a federation number means nothing on its own -
+# it is read against what the shipped model already scores on that cohort, what
+# a client reaches alone, what pooling reaches, and what plain FedAvg does at
+# the same participation. Then the points whose configuration is already fixed:
+# the three extreme cohorts and the other federation sizes.
+#
+# These name their writers literally, so they were regenerated against the
+# repaired ranking rather than reused. Normalised for writer ids they are
+# byte-identical to the originals, which is how the staleness was caught.
+study    = "Digits_study01"
+jobs_dir = "results_v5/studies/Digits_study01/jobs"
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "12:00:00"
+[[stage]]
+name  = "w2_refs_c5"
+tasks = "s19_refs_c5.txt"
+count = 75
+array = "1-75%8"
+[[stage]]
+name  = "w2_refs_c10"
+tasks = "s20_refs_c10.txt"
+count = 135
+array = "1-135%8"
+[[stage]]
+name  = "w2_refs_c20"
+tasks = "s21_refs_c20.txt"
+count = 235
+array = "1-235%8"
+[[stage]]
+name  = "w2_refs_xsingle"
+tasks = "s22_refs_xsingle.txt"
+count = 35
+array = "1-35%8"
+[[stage]]
+name  = "w2_refs_xdouble"
+tasks = "s23_refs_xdouble.txt"
+count = 45
+array = "1-45%8"
+[[stage]]
+name  = "w2_refs_xdual"
+tasks = "s24_refs_xdual.txt"
+count = 35
+array = "1-35%8"
+[[stage]]
+name  = "w2_extremes"
+tasks = "s15_extremes.txt"
+count = 15
+array = "1-15%8"
+[[stage]]
+name  = "w2_five"
+tasks = "s16_five.txt"
+count = 20
+array = "1-20%8"
+[[stage]]
+name  = "w2_drop20"
+tasks = "s17_drop20.txt"
+count = 20
+array = "1-20%8"
+[[stage]]
+name  = "w2_c20"
+tasks = "s18_c20.txt"
+count = 30
+array = "1-30%8"

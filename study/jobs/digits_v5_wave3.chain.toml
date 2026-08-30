@@ -1,0 +1,22 @@
+# Wave 3: the two screens.
+#
+# Screen-then-full. The whole grid runs at a short horizon; only what survives
+# is re-run to the full budget. The finals are NOT listed here: they are cut
+# from these screens winners, so emitting them now would be emitting the
+# previous cohorts winners under a new cohort.
+study    = "Digits_study01"
+jobs_dir = "results_v5/studies/Digits_study01/jobs"
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "12:00:00"
+[[stage]]
+name  = "w3_agg_screen"
+tasks = "s05_agg_screen.txt"
+count = 845
+array = "1-845%8"
+[[stage]]
+name  = "w3_reg_screen"
+tasks = "s09_reg_screen.txt"
+count = 585
+array = "1-585%8"
