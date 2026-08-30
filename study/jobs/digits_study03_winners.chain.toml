@@ -1,0 +1,22 @@
+# Digits_study03 - Study01's crowned combinations, transferred.
+#
+#   foa submit study/jobs/digits_study03_winners.chain.toml --go
+
+study    = "Digits_study03"
+jobs_dir = "results_v4/studies/Digits_study03/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "08:00:00"
+
+[[stage]]
+name     = "d03_winners"
+tasks    = "d03_winners.txt"
+count    = 10
+array    = "1-10"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/outliers/cohort_worst5.json",
+    "$FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz",
+]

@@ -208,8 +208,18 @@ class FoldBook:
         return int(self.assignment.shape[1])
 
     def covers(self, writer: str) -> bool:
-        """Whether this book holds a split for a writer."""
-        return writer in set(self.writers)
+        """
+        Whether this book holds a split for a client.
+
+        A merged client is covered when **every one of its members** is: a
+        bundle half of whose writers are missing is not a client this book can
+        split, and answering ``True`` would let a caller build a training set
+        out of the half that happens to be there.
+        """
+        from federated_outlier_adaptation.data.merged_clients import members
+
+        known = set(self.writers)
+        return all(member in known for member in members(writer))
 
     # ------------------------------------------------------------------ lookup
     def _writer_rows(self) -> Dict[str, np.ndarray]:
@@ -241,12 +251,22 @@ class FoldBook:
             raise ValueError(f"Unknown part {part!r}; expected one of {PARTS}")
         if not 1 <= int(fold) <= self.folds:
             raise ValueError(f"Fold {fold} is outside 1..{self.folds}")
-        rows = self._writer_rows().get(writer)
-        if rows is None or rows.size == 0:
-            return []
+        from federated_outlier_adaptation.data.merged_clients import members
+
+        # A CLIENT MAY BE SEVERAL WRITERS. Its rows are the union of theirs, per
+        # part - each writer keeps its own split and nothing is re-cut, so a
+        # merged client holds exactly what its members hold and no row moves
+        # between partitions. A plain id has one member: itself.
         wanted = PARTS.index(part)
-        assigned = self.assignment[int(fold) - 1, rows]
-        return sorted(int(row) for row in rows[assigned == wanted])
+        by_writer = self._writer_rows()
+        found = []
+        for member in members(writer):
+            rows = by_writer.get(member)
+            if rows is None or rows.size == 0:
+                continue
+            assigned = self.assignment[int(fold) - 1, rows]
+            found.extend(int(row) for row in rows[assigned == wanted])
+        return sorted(found)
 
     def split(self, fold: int, writers: Sequence[str]) -> Dict[str, List[int]]:
         """The three parts of one fold, pooled over several writers."""

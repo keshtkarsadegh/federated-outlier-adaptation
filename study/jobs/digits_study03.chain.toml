@@ -1,0 +1,57 @@
+# Digits_study03 - the five-client study: references and plain federated learning.
+#
+# Study01's protocol on the worst FIVE writers, four of five per round, with
+# Study01's own old population, fold book and g-0 inherited unchanged - so the
+# two studies differ in one thing, the size of the federation.
+#
+#   foa submit study/jobs/digits_study03.chain.toml --go
+
+study    = "Digits_study03"
+jobs_dir = "results_v4/studies/Digits_study03/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "08:00:00"
+
+# Throttled: the ten lines append to two shared JSON files and would race.
+[[stage]]
+name     = "d03_donothing"
+tasks    = "d03_donothing.txt"
+count    = 10
+array    = "1-10%1"
+time     = "01:00:00"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/outliers/cohort_worst5.json",
+    "$FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz",
+    "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz",
+]
+produces = [
+    "$FOA_STUDY_DIR/g0_evaluations.json",
+    "$FOA_STUDY_DIR/g0_perfold_evaluations.json",
+]
+
+[[stage]]
+name     = "d03_isolated"
+tasks    = "d03_isolated.txt"
+count    = 50
+array    = "1-50"
+time     = "04:00:00"
+requires = ["$FOA_STUDY_DIR/g0_model"]
+
+[[stage]]
+name     = "d03_centralized"
+tasks    = "d03_centralized.txt"
+count    = 10
+array    = "1-10"
+time     = "04:00:00"
+requires = ["$FOA_STUDY_DIR/g0_model"]
+
+# The long ones: a hundred rounds, five local epochs, four of five clients.
+[[stage]]
+name     = "d03_fl"
+tasks    = "d03_fl.txt"
+count    = 10
+array    = "1-10"
+requires = ["$FOA_STUDY_DIR/g0_model"]

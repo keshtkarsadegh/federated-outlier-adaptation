@@ -241,6 +241,29 @@ def isolated_training(
             eval_batch_size=eval_batch_size,
         )
 
+    # REFUSE A CLIENT THE BOOK DOES NOT COVER, AND ONLY THAT.
+    #
+    # Two different things look alike downstream and must not be treated alike.
+    # A client the book covers but which this fold leaves too thin to train is
+    # DATA: it is recorded, skipped, and the other clients carry the fold. A
+    # client the book does not cover at all is a CONFIGURATION ERROR - the book
+    # was built over the wrong writers, or over writers rather than over the
+    # clients those writers make up - and it yields no rows for any fold.
+    #
+    # The second used to be silent. A hundred array elements of the multi-writer
+    # study ran with merged ids the book had never heard of, trained nothing,
+    # wrote "trained": 0 and exited zero. Nothing downstream could tell that
+    # from a real result.
+    uncovered = [client for client in training_clients if not cohort_book.covers(client)]
+    if uncovered:
+        raise ValueError(
+            f"the fold book does not cover {len(uncovered)} of the "
+            f"{len(training_clients)} client(s) requested: {', '.join(uncovered)}. "
+            "It yields no rows for them in any fold, so this run would train on "
+            "nothing and report success. Check that the book was built over the "
+            "writers these clients are made of."
+        )
+
     per_client: Dict[str, Dict[str, Any]] = {}
     own_entries: List[tuple] = []
     skipped: List[str] = []

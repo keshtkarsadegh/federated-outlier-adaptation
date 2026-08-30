@@ -1,0 +1,21 @@
+# Digits_study01 - the twenty-client stage at folds 2-5.
+#
+#   foa submit study/jobs/digits_p20_folds.chain.toml --go
+
+study    = "Digits_study01"
+jobs_dir = "results_v4/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "08:00:00"
+
+[[stage]]
+name     = "p20_folds2to5"
+tasks    = "d01_p20_folds2to5.txt"
+count    = 24
+array    = "1-24"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/outliers/cohort_worst20.json",
+]

@@ -1,8 +1,11 @@
 """
 The study this pipeline builds for, as data rather than as scattered constants.
 
-One study is live: ``Digits_study01`` - NIST SD19 digits 0-9, ten outlier
-clients, two hundred old writers, nine of ten training per round.
+Two studies are live, both NIST SD19 digits 0-9 with nine of ten clients
+training per round: ``Digits_study01``, where a client is one outlier
+writer and two hundred writers are retained, and ``Digits_study02``, where
+a client is two or three outlier writers drawn from the worst thirty and
+three hundred writers are retained.
 
 The multi-study grid that used to live here is gone with the 62-class
 programme; its folders were deleted, so every configuration in it named a root
@@ -123,6 +126,24 @@ class StudyConfig:
     def cohort_book_name(self) -> str:
         return f"cohort{self.cohort_size}"
 
+    def check(self) -> None:
+        """
+        Refuse a configuration that cannot be built.
+
+        A client is one writer, so the cohort is the ``cohort_size`` worst
+        clients under the shipped model and the participation rule has to leave
+        somebody to train.
+        """
+        if self.cohort_size < 1:
+            raise ValueError(f"{self.name}: a federation needs at least one client")
+        if not 1 <= self.clients_per_round <= self.cohort_size:
+            raise ValueError(
+                f"{self.name}: {self.clients_per_round} of {self.cohort_size} "
+                "clients per round is not a participation rule"
+            )
+        if self.old_size < 1:
+            raise ValueError(f"{self.name}: the retained population cannot be empty")
+
     @property
     def folds(self) -> tuple:
         """
@@ -158,17 +179,62 @@ DIGITS_STUDY01 = StudyConfig(
 )
 
 
+
+#: The five-client study: Study01's protocol, half the federation.
+#:
+#: Study01 federates the worst TEN writers, nine of ten per round. This one
+#: federates the worst FIVE, four of five - the same participation rule at a
+#: smaller size, which is what makes ``participants`` worth having as a formula
+#: rather than as a number: floor(0.9 x 5) is 4, so "one drops" falls out of the
+#: same rule that gives "one of ten drops" at the larger size.
+#:
+#: WHY FIVE IS NOT SIMPLY SMALLER. The worst five are a strict subset of the
+#: worst ten, so this cohort is the harder half of one already measured: the
+#: five mildest clients are gone and the federation is left with only the
+#: writers g-0 serves worst. Both the room to adapt and the pull away from the
+#: source population are larger per client, and there are fewer clients to
+#: average that pull away - which is where forgetting comes from.
+#:
+#: It inherits Study01's old population, fold book and g-0 unchanged, so the two
+#: studies differ in exactly one thing: the size of the federation.
+DIGITS_STUDY03 = StudyConfig(
+    name="Digits_study03",
+    cohort_size=5,
+    old_size=200,
+    clients_per_round=participants(5, DROPOUT_RATE),
+    classes="digits",
+    tag="d03",
+    seed_base=900000,
+    cohort_rule="worst, under Study01's g-0",
+)
+
+
 #: Every study this pipeline knows about.
 STUDIES: Dict[str, StudyConfig] = {
     DIGITS_STUDY01.name: DIGITS_STUDY01,
+    DIGITS_STUDY03.name: DIGITS_STUDY03,
 }
 
 # The study's own participation is the formula's, not a second statement of it.
 # If the two ever part company, every stage already run was run at a rate the
 # code no longer describes, and that has to fail here rather than in a table.
-assert DIGITS_STUDY01.clients_per_round == participants(
-    DIGITS_STUDY01.cohort_size, DROPOUT_RATE
-), "the study's clients_per_round no longer matches the participation rule"
+for _study in STUDIES.values():
+    assert _study.clients_per_round == participants(
+        _study.cohort_size, DROPOUT_RATE
+    ), f"{_study.name}: clients_per_round no longer matches the participation rule"
+    _study.check()
+del _study
+
+# Two studies in one results root must not be able to claim the same folder or
+# the same sampler seed.  Stages add offsets of a few thousand to a seed base,
+# so the bases are spaced far past any offset a stage can reach.
+assert len({s.tag for s in STUDIES.values()}) == len(STUDIES), "study tags collide"
+assert len({s.seed_base for s in STUDIES.values()}) == len(STUDIES), "seed bases collide"
+assert min(
+    (abs(a.seed_base - b.seed_base)
+     for a in STUDIES.values() for b in STUDIES.values() if a is not b),
+    default=10 ** 9,
+) >= 50_000, "seed bases are close enough for one study's offsets to reach another"
 
 
 def config(name: str) -> StudyConfig:
