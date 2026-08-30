@@ -194,9 +194,34 @@ def select_best_fold(
     target = destination / f"{name}_model"
     shutil.copyfile(source, target)
 
+    # THE CURVATURE TRAVELS WITH THE MODEL IT DESCRIBES.
+    #
+    # Promoting the checkpoint and leaving its Fisher behind was enough to make
+    # two of the eight forgetting signals record None for every round of every
+    # run, without any of them failing: the trainer resolves its own Fisher when
+    # a penalty needs one, but the signal writer looks for the promoted model's,
+    # by convention, at global_results/fisher_<name>. Nothing wrote it there, so
+    # signals_info reported fisher_available false and the two Fisher-weighted
+    # distances were empty columns in an otherwise complete record.
+    #
+    # A Fisher belongs to one set of weights. Copying the winning fold's beside
+    # the winning fold's checkpoint is the only pairing that is meaningful, and
+    # doing it here means every consumer of the promoted model finds it.
+    fisher_source = source.parent / "global_results" / "fisher"
+    if fisher_source.is_dir():
+        fisher_target = destination / "global_results" / f"fisher_{name}"
+        if fisher_target.exists():
+            shutil.rmtree(fisher_target)
+        fisher_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(fisher_source, fisher_target)
+        promoted_fisher = str(fisher_target)
+    else:
+        promoted_fisher = None
+
     payload = {
         "name": name,
         "prefix": prefix,
+        "fisher_dir": promoted_fisher,
         "rule": "highest validation accuracy; ties to the lower fold",
         "accuracy_source": "recomputed" if recomputed else "training metrics",
         "selected_fold": best["fold"],

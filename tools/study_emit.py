@@ -242,6 +242,18 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     against nothing.
     """
     cells = agg_cells.screen_cells()
+
+    # Cells the boundary rule added after the screen ran. Without this they are
+    # trained and then ignored, because the candidate list is fixed at import
+    # time and cannot know which ranges a particular cohort will push against.
+    extra = root / "tables" / "boundary_ext_cells.json"
+    if extra.is_file():
+        known = {c["id"] for c in cells}
+        added = [c for c in json.loads(extra.read_text()) if c["id"] not in known]
+        if added:
+            print(f"  boundary extension: {len(added)} extra cell(s) considered")
+            cells = cells + added
+
     rows = agg_selector.summarise(
         agg_selector.collect(root, cells, prefixes(cfg)["agg_screen"])
     )
@@ -1650,6 +1662,17 @@ def main() -> int:
         "--family", default="",
         help="reg-patch only: which schedule's selection to re-emit.",
     )
+    parser.add_argument(
+        "--clients-per-round", type=int, default=None, metavar="M",
+        help=(
+            "Participation the emitted lines run at. MUST MATCH THE SCREEN THEY "
+            "WERE SELECTED FROM: the grid is searched once, at the harder rate, "
+            "and the winners are carried to the other rates. Emitting the "
+            "finals at the study's default while the screen ran at another rate "
+            "re-runs the winners under conditions they were not chosen under, "
+            "and nothing about the resulting file looks wrong."
+        ),
+    )
     args = parser.parse_args()
     generator = WHAT[args.what]
 
@@ -1665,8 +1688,11 @@ def main() -> int:
     }
     if "rank_by" in accepted and args.rank_by is not None:
         kwargs["rank_by"] = args.rank_by
-    return generator(config(args.study), Path(args.root), Path(args.out),
-                     args.expect, **kwargs)
+    cfg = config(args.study)
+    if args.clients_per_round is not None:
+        import dataclasses
+        cfg = dataclasses.replace(cfg, clients_per_round=args.clients_per_round)
+    return generator(cfg, Path(args.root), Path(args.out), args.expect, **kwargs)
 
 
 if __name__ == "__main__":
