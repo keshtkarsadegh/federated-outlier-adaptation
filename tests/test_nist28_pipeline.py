@@ -266,6 +266,36 @@ def test_the_index_records_the_conversion_and_the_source(tmp_path, tiny_archive)
     assert meta["source_sha256"]
 
 
+def test_the_index_says_nothing_about_the_run_that_built_it(tmp_path, tiny_archive):
+    """
+    Two builds of one archive must produce one index, byte for byte.
+
+    Two nodes built this cache from the same archive and produced identical
+    image, label and writer arrays; the index alone differed, because it
+    recorded how long the conversion took - 574.99 seconds against 577.97. A
+    cache whose index cannot be checksummed is a cache whose integrity nobody
+    can check, and a spurious mismatch sends someone hunting a corruption that
+    is not there.
+
+    Absolute paths are the same defect with a longer fuse: they describe where
+    the archive happened to sit, so the index differs between machines while
+    the data is identical. The hash is what identifies the release.
+    """
+    archive, _ = tiny_archive
+    first, second = tmp_path / "a", tmp_path / "b"
+    for out in (first, second):
+        build_cache(archive, out, classes="all", timing_sample=2, log=lambda *_: None)
+
+    assert (first / INDEX_NAME).read_bytes() == (second / INDEX_NAME).read_bytes()
+
+    meta = json.loads((first / INDEX_NAME).read_text())
+    assert "seconds" not in meta
+    for key in ("source_archive", "by_class_md5_log", "by_write_md5_log"):
+        assert not str(meta[key]).startswith("/"), f"{key} is an absolute path"
+    # the archive is still identified, by the thing that actually identifies it
+    assert meta["source_sha256"]
+
+
 def test_rows_of_one_writer_are_contiguous(tmp_path, tiny_archive):
     archive, _ = tiny_archive
     out = tmp_path / "nist28"

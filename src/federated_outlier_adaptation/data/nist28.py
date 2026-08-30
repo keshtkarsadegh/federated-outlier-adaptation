@@ -199,11 +199,23 @@ def build_cache(
         "writers": writer_ids,
         "missing": len(missing),
         "class_counts": {str(index): int(value) for index, value in enumerate(counts)},
-        "source_archive": str(zip_path),
+        # THE INDEX MUST BE REPRODUCIBLE, so nothing about *this* run goes in
+        # it. Two builds of the same archive on two nodes produced identical
+        # image, label and writer arrays and differed only here: one recorded
+        # 574.99 seconds and the other 577.97. A cache that cannot be
+        # checksummed is a cache whose integrity nobody can check, and a
+        # spurious mismatch sends someone hunting a corruption that does not
+        # exist. The elapsed time is still logged and still returned to the
+        # caller; it is simply not part of the artefact.
+        #
+        # The archive is named by its hash rather than by where it happened to
+        # sit, for the same reason: the hash is what identifies the release,
+        # and an absolute path would make the index differ between machines
+        # while describing identical data.
+        "source_archive": Path(zip_path).name,
         "source_sha256": sha256_of(zip_path),
-        "by_class_md5_log": str(by_class_log),
-        "by_write_md5_log": str(by_write_log),
-        "seconds": seconds,
+        "by_class_md5_log": Path(by_class_log).name,
+        "by_write_md5_log": Path(by_write_log).name,
     }
     with open(out_dir / INDEX_NAME, "w") as handle:
         json.dump(meta, handle)
