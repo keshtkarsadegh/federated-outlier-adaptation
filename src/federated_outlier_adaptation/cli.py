@@ -506,8 +506,15 @@ def _add_aggregation_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--weighting",
         default="proportional",
-        choices=sorted(WEIGHTINGS),
-        help="Client weights p_k of the extended parallel rules (default: proportional).",
+        type=_weighting_value,
+        metavar="SCHEME_OR_Q",
+        help=(
+            "Client weights p_k of the extended parallel rules: one of "
+            + ", ".join(sorted(WEIGHTINGS))
+            + ", or a number q giving p_k proportional to n_k**q, of which "
+            "proportional (q=1) and uniform (q=0) are the two ends "
+            "(default: proportional)."
+        ),
     )
     parser.add_argument(
         "--server-eta",
@@ -2072,6 +2079,26 @@ def cmd_figures(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------- #
 # parser
 # --------------------------------------------------------------------------- #
+def _weighting_value(text):
+    """
+    A named weighting scheme, or the exponent q of the family they belong to.
+
+    The three names are points of one axis - p_k proportional to n_k**q - so the
+    argument takes either. A number comes back as a float; anything else must be
+    one of the names, and is refused rather than silently becoming the default.
+    """
+    if text in WEIGHTINGS:
+        return text
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "invalid weighting %r: expected one of %s or a number q"
+            % (text, sorted(WEIGHTINGS))
+        )
+
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="foa",

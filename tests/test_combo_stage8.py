@@ -18,6 +18,8 @@ from pathlib import Path
 import pytest
 import torch
 
+from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01
+from federated_outlier_adaptation.training.study_lines import resolve_agg_flags
 from federated_outlier_adaptation.aggregation.selector import (
     SKIP_FAMILY,
     resolve_aggregation,
@@ -216,7 +218,19 @@ def test_the_sequential_mixing_weight_reaches_the_command_line(tools_path):
     assert mixing
     for combo in mixing:
         args = parser.parse_args(shlex.split(task_line(combo, 1, 100, 1))[1:])
-        assert args.seq_mix_alpha == pytest.approx(combo["agg"]["flags"]["seq_mix_alpha"])
+        # The cell stores a retention over a full cycle; the alpha that reaches
+        # the command line is that retention resolved against the participants
+        # THIS stage draws, which is not the study's own number.
+        import dataclasses
+
+        from make_stage8_combos import CLIENTS_PER_ROUND
+
+        expected = resolve_agg_flags(
+            combo["agg"]["flags"],
+            dataclasses.replace(DIGITS_STUDY01, clients_per_round=CLIENTS_PER_ROUND),
+            100,
+        )["seq_mix_alpha"]
+        assert args.seq_mix_alpha == pytest.approx(expected)
 
 
 # --------------------------------------------------------------------------- #

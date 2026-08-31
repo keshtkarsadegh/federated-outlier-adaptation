@@ -266,7 +266,10 @@ def test_the_records_state_both_points(emit, root, tmp_path):
         ids = {c["id"] for c in record["configurations"]}
         assert ids == {"winner", "balanced", "sequential"}
         winner = [c for c in record["configurations"] if c["id"] == "winner"][0]
-        assert winner["trim_survivors"] == 4
+        # A count means the same thing at every size, so the number of
+        # survivors follows the participants: three trimmed from each end.
+        trimmed = min(3, max((drawn - 1) // 2, 0))
+        assert winner["trim_survivors"] == drawn - 2 * trimmed
 
 
 # --------------------------------------------------------------------------- #

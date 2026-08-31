@@ -28,6 +28,7 @@ it.
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any, Dict, List, Optional
 
 from federated_outlier_adaptation.training import agg_cells, five_cells, reg_cells
@@ -123,6 +124,11 @@ def cohort_book(cfg) -> str:
 #: whose id matches none of them is a method on its own - see the module
 #: docstring for why ``weight_`` and ``control_`` are deliberately absent.
 AGG_METHOD_PREFIXES = (
+    # "weight_q" before "eta_" is not an ordering accident: the weighting cells
+    # are emitted on the eta rule, so without their own prefix each coefficient
+    # would form a method of one and the selector would crown four winners for
+    # one knob instead of choosing between them.
+    "weight_q",
     "eta_", "median", "trimmed_", "anchor_", "fedavgm_",
     "fedadam_", "fedyogi_", "seq_mix_", "seq_order_",
 )
@@ -190,6 +196,59 @@ def _agg_flags(flags: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+def resolve_agg_flags(flags: Dict[str, Any], cfg, rounds: int) -> Dict[str, Any]:
+    """
+    Turn a cell's stage-independent settings into this stage's coefficients.
+
+    THREE OF THE SERVER KNOBS ARE TIMESCALES WRITTEN AS COEFFICIENTS, and their
+    meaning depends on quantities that change between stages - the number of
+    rounds, or the number of participating clients. A cell that stored the
+    coefficient would therefore be a different intervention on the screen than
+    at the full horizon, and a different one again at another federation size.
+    That is not hypothetical: it is why settings chosen on a quarter-length
+    screen could not hold the run they were chosen for.
+
+    So a cell stores the quantity whose meaning is stable and this turns it into
+    the number the trainer wants. The emitted line still carries a concrete
+    coefficient, so a task file remains readable and re-runnable on its own.
+
+        anchor_halflife_r  ->  server_anchor   depends on the round count
+        mix_retention      ->  seq_mix_alpha   depends on the client count
+        trim_count         ->  trim_frac       depends on the client count
+        weight_q           ->  weighting       depends on nothing; renamed only
+    """
+    out = dict(flags)
+    clients = int(getattr(cfg, "clients_per_round", 0)) or 1
+
+    if "anchor_halflife_r" in out:
+        # lambda_s = 1 - 2 ** (-1/h), h the half-life in ROUNDS
+        halflife = float(out.pop("anchor_halflife_r")) * float(rounds)
+        out["server_anchor"] = 1.0 - 2.0 ** (-1.0 / halflife)
+
+    if "mix_retention" in out:
+        # r = (1 - alpha) ** K after a full pass, so alpha = 1 - r ** (1/K)
+        retention = float(out.pop("mix_retention"))
+        out["seq_mix_alpha"] = 1.0 - retention ** (1.0 / clients)
+
+    if "trim_count" in out:
+    # A COUNT DOES NOT TRANSFER DOWNWARD WITHOUT A LIMIT. Trimming t from each
+    # end needs 2t < K, so t = 3 is meaningless where four clients participate:
+    # it would discard everything and the server would silently fall back to the
+    # plain mean. Clamping keeps the setting the strongest one the federation
+    # can actually express, and keeps the arm comparable with the sizes where
+    # the full count fits.
+        # The trainer takes a fraction and floors it; the half step keeps
+        # floating point from dropping floor(beta*K) to count - 1.
+        count = min(int(out.pop("trim_count")), max((clients - 1) // 2, 0))
+        out["trim_frac"] = (count + 0.5) / clients
+
+    if "weight_q" in out:
+        out["weighting"] = float(out.pop("weight_q"))
+
+    return out
+
+
+
 def agg_line(cfg, cell: Dict[str, Any], fold: int, rounds: int, seed: int) -> str:
     """One aggregation cell, at the screening or the full horizon."""
     prefix = f"{cfg.tag}_agg" if rounds == SCREEN_ROUNDS else f"{cfg.tag}_aggfull"
@@ -197,7 +256,7 @@ def agg_line(cfg, cell: Dict[str, Any], fold: int, rounds: int, seed: int) -> st
                  "BaseTrainer")
     line += f" --aggregation {cell['rule']} --extended-aggregations"
     line += " --outer-workers 2 --inner-workers 1"
-    extra = _agg_flags(cell["flags"])
+    extra = _agg_flags(resolve_agg_flags(cell["flags"], cfg, rounds))
     return line + (f" {extra}" if extra else "")
 
 
@@ -283,7 +342,12 @@ def combo_line(cfg, agg: Dict[str, Any], reg: Dict[str, Any], fold: int,
     line += " --outer-workers 1 --inner-workers 1"
     if reg.get("fedprox"):
         line += " --fedprox-convention"
-    extra = _agg_flags(agg["flags"])
+    # RESOLVE, do not emit what is stored. A cell may hold the stage-independent
+    # form of a knob - a half-life in rounds, a retention over clients, a count
+    # of clients - and _agg_flags has no flag for those names, so emitting the
+    # stored dictionary drops the coefficient silently and the arm runs as
+    # though the knob were never set.
+    extra = _agg_flags(resolve_agg_flags(agg["flags"], cfg, FULL_ROUNDS))
     if extra:
         line += f" {extra}"
     penalty = _reg_set(reg, cfg)
@@ -362,7 +426,15 @@ def cohort_line(cfg, config: Dict[str, Any], clients_file: Optional[str],
         line = _base(cfg, parent, fold, FULL_ROUNDS, seed, "BaseTrainer")
         line += " --aggregation fedavg --outer-workers 1 --inner-workers 1"
     else:
-        line = combo_line(cfg, agg, reg, fold, seed)
+        # RESOLVE AGAINST THE RATE THIS STAGE RUNS AT. Two of the server knobs
+        # are counted in clients, and this stage draws `per_round` of them, not
+        # the study's own number. Resolving against the study default would
+        # compute a trim fraction for a federation that is not the one running -
+        # and the line would carry a coefficient that means something else.
+        line = combo_line(
+            dataclasses.replace(cfg, clients_per_round=per_round),
+            agg, reg, fold, seed,
+        )
         line = line.replace(
             f" --parent {cfg.tag}_combo_{agg['id']}_{reg['id']}_fold{fold}",
             f" --parent {parent}",

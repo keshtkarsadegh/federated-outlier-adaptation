@@ -57,7 +57,11 @@ def flag_tokens(flags: dict) -> str:
             if value:
                 parts.append(FLAGS[name])
             continue
-        parts.append(f"{FLAGS[name]} {value:g}" if isinstance(value, float)
+        # repr, not {:g}. Six significant figures is right for a label and
+        # wrong for a coefficient: a knob derived from a half-life or a
+        # retention lands on a long float, and rounding it changes the run
+        # while leaving the task file looking correct.
+        parts.append(f"{FLAGS[name]} {value!r}" if isinstance(value, float)
                      else f"{FLAGS[name]} {value}")
     return " ".join(parts)
 

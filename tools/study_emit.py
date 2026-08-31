@@ -252,6 +252,24 @@ def write_table(payload: Any, root: Path, name: str) -> Path:
 # --------------------------------------------------------------------------- #
 # the screen's winners, and the full-horizon file they would feed
 # --------------------------------------------------------------------------- #
+def _trim_fraction(cell, clients: int):
+    """
+    The trim fraction a cell asks for at a given participant count.
+
+    The grid sweeps a COUNT of clients, because a fraction discards one client
+    of eight and four of twenty and so does not carry between federation sizes.
+    The server still takes a fraction, so it is derived here for whatever K the
+    stage runs at - which is the whole reason the count is what is stored.
+    """
+    flags = (cell or {}).get("flags", {})
+    if "trim_count" in flags:
+        clients = max(int(clients), 1)
+        count = min(int(flags["trim_count"]), max((clients - 1) // 2, 0))
+        return (count + 0.5) / clients
+    return flags.get("trim_frac")
+
+
+
 def shipped_baselines(root: Path) -> tuple:
     """
     The shipped model's own two accuracies, measured, not assumed.
@@ -449,7 +467,7 @@ def agg_trimmed_patch(cfg, root: Path, out: Path, expect: int) -> int:
         previous = entry.get("winner")
 
     row = sorted(
-        {c["flags"]["trim_frac"] for c in siblings if "trim_frac" in c["flags"]}
+        {c["flags"]["trim_count"] for c in siblings if "trim_count" in c["flags"]}
     )
     hits = numeric_boundary(winner, siblings, "flags")
     print(f"trimmed row now searched: {row}")
@@ -1463,8 +1481,8 @@ def stage_lines(cfg, root: Path, stage: str):
                 )
                 return None
         survivors = (
-            five_cells.trim_survivors(agg["flags"]["trim_frac"], drawn)
-            if agg is not None and "trim_frac" in agg["flags"] else None
+            five_cells.trim_survivors(_trim_fraction(agg, drawn), drawn)
+            if agg is not None and _trim_fraction(agg, drawn) is not None else None
         )
         recorded.append({
             "id": cell["id"], "family": cell["family"],

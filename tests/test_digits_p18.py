@@ -372,7 +372,14 @@ def test_the_selected_configurations_carry_their_rule_and_penalty(emitted, stage
             assert " --extended-aggregations" in line
             assert "--set " in line
     winner = [ln for ln in emitted[stage] if "_winner_fold" in ln]
-    assert all("--trim-frac 0.4" in ln for ln in winner)
+    # The winner trims a COUNT of clients, so the fraction it asks for depends
+    # on how many participate - and the count is clamped where the federation
+    # is too small to express it. Derive the expectation rather than fix it.
+    for line in winner:
+        words = shlex.split(line)
+        clients = int(words[words.index("--clients-per-round") + 1])
+        count = min(3, max((clients - 1) // 2, 0))
+        assert f"--trim-frac {(count + 0.5) / clients!r}" in line
 
 
 def test_a_configuration_that_names_an_unknown_cell_stops_it(

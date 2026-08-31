@@ -55,8 +55,12 @@ def lines() -> list[str]:
     ]
 
 
-#: How many cells the screen ran before the boundary extension was added.
-SCREENED_CELLS = 169
+#: How many cells the screen runs. The trim row is now swept as a count of
+#: clients rather than a fraction, and the count is bounded by half the
+#: participants, so the row has no edge left to reopen and there is no separate
+#: extension file. Ranges that DO end at an edge are reopened by
+#: tools/make_boundary_ext.py, which reads the selector's own report.
+SCREENED_CELLS = len(agg_cells.screen_cells())
 
 
 def ext_lines() -> list[str]:
@@ -69,7 +73,7 @@ def ext_lines() -> list[str]:
     is what keeps the two files consistent - regenerating the extension can never
     disagree with the screen it extends.
     """
-    return lines()[SCREENED_CELLS * len(SL.FOLDS):]
+    return []
 
 
 def screened_lines() -> list[str]:
@@ -282,15 +286,9 @@ def main() -> int:
     (jobs / "d01_p11.txt").write_text(
         "\n".join(header(screened) + screened) + "\n"
     )
-    (jobs / "d01_p11_ext.txt").write_text(
-        "\n".join(ext_header(ext) + ext) + "\n"
-    )
     (jobs / "d01_p11_README.md").write_text(readme(screened))
-    (jobs / "d01_p11_ext_README.md").write_text(ext_readme(ext))
     print(f"wrote {jobs}/d01_p11.txt: {len(screened)} tasks")
-    print(f"wrote {jobs}/d01_p11_ext.txt: {len(ext)} tasks")
     print(f"wrote {jobs}/d01_p11_README.md")
-    print(f"wrote {jobs}/d01_p11_ext_README.md")
     return 0
 
 

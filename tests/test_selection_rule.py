@@ -63,7 +63,7 @@ def test_the_rule_does_not_reward_a_configuration_that_barely_moves():
     real contender - but it reaches 0.8529 when 0.9147 is available. Gain minus
     spend keeps the scale in the answer, so it does not win.
     """
-    timid = _row("anchor_0p3", 0.8529, 0.9977)
+    timid = _row("anchor_h0p125", 0.8529, 0.9977)
     real = _row("seq_delta_scaled", 0.9147, 0.9906)
 
     timid_ratio = (timid["adaptation"]["mean"] - A0) / (P0 - timid["preservation"]["mean"])
@@ -90,7 +90,7 @@ def test_the_winner_does_not_depend_on_the_weighting(weight):
     field = [
         _row("seq_delta_scaled", 0.9147, 0.9906),
         _row("fedadam_tau1e-05", 0.9252, 0.9763),
-        _row("seq_mix_0p2", 0.9157, 0.9860),
+        _row("seq_mix_r0p3", 0.9157, 0.9860),
         _row("fedavgm_b0p5", 0.9174, 0.9828),
         _row("control_fedavg", 0.9043, 0.9910),
     ]

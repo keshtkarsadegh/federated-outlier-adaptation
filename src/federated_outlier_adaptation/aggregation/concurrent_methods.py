@@ -400,8 +400,11 @@ class ServerState:
         trim_fraction: float = TRIM_FRACTION,
         anchor_lambda: float = ANCHOR_LAMBDA,
     ):
-        if weighting not in WEIGHTINGS:
-            raise ValueError(f"Unknown weighting {weighting!r}; expected one of {WEIGHTINGS}")
+        if _weight_exponent(weighting) is None and weighting not in WEIGHTINGS:
+            raise ValueError(
+                f"Unknown weighting {weighting!r}; expected one of {WEIGHTINGS} "
+                "or a number q, giving p_k proportional to n_k ** q"
+            )
         if not 0.0 <= float(trim_fraction) < 0.5:
             raise ValueError(
                 f"trim_fraction must lie in [0, 0.5); got {trim_fraction!r}"
@@ -465,18 +468,43 @@ class ServerState:
 ServerOptimizerState = ServerState
 
 
-def client_weights(client_sample_counts, weighting: str = "proportional"):
+def _weight_exponent(weighting):
+    """The exponent q of a numeric weighting, or None for a named scheme."""
+    if isinstance(weighting, (int, float)) and not isinstance(weighting, bool):
+        return float(weighting)
+    try:
+        return float(weighting)
+    except (TypeError, ValueError):
+        return None
+
+
+
+def client_weights(client_sample_counts, weighting="proportional"):
     """
     Normalised client weights ``p_k`` of one round.
 
     ``proportional`` is ``n_k / N`` (FedAvg), ``uniform`` gives every client
     ``1 / K``, and ``capped`` caps the proportional share at ``1 / K`` and
     renormalises, which is the scheme the published ``*_capped_*`` rules use.
+
+    A NUMBER IS ALSO ACCEPTED, and is the general case the three names are
+    points of: ``p_k`` proportional to ``n_k ** q``, so ``q = 1`` is
+    proportional and ``q = 0`` is uniform. The named schemes sample that
+    continuum at two ends and, in the case of ``capped`` at ``1/K``, at a third
+    point close enough to ``uniform`` to be within measurement noise. Sweeping
+    ``q`` measures the axis instead of three points on it.
     """
     counts = list(client_sample_counts)
     K = len(counts)
     if K == 0:
         return []
+
+    exponent = _weight_exponent(weighting)
+    if exponent is not None:
+        raw = [float(count) ** exponent for count in counts]
+        Z = sum(raw) or 1.0
+        return [value / Z for value in raw]
+
     if weighting == "uniform":
         return [1.0 / K] * K
     total = sum(counts) or 1

@@ -277,7 +277,7 @@ def _tops(root: Path, agg: dict, reg: dict):
     (root / "tables" / "p14_reg_top3.json").write_text(json.dumps({"top": reg}))
 
 
-CONC_AGGS = ["anchor_0p03", "median", "weight_uniform"]
+CONC_AGGS = ["anchor_h1", "median", "weight_q0"]
 SEQ_AGGS = ["seq_delta_capped", "seq_equal", "seq_order_shuffle"]
 CONC_REGS = ["kd_T4_a0p9", "fisher_lam1000", "ntd_b1_t2"]
 SEQ_REGS = ["logit_l2_lam1", "feature_l2_lam1", "param_l2_mu0p1"]
@@ -398,7 +398,7 @@ def test_the_cross_reads_the_artefacts_rather_than_restating_them(emit, tmp_path
 
 def test_a_mislabelled_aggregation_is_refused(emit, tmp_path):
     """A sequential rule listed under concurrent means the lists disagree."""
-    _tops(tmp_path, {"concurrent": ["seq_equal", "median", "weight_uniform"],
+    _tops(tmp_path, {"concurrent": ["seq_equal", "median", "weight_q0"],
                      "sequential": SEQ_AGGS},
           {"concurrent": CONC_REGS, "sequential": SEQ_REGS})
     with pytest.raises(SystemExit, match="the two lists disagree"):
@@ -708,7 +708,7 @@ def test_the_winner_is_crowned_on_test_and_records_val(emit, tmp_path):
     for agg in CONC_AGGS:
         for reg in CONC_REGS:
             # this pair is best on validation and worst on test
-            if (agg, reg) == ("anchor_0p03", "kd_T4_a0p9"):
+            if (agg, reg) == ("anchor_h1", "kd_T4_a0p9"):
                 val, test = 0.99, 0.10
             elif (agg, reg) == ("median", "ntd_b1_t2"):
                 val, test = 0.20, 0.95
@@ -740,4 +740,4 @@ def test_the_winner_is_crowned_on_test_and_records_val(emit, tmp_path):
     assert "owner decision A" in record["rule"]
     assert set(record["rankings"]) == {"val", "test"}
     # and under the protocol letter a different combination would have won
-    assert record["rankings"]["val"][0]["id"] == "anchor_0p03_kd_T4_a0p9"
+    assert record["rankings"]["val"][0]["id"] == "anchor_h1_kd_T4_a0p9"

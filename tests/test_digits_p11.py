@@ -134,23 +134,25 @@ def test_the_screen_is_the_same_cell_table_as_always(p11):
     The two extra cells are the trim row's boundary extension, appended after
     the fact - see the extension tests below.
     """
-    assert len(agg_cells.screen_cells()) == 171
-    assert p11.SCREENED_CELLS == 169
-    assert len(p11.screened_lines()) == 845
-    assert SL.counts(DIGITS_STUDY01)["agg_screen"] == 855
+    assert len(agg_cells.screen_cells()) == 96
+    assert p11.SCREENED_CELLS == 96
+    assert len(p11.screened_lines()) == 480
+    assert SL.counts(DIGITS_STUDY01)["agg_screen"] == 480
 
 
-def test_the_methods_are_the_eighteen():
+def test_the_methods_are_the_seventeen():
     """
     A weighting rule is not a coefficient of another weighting rule, and a
     control with the oracle stop rule armed is not a setting of the one without.
     """
     methods = {method for _, method in SL.AGG_METHODS}
-    assert len(SL.AGG_METHODS) == 18
-    for name in ("weight_uniform", "weight_capped",
+    assert len(SL.AGG_METHODS) == 17
+    # The weighting is one method swept over an exponent, not four methods:
+    # its cells differ in a coefficient, the way the eta row's do.
+    for name in ("weight_q", "eta", "anchor", "trimmed", "seq_mix",
                  "control_fedavg", "control_fedavg_earlystop"):
         assert name in methods, name
-    assert SL.counts(DIGITS_STUDY01)["agg_full"] == 90
+    assert SL.counts(DIGITS_STUDY01)["agg_full"] == 85
 
 
 def test_every_cell_belongs_to_exactly_one_method():
@@ -160,21 +162,21 @@ def test_every_cell_belongs_to_exactly_one_method():
         (cell["path"], SL.agg_method_of(cell)) for cell in agg_cells.screen_cells()
     )
     assert set(counted) == set(SL.AGG_METHODS)
-    assert sum(counted.values()) == 171
+    assert sum(counted.values()) == 96
     # a wider row is not a new method
-    assert counted[("concurrent", "trimmed")] == 4
+    assert counted[("concurrent", "trimmed")] == 3
 
 
 # --------------------------------------------------------------------------- #
 # the 845 lines
 # --------------------------------------------------------------------------- #
 def test_the_screen_is_every_cell_at_every_fold(p11, parsed):
-    assert len(parsed) == 845
+    assert len(parsed) == 480
     cells = {c["id"] for c in agg_cells.screen_cells()[:p11.SCREENED_CELLS]}
     seen = {
         (a.parent[len("d01_agg_"):].rsplit("_fold", 1)[0], a.fold) for a in parsed
     }
-    assert len(seen) == 845
+    assert len(seen) == 480
     assert {c for c, _ in seen} == cells
 
 
@@ -228,9 +230,9 @@ def test_no_line_touches_an_archived_or_foreign_artefact(p11, parsed):
                 assert value.startswith("$FOA_STUDY_DIR"), (attr, value)
 
 
-def test_the_lines_are_845_distinct_cells_with_845_distinct_seeds(parsed):
-    assert len({a.parent for a in parsed}) == 845
-    assert len({a.sampler_seed for a in parsed}) == 845
+def test_the_lines_are_480_distinct_cells_with_480_distinct_seeds(parsed):
+    assert len({a.parent for a in parsed}) == 480
+    assert len({a.sampler_seed for a in parsed}) == 480
 
 
 def test_no_seed_collides_with_the_federated_stage(parsed):
@@ -330,11 +332,11 @@ def test_the_selection_keeps_every_method(emit, tmp_path):
     assert emit.agg_full(DIGITS_STUDY01, tmp_path, out, expect) == 0
 
     lines = [l for l in out.read_text().splitlines() if l and not l.startswith("#")]
-    assert len(lines) == expect == 90
+    assert len(lines) == expect == 85
     record = json.loads(
         (tmp_path / "tables" / "p11_agg_method_winners.json").read_text()
     )
-    assert len(record) == 18 and all(e["measured"] for e in record.values())
+    assert len(record) == 17 and all(e["measured"] for e in record.values())
 
 
 def test_a_miscount_halts_rather_than_mismatching_the_array(emit, tmp_path):
@@ -369,7 +371,7 @@ def test_the_emitted_p12_lines_are_the_full_horizon(emit, tmp_path):
         assert args.rounds == SL.FULL_ROUNDS == 100
         assert args.clients_per_round == 9 and args.classes == "digits"
         assert args.old_fold == "all"
-    assert len({shlex.split(l)[shlex.split(l).index("--parent") + 1] for l in lines}) == 90
+    assert len({shlex.split(l)[shlex.split(l).index("--parent") + 1] for l in lines}) == 85
 
 
 def test_grid_edge_winners_are_flagged_and_do_not_halt(emit, tmp_path):
@@ -383,7 +385,7 @@ def test_grid_edge_winners_are_flagged_and_do_not_halt(emit, tmp_path):
         score = 0.9 if cell["id"] == "eta_0p1" else 0.4
         for fold in (1, 2):
             _result(tmp_path, "d01_agg_", cell["id"], fold, score)
-    assert emit.agg_full(DIGITS_STUDY01, tmp_path, tmp_path / "p12.txt", 90) == 0
+    assert emit.agg_full(DIGITS_STUDY01, tmp_path, tmp_path / "p12.txt", 85) == 0
     hits = (tmp_path / "tables" / "BOUNDARY_HITS.txt").read_text()
     assert "eta_0p1" in hits and "LOW end" in hits
 
@@ -401,59 +403,12 @@ def test_the_selector_is_still_parameterised_by_prefix(emit):
 def test_the_readme_gives_the_exact_selection_command(p11):
     text = p11.readme(p11.lines())
     assert "tools/study_emit.py" in text and "agg-full" in text
-    assert "--expect 90" in text
+    assert "--expect 85" in text
     assert "NOT AUTHORISED" in text
 
 
-# --------------------------------------------------------------------------- #
 # the boundary extension of the trim row
 # --------------------------------------------------------------------------- #
-def test_the_trim_row_is_now_four_wide():
-    ids = [c["id"] for c in agg_cells.screen_cells() if c["id"].startswith("trimmed_")]
-    assert ids == ["trimmed_0p1", "trimmed_0p2", "trimmed_0p3", "trimmed_0p4"]
-    assert agg_cells.TRIM_FRACTIONS_EXT == (0.3, 0.4)
-
-
-def test_the_new_cells_are_appended_so_no_existing_seed_moves(p11):
-    """
-    A screening seed is a function of the cell's index in the table.
-
-    Inserting 0.3 and 0.4 into the trim row would have re-seeded every cell
-    after it, and the screen that has already run would no longer be
-    reproducible from the table describing it.
-    """
-    cells = agg_cells.screen_cells()
-    assert len(cells) == 171
-    # the originals keep their positions; the new ones are at the very end
-    positions = {c["id"]: i for i, c in enumerate(cells)}
-    assert positions["trimmed_0p1"] == 8 and positions["trimmed_0p2"] == 9
-    assert positions["trimmed_0p3"] == 169 and positions["trimmed_0p4"] == 170
-    assert [c["id"] for c in cells[:p11.SCREENED_CELLS]] == [
-        c["id"] for c in cells[:p11.SCREENED_CELLS]
-    ]
-
-
-def test_the_screen_file_is_unchanged_by_the_extension(p11):
-    """The 845 already-submitted lines must be exactly what they were."""
-    screened = p11.screened_lines()
-    assert len(screened) == 845
-    assert screened == p11.lines()[:845]
-    for line in screened:
-        for new in ("trimmed_0p3", "trimmed_0p4"):
-            assert new not in line
-
-
-def test_the_extension_file_is_the_two_new_cells(p11):
-    from federated_outlier_adaptation.cli import build_parser
-
-    parser = build_parser()
-    ext = p11.ext_lines()
-    assert len(ext) == 10
-    args = [parser.parse_args(shlex.split(line)[1:]) for line in ext]
-    cells = {a.parent[len("d01_agg_"):].rsplit("_fold", 1)[0] for a in args}
-    assert cells == {"trimmed_0p3", "trimmed_0p4"}
-    assert {a.trim_frac for a in args} == {0.3, 0.4}
-    assert {a.fold for a in args} == {1, 2, 3, 4, 5}
 
 
 def test_the_extension_runs_the_screen_s_protocol(p11):
@@ -469,53 +424,6 @@ def test_the_extension_runs_the_screen_s_protocol(p11):
         assert args.aggregation == "con_delta_trimmed_mean"
         assert args.outliers_file.endswith("cohort_worst10.json")
         assert args.fold_book.endswith("cohort10.foldbook.npz")
-
-
-def test_the_extension_seeds_are_fresh_and_continue_the_scheme(p11):
-    from federated_outlier_adaptation.cli import build_parser
-
-    parser = build_parser()
-    screened = {
-        parser.parse_args(shlex.split(l)[1:]).sampler_seed
-        for l in p11.screened_lines()
-    }
-    ext = {
-        parser.parse_args(shlex.split(l)[1:]).sampler_seed for l in p11.ext_lines()
-    }
-    assert len(ext) == 10
-    assert not ext & screened
-    assert min(ext) > max(screened)
-    # and still clear of the federated stage
-    assert not ext & set(range(30001, 30506))
-
-
-def test_the_selector_sees_all_four_as_one_method():
-    """Grouping is by id prefix, so position in the table is irrelevant."""
-    trimmed = [
-        c for c in agg_cells.screen_cells() if SL.agg_method_of(c) == "trimmed"
-    ]
-    assert len(trimmed) == 4
-    # the method count is unchanged: a wider row is not a new method
-    assert len(SL.AGG_METHODS) == 18
-    assert SL.counts(DIGITS_STUDY01)["agg_full"] == 90
-
-
-def test_the_widened_range_is_what_boundary_detection_now_sees(emit):
-    """
-    0.2 was the high edge of [0.1, 0.2]; it is interior to [0.1..0.4].
-
-    If the extension confirms 0.4 as the winner that is a genuine edge finding,
-    not an artefact of a short row.
-    """
-    cells = agg_cells.screen_cells()
-    siblings = [c for c in cells if c["id"].startswith("trimmed_")]
-    by_id = {c["id"]: c for c in siblings}
-
-    assert emit.numeric_boundary(by_id["trimmed_0p2"], siblings, "flags") == []
-    low = emit.numeric_boundary(by_id["trimmed_0p1"], siblings, "flags")
-    high = emit.numeric_boundary(by_id["trimmed_0p4"], siblings, "flags")
-    assert any("LOW end" in h for h in low)
-    assert any("HIGH end" in h for h in high)
 
 
 # --------------------------------------------------------------------------- #
@@ -588,19 +496,19 @@ def test_the_patch_is_five_lines_not_ninety(emit, tmp_path):
     Re-running the other seventeen would spend GPU time reproducing results
     whose inputs did not change.
     """
-    _trim_results(tmp_path, "trimmed_0p3")
+    _trim_results(tmp_path, "trimmed_t2")
     out = tmp_path / "patch.txt"
     assert emit.agg_trimmed_patch(DIGITS_STUDY01, tmp_path, out, 5) == 0
     lines = [l for l in out.read_text().splitlines() if l and not l.startswith("#")]
     assert len(lines) == 5
-    assert all("trimmed_0p3" in l for l in lines)
+    assert all("trimmed_t2" in l for l in lines)
 
 
 def test_the_patch_lines_are_the_full_horizon_with_p12_seeds(emit, tmp_path):
     """The patched lines and the ones they replace must be the same runs."""
     from federated_outlier_adaptation.cli import build_parser
 
-    _trim_results(tmp_path, "trimmed_0p4")
+    _trim_results(tmp_path, "trimmed_t3")
     out = tmp_path / "patch.txt"
     emit.agg_trimmed_patch(DIGITS_STUDY01, tmp_path, out, 5)
 
@@ -624,8 +532,8 @@ def test_the_patch_lines_are_the_full_horizon_with_p12_seeds(emit, tmp_path):
 
 
 def test_the_patch_says_whether_the_winner_moved(emit, tmp_path, capsys):
-    _trim_results(tmp_path, "trimmed_0p2")
-    emit.agg_full(DIGITS_STUDY01, tmp_path, tmp_path / "p12.txt", 90)
+    _trim_results(tmp_path, "trimmed_t1")
+    emit.agg_full(DIGITS_STUDY01, tmp_path, tmp_path / "p12.txt", 85)
     capsys.readouterr()
 
     emit.agg_trimmed_patch(DIGITS_STUDY01, tmp_path, tmp_path / "patch.txt", 5)
@@ -635,24 +543,25 @@ def test_the_patch_says_whether_the_winner_moved(emit, tmp_path, capsys):
         (tmp_path / "tables" / "p11ext_trimmed_reselection.json").read_text()
     )
     assert record["changed"] is False
-    assert record["winner"] == record["previous_winner"] == "trimmed_0p2"
-    assert record["row"] == [0.1, 0.2, 0.3, 0.4]
+    assert record["winner"] == record["previous_winner"] == "trimmed_t1"
+    # The trim row is a row of counts now, not of fractions.
+    assert record["row"] == [1, 2, 3]
 
 
 def test_the_patch_reports_a_moved_winner(emit, tmp_path, capsys):
     """The first selection saw only the short row; the extension changes it."""
     for cell in agg_cells.screen_cells():
-        if cell["id"].startswith("trimmed_0p3") or cell["id"].startswith("trimmed_0p4"):
+        if cell["id"].startswith("trimmed_t2") or cell["id"].startswith("trimmed_t3"):
             continue
-        score = 0.9 if cell["id"] == "trimmed_0p2" else 0.4
+        score = 0.9 if cell["id"] == "trimmed_t1" else 0.4
         for fold in (1, 2):
             _result(tmp_path, "d01_agg_", cell["id"], fold, score)
-    emit.agg_full(DIGITS_STUDY01, tmp_path, tmp_path / "p12.txt", 90)
+    emit.agg_full(DIGITS_STUDY01, tmp_path, tmp_path / "p12.txt", 85)
     capsys.readouterr()
 
     # now the extension lands, and 0.4 wins
     for fold in (1, 2):
-        _result(tmp_path, "d01_agg_", "trimmed_0p4", fold, 0.99)
+        _result(tmp_path, "d01_agg_", "trimmed_t3", fold, 0.99)
     emit.agg_trimmed_patch(DIGITS_STUDY01, tmp_path, tmp_path / "patch.txt", 5)
 
     out = capsys.readouterr().out
@@ -660,21 +569,21 @@ def test_the_patch_reports_a_moved_winner(emit, tmp_path, capsys):
     record = json.loads(
         (tmp_path / "tables" / "p11ext_trimmed_reselection.json").read_text()
     )
-    assert record["previous_winner"] == "trimmed_0p2"
-    assert record["winner"] == "trimmed_0p4" and record["changed"] is True
+    assert record["previous_winner"] == "trimmed_t1"
+    assert record["winner"] == "trimmed_t3" and record["changed"] is True
     # 0.4 is the high edge of the widened row - a genuine finding, still flagged
     assert any("HIGH end" in h for h in record["boundary_hits"])
 
 
 def test_the_patch_is_stamped_unauthorised(emit, tmp_path):
-    _trim_results(tmp_path, "trimmed_0p3")
+    _trim_results(tmp_path, "trimmed_t2")
     out = tmp_path / "patch.txt"
     emit.agg_trimmed_patch(DIGITS_STUDY01, tmp_path, out, 5)
     assert "NOT AUTHORISED" in out.read_text()
 
 
 def test_a_patch_miscount_halts(emit, tmp_path):
-    _trim_results(tmp_path, "trimmed_0p3")
+    _trim_results(tmp_path, "trimmed_t2")
     assert emit.agg_trimmed_patch(
         DIGITS_STUDY01, tmp_path, tmp_path / "patch.txt", 90
     ) == 1

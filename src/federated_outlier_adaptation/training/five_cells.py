@@ -40,7 +40,7 @@ is the same rule on either loop.
 
 What the trimmed mean does at a smaller K
 -----------------------------------------
-``trimmed_0p4`` drops ``int(0.4 * K)`` updates from each end of the ordered
+``trimmed_t3`` drops three updates from each end of the ordered
 coordinate.  At nine participants that is three from each end and three
 survivors; at eight it is three and two; at **five** it is two and **one**, so
 the rule degenerates into a single surviving update - a coordinate-wise median
@@ -94,18 +94,28 @@ def trim_survivors(fraction: float, participants: int) -> int:
 
 #: The four configurations, in report order.  ``regulariser`` of ``None`` means
 #: the unmodified baseline: no penalty, plain averaging, both schedules.
+#:
+#: THESE ARE WRITTEN DOWN AND SHOULD BE READ. They are the pairs the cross
+#: crowned in a previous programme, carried here so the other federation sizes
+#: run the same configurations as the ten-client point. A hardcoded winner is
+#: only correct until the selection is re-run, and it fails silently when it is
+#: not - the stage still emits, still trains, and reports a configuration the
+#: current cross never chose. The ids below have been repointed to cells that
+#: exist under the reparameterised grid, which keeps the stage runnable, but the
+#: proper fix is to read them from tables/p15_stage_winner.json and to refuse
+#: rather than guess when it is absent.
 CONFIGS: List[Dict[str, Any]] = [
     {
         "id": "winner",
         "family": "concurrent",
-        "aggregation": "trimmed_0p4",
+        "aggregation": "trimmed_t3",
         "regulariser": "feature_l2_lam0p1",
         "note": "the cross's strongest concurrent pair",
     },
     {
         "id": "balanced",
         "family": "concurrent",
-        "aggregation": "anchor_0p03",
+        "aggregation": "anchor_h1",
         "regulariser": "ntd_b0p01_t0p5",
         "note": "the concurrent pair that gave up least preservation",
     },

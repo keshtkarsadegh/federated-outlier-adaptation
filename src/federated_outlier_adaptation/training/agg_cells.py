@@ -59,41 +59,83 @@ def _fmt(value: float) -> str:
 # --------------------------------------------------------------------------- #
 # Concurrent: the server step, the weighting, robustness, the anchor, FedOpt
 # --------------------------------------------------------------------------- #
-#: Server step sizes eta_s.  One rule, five coefficients - see
-#: ``con_delta_eta`` on why this is not five functions.
-ETAS = (0.1, 0.25, 0.5, 0.75, 1.0)
+#: Server step sizes eta_s.  One rule, several coefficients - see
+#: ``con_delta_eta`` on why this is not several functions.
+#:
+#: Only downward from 1.0.  eta = 0.75 beat eta = 1.0 on BOTH axes on the first
+#: screen, which is the full-size step overshooting rather than a trade, so the
+#: over-relaxation the literature also tests is not swept here.
+ETAS = (0.1, 0.3, 0.5, 0.6, 0.8, 0.95, 1.0)
 
-#: Client weightings p_k, screened at eta_s = 1.
-WEIGHTINGS = ("uniform", "capped")
+#: Client weighting exponents q, screened at eta_s = 1: p_k proportional to
+#: n_k ** q, so q = 1 is proportional and q = 0 uniform.
+#:
+#: The named schemes are points of this axis, not separate methods. `capped` at
+#: the hardcoded 1/K clips every above-average client to exactly average, which
+#: is within measurement noise of `uniform`; the two were reported as different
+#: rules and were measuring one thing.  q = 1 is omitted because proportional
+#: weights at eta_s = 1 is already the last cell of the eta row.
+WEIGHT_EXPONENTS = (0.0, 0.25, 0.5, 0.75)
 
-#: Fractions the trimmed mean drops at each end per coordinate.
-TRIM_FRACTIONS = (0.1, 0.2)
+#: Clients the trimmed mean drops at EACH END per coordinate - a count, not a
+#: fraction.  The fraction is quantised by the number of participants, so with
+#: eight of them beta = 0.1 trims nobody and is the plain mean under another
+#: name; and a fixed fraction discards one client of eight but four of twenty,
+#: so it does not carry across federation sizes.  The emitter converts.
+TRIM_COUNTS = (1, 2, 3)
 
-#: The extension of that row, added after the screen found its winner sitting
-#: on the high edge of it.  These are APPENDED to the table rather than
-#: inserted into the trim row, so every existing cell keeps its index - and
-#: therefore its sampler seed - and a screen that has already been submitted
-#: stays reproducible line for line.  The method grouping is by id prefix, so
-#: the selector still sees all four as siblings and evaluates the widened range.
-TRIM_FRACTIONS_EXT = (0.3, 0.4)
-
-#: Server-anchor pulls towards the frozen g-0.
-ANCHOR_LAMBDAS = (0.01, 0.03, 0.1, 0.3, 1.0)
+#: Half-lives of the server anchor, as a multiple of the run length R.
+#:
+#: lambda_s removes a fraction of the CURRENT displacement from g-0 each round,
+#: so the displacement decays geometrically and the coefficient is a half-life:
+#: lambda_s = 1 - 2 ** (-1/h).  A fixed coefficient is therefore not a fixed
+#: intervention - lambda_s = 0.05 halves the distance every quarter of a
+#: 25-round run and every half of a 100-round one.  Sweeping the half-life
+#: relative to R makes a setting mean the same thing at both horizons, and makes
+#: a winner transfer to the other federation sizes.
+#:
+#: Nothing slower than 2R, where the anchor never acts inside the run.  Nothing
+#: faster than R/8: at lambda_s = 1 the update collapses to g-0 plus one round
+#: of learning, which does not preserve strongly, it fails to accumulate.
+ANCHOR_HALFLIVES_R = (2.0, 1.0, 0.5, 0.25, 0.125)
 
 #: FedAvgM server momenta.  0 is the no-momentum control of its own row.
-FEDAVGM_BETAS = (0.0, 0.5, 0.7, 0.9, 0.97, 0.99, 0.997)
+#:
+#: The momentum buffer is a SUM, so a constant update settles at Delta/(1-beta)
+#: and beta multiplies the effective step by 1/(1-beta): beta = 0.9 with
+#: eta = 1 is about eta = 10 without momentum, which is the whole of its
+#: preservation collapse.  Above 0.9 the multiplier reaches 33x and 333x and the
+#: buffer's memory outlasts the run, so the row stops there.
+FEDAVGM_BETAS = (0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9)
 
-#: FedAdam / FedYogi server learning rates: half-decade steps, 1e-4 to 10.
-FEDOPT_LRS = (
-    1e-4, 3.16e-4, 1e-3, 3.16e-3, 1e-2, 3.16e-2, 1e-1, 3.16e-1, 1.0, 3.16, 10.0,
-)
+#: FedAdam / FedYogi server learning rates: the grid of Reddi et al. (2021),
+#: who introduced both.  Our first sweep ran half-decade steps from 1e-4 to 10;
+#: lr = 10 is ten times beyond anything published and was the first FedYogi
+#: winner, at the same adaptation as the cell now chosen and 2.2 points less
+#: preservation.  In the tau-dominated regime behaviour is governed by eta/tau
+#: rather than by either alone, so the extra resolution measured little.
+FEDOPT_LRS = (0.001, 0.01, 0.1, 1.0)
 
-#: FedAdam / FedYogi adaptivity constants tau: decade steps, 1e-5 to 1.
-FEDOPT_TAUS = (1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0)
+#: FedAdam / FedYogi adaptivity constants tau.
+#:
+#: tau interpolates between two optimisers: where sqrt(v) >> tau every
+#: coordinate moves +/- eta regardless of its gradient, and where tau >> sqrt(v)
+#: the denominator is just tau and the rule is FedAvg with step eta/tau.  It is
+#: the preservation knob of the pair.  Reddi et al. sweep down to 1e-8; we
+#: stopped at 1e-5 and the boundary rule then spent three rounds crawling toward
+#: the value that paper already recommends.
+FEDOPT_TAUS = (1e-8, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1, 1.0)
 
-#: Sequential mixing weights alpha of ``seq_mix_alpha``.
-MIX_ALPHAS = (0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9)
-
+#: Retention of the cyclic schedule: the fraction of the model that began the
+#: round which survives a full pass over the clients.
+#:
+#: seq_mix blends WEIGHTS - theta <- (1-alpha) theta + alpha theta_k - so an
+#: earlier client's contribution is multiplied by (1-alpha) at every later
+#: visit and r = (1-alpha)**K after a full cycle.  alpha's natural unit is
+#: client visits, and there are K of them per round, so the same alpha erases
+#: far more per round at twenty clients than at ten and would silently change
+#: meaning when a winner is carried between sizes.  The emitter converts.
+MIX_RETENTIONS = (0.7, 0.5, 0.3, 0.1, 0.03)
 
 def concurrent_cells() -> List[Dict[str, Any]]:
     """Every parallel-schedule cell."""
@@ -108,11 +150,11 @@ def concurrent_cells() -> List[Dict[str, Any]]:
 
     # Weighting is screened at eta_s = 1 only; proportional at eta_s = 1 is
     # already the last cell of the eta row, so it is not repeated here.
-    for weighting in WEIGHTINGS:
+    for q in WEIGHT_EXPONENTS:
         cells.append(_cell(
-            f"weight_{weighting}", "concurrent", "con_delta_eta",
-            f"client weighting p_k={weighting} at eta_s=1",
-            server_eta=1.0, weighting=weighting,
+            f"weight_q{_fmt(q)}", "concurrent", "con_delta_eta",
+            f"client weighting p_k proportional to n_k**{q:g}, at eta_s=1",
+            server_eta=1.0, weight_q=q,
         ))
 
     cells.append(_cell(
@@ -120,18 +162,18 @@ def concurrent_cells() -> List[Dict[str, Any]]:
         "coordinate-wise median of the client updates",
         server_eta=1.0,
     ))
-    for fraction in TRIM_FRACTIONS:
+    for count in TRIM_COUNTS:
         cells.append(_cell(
-            f"trimmed_{_fmt(fraction)}", "concurrent", "con_delta_trimmed_mean",
-            f"coordinate-wise trimmed mean, {fraction:g} dropped each end",
-            server_eta=1.0, trim_frac=fraction,
+            f"trimmed_t{count}", "concurrent", "con_delta_trimmed_mean",
+            f"coordinate-wise trimmed mean, {count} client(s) dropped each end",
+            server_eta=1.0, trim_count=count,
         ))
 
-    for lam in ANCHOR_LAMBDAS:
+    for halflife in ANCHOR_HALFLIVES_R:
         cells.append(_cell(
-            f"anchor_{_fmt(lam)}", "concurrent", "con_delta_anchor_lam",
-            f"server anchor to g-0, lambda_s={lam:g}",
-            server_eta=1.0, server_anchor=lam,
+            f"anchor_h{_fmt(halflife)}", "concurrent", "con_delta_anchor_lam",
+            f"server anchor to g-0, displacement halves every {halflife:g}R rounds",
+            server_eta=1.0, anchor_halflife_r=halflife,
         ))
 
     for beta in FEDAVGM_BETAS:
@@ -167,11 +209,11 @@ def sequential_cells() -> List[Dict[str, Any]]:
         _cell("seq_delta_capped", "sequential", "seq_delta_capped",
               "cyclic capped delta form"),
     ]
-    for alpha in MIX_ALPHAS:
+    for retention in MIX_RETENTIONS:
         cells.append(_cell(
-            f"seq_mix_{_fmt(alpha)}", "sequential", "seq_mix_alpha",
-            f"cyclic mixing, alpha={alpha:g}",
-            seq_mix_alpha=alpha,
+            f"seq_mix_r{_fmt(retention)}", "sequential", "seq_mix_alpha",
+            f"cyclic mixing, {retention:g} of the round's model survives a full cycle",
+            mix_retention=retention,
         ))
     # Order is screened on cyclic FedAvg alone; 'fixed' is the seq_fedavg cell.
     cells.append(_cell(
@@ -220,32 +262,10 @@ SKIPPED_CELLS = {
 }
 
 
-def extension_cells() -> List[Dict[str, Any]]:
-    """
-    Cells added after a screen, appended so existing indices never move.
-
-    A screen's sampler seed is a function of a cell's position in this table, so
-    inserting a cell in the middle would silently re-seed every cell after it -
-    and a screen that has already run would no longer be reproducible from the
-    table that describes it.  Appending costs nothing: the selector groups by id
-    prefix, not by position.
-    """
-    return [
-        _cell(
-            f"trimmed_{_fmt(fraction)}", "concurrent", "con_delta_trimmed_mean",
-            f"coordinate-wise trimmed mean, {fraction:g} dropped each end "
-            "(boundary extension)",
-            server_eta=1.0, trim_frac=fraction,
-        )
-        for fraction in TRIM_FRACTIONS_EXT
-    ]
-
-
 def screen_cells() -> List[Dict[str, Any]]:
     """Every screening cell, in path order.  Ids are unique by construction."""
     cells = (
         concurrent_cells() + sequential_cells() + control_cells()
-        + extension_cells()
     )
     seen = set()
     for cell in cells:

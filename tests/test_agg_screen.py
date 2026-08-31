@@ -163,16 +163,19 @@ def test_an_unset_server_anchor_leaves_the_default_alone():
 # --------------------------------------------------------------------------- #
 def test_the_screen_is_the_documented_size():
     """
-    171 now: the trim row gained two cells as a boundary extension.
+    96 after the reparameterisation.
 
-    They are appended rather than inserted, so every earlier cell keeps its
-    index - and therefore the sampler seed a screen derives from it.
+    Three knobs are now swept as the quantity whose meaning is stable across
+    horizons and federation sizes - a half-life, a retention, a client count -
+    and the weighting as an exponent rather than as three names. FedAdam and
+    FedYogi use the grid of the paper that introduced them, which is where most
+    of the reduction from 171 comes from.
     """
     cells = screen_cells()
     grouped = cells_by_path()
-    assert len(cells) == 171
-    assert len(grouped["concurrent"]) == 156
-    assert len(grouped["sequential"]) == 13
+    assert len(cells) == 96
+    assert len(grouped["concurrent"]) == 83
+    assert len(grouped["sequential"]) == 11
     assert len(grouped["control"]) == 2
     assert SCREEN_ROUNDS == 25
 
@@ -183,11 +186,11 @@ def test_every_cell_id_is_unique():
 
 
 def test_the_fedopt_grids_are_the_stated_shape():
-    assert len(FEDOPT_LRS) == 11 and len(FEDOPT_TAUS) == 6
+    assert len(FEDOPT_LRS) == 4 and len(FEDOPT_TAUS) == 7
     for prefix in ("fedadam", "fedyogi"):
         cells = [c for c in screen_cells() if c["id"].startswith(prefix)]
-        assert len(cells) == 66
-        assert len({(c["flags"]["server_lr"], c["flags"]["server_tau"]) for c in cells}) == 66
+        assert len(cells) == 28
+        assert len({(c["flags"]["server_lr"], c["flags"]["server_tau"]) for c in cells}) == 28
 
 
 def test_every_rule_named_by_a_cell_exists_in_exactly_one_family():
@@ -228,8 +231,16 @@ def test_every_cell_flag_has_a_command_line_flag():
     from federated_outlier_adaptation.cli import build_parser
 
     parser = build_parser()
+
+    # A cell may store the stage-independent form of a knob - a half-life in
+    # rounds, a retention over clients, a count of clients - which the emitter
+    # converts. Those names are legitimately absent from the flag table; what
+    # must have a command-line flag is what is actually emitted.
+    from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01
+    from federated_outlier_adaptation.training.study_lines import resolve_agg_flags
+
     for cell in screen_cells():
-        for name in cell["flags"]:
+        for name in resolve_agg_flags(cell["flags"], DIGITS_STUDY01, 25):
             assert name in FLAGS, (cell["id"], name)
     # The flags live on the `final` subparser, so probe it rather than the top
     # level: parsing is also a stronger check than looking the name up.

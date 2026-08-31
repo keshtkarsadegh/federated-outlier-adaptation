@@ -40,10 +40,30 @@ BOOKS = f"{RESULTS}/fold_books"
 POOLS = f"{RESULTS}/outliers"
 
 
+#: Participants this stage draws, and the count its client-scaled knobs
+#: are resolved against.
+CLIENTS_PER_ROUND = 16
+
+
 def task_line(combo: dict, fold: int, rounds: int, sampler_seed: int) -> str:
     """One `foa final` invocation: one server rule, one client penalty."""
     parent = f"coh8_combo_{combo['id']}_fold{fold}"
-    server = flag_tokens(combo["agg"]["flags"])
+    # RESOLVE FIRST. A cell may hold the stage-independent form of a knob - a
+    # half-life in rounds, a retention or a trim count over clients - and
+    # flag_tokens has no flag for those names, so passing the stored dictionary
+    # drops the coefficient and the arm runs as though the knob were unset.
+    # This file emits its own participation, so that is the count to resolve
+    # against, not the study's.
+    import dataclasses
+
+    from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01
+    from federated_outlier_adaptation.training.study_lines import resolve_agg_flags
+
+    server = flag_tokens(resolve_agg_flags(
+        combo["agg"]["flags"],
+        dataclasses.replace(DIGITS_STUDY01, clients_per_round=CLIENTS_PER_ROUND),
+        rounds,
+    ))
     # --set is nargs="*" and swallows everything up to the next flag, so it goes
     # last and every other flag goes before it.
     penalty = set_tokens(combo["reg"])
@@ -56,7 +76,7 @@ def task_line(combo: dict, fold: int, rounds: int, sampler_seed: int) -> str:
         f" --fold-book {BOOKS}/cohort20.foldbook.npz --fold {fold}"
         f" --old-book {BOOKS}/old_data.foldbook.npz"
         f" --old-clients-file {POOLS}/old_data.json --old-fold all"
-        f" --policy uniform --clients-per-round 16 --sampler-seed {sampler_seed}"
+        f" --policy uniform --clients-per-round {CLIENTS_PER_ROUND} --sampler-seed {sampler_seed}"
         f" --track-clients --rounds {rounds} --epochs 5 --batch-size 64"
         f" --eval-batch-size 256 --save-final-model --seed {fold}"
         f" --outer-workers 1 --inner-workers 1"

@@ -50,9 +50,16 @@ HYBRID_FISHER_CELL = "fisher_lam0p1"
 HYBRID_MIX = {"concurrent": 0.75, "sequential": 0.5}
 
 #: The three server rules of each schedule, by stage-6 cell id.
+#: WRITTEN DOWN, AND THEY SHOULD BE READ. These are the shortlists a previous
+#: cross was built from. A hardcoded shortlist is correct only until the screen
+#: is re-run, and when it is wrong it is wrong silently: the stage still emits,
+#: still trains, and reports a cross the current selection never chose. The ids
+#: below have been repointed to cells that exist under the reparameterised grid,
+#: which keeps the stage runnable; the proper fix is to read
+#: tables/p12_agg_top3.json and refuse rather than guess when it is absent.
 AGG_CELLS = {
-    "concurrent": ("anchor_0p3", "eta_0p1", "fedadam_lr0p000316_tau0p001"),
-    "sequential": ("seq_delta_capped", "seq_mix_0p05", "seq_delta_scaled"),
+    "concurrent": ("anchor_h0p125", "eta_0p1", "fedadam_lr0p001_tau0p001"),
+    "sequential": ("seq_delta_capped", "seq_mix_r0p7", "seq_delta_scaled"),
 }
 
 #: The two non-hybrid penalties, by stage-7 cell id.  The hybrid is built rather
