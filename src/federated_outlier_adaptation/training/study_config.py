@@ -94,6 +94,20 @@ class StudyConfig:
     cohort_size: int
     old_size: int
     clients_per_round: int
+    #: The participation a GRID IS SEARCHED AT, which is not the rate the study
+    #: runs at.  Both grids are searched at ONE rate, the HARDER one - two of ten
+    #: dropped rather than one - and the winners are carried to the other rates:
+    #: a configuration chosen where the averaging is noisiest has a better claim
+    #: on the easier rate than the reverse would, and searching every rate would
+    #: multiply the most expensive stage in the programme by the number of rates
+    #: to answer a question the transfer already answers.
+    #:
+    #: This constant is what the grid emitters use, so no hand-passed flag can
+    #: silently diverge from the design.  It was a flag, and the flag was not
+    #: passed: the regularisation grid was searched at the study's own 9 of 10
+    #: while the aggregation grid it has to be read against was searched at 8,
+    #: and nothing in either file says so.
+    search_clients_per_round: int = 8
     #: ``digits`` (10 labels, McMahan's head) or ``all`` (62).  Meaningless for a
     #: provider that is not NIST, and omitted from its lines.
     classes: str = "digits"
@@ -173,6 +187,7 @@ DIGITS_STUDY01 = StudyConfig(
     cohort_size=10,
     old_size=200,
     clients_per_round=9,
+    search_clients_per_round=8,
     classes="digits",
     tag="d01",
     seed_base=700000,

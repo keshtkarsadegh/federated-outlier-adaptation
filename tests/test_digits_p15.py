@@ -356,7 +356,9 @@ def test_the_combination_protocol_is_the_full_horizon(emit, tmp_path, parser):
             continue
         args = parser.parse_args(shlex.split(line)[1:])
         assert args.rounds == 100 and args.epochs == 5 and args.batch_size == 64
-        assert args.clients_per_round == 9 and args.policy == "uniform"
+        # the cross must match the two screens it crosses: search rate, not
+        # the study's own rate
+        assert args.clients_per_round == 8 and args.policy == "uniform"
         assert args.classes == "digits" and args.old_fold == "all"
         assert args.init == "global" and args.global_name == "g0"
         assert args.outer_workers == 1

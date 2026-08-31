@@ -29,7 +29,14 @@ from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01 as
 #: the winners are chosen where the averaging is noisiest and the anchor matters
 #: most. A rule that survives 8-of-10 has a better claim on 9-of-10 than the
 #: reverse would.
-CFG = _STUDY
+#:
+#: That rate is ``search_clients_per_round`` in the study config, and it is read
+#: from there rather than typed on the command line.  It was typed on the
+#: command line once, and the grid screened next was searched at the study's own
+#: rate because the flag was left off.
+import dataclasses as _dc
+
+CFG = _dc.replace(_STUDY, clients_per_round=_STUDY.search_clients_per_round)
 
 #: Sampler seeds of the screen. Well clear of P09's 30001-30505 and of every
 #: hand-written seed in the earlier digit stages, so no two lines anywhere in

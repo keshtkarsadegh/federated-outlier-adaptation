@@ -180,9 +180,12 @@ def test_the_screen_is_every_cell_at_every_fold(p11, parsed):
     assert {c for c, _ in seen} == cells
 
 
-def test_every_line_draws_nine_of_ten(parsed):
+def test_every_line_draws_the_search_rate(parsed):
+    # search_clients_per_round, not the study's own clients_per_round: a grid is
+    # searched once at the harder rate and the winners are carried to the rest.
     for args in parsed:
-        assert args.clients_per_round == 9
+        assert args.clients_per_round == DIGITS_STUDY01.search_clients_per_round == 8
+        assert args.clients_per_round != DIGITS_STUDY01.clients_per_round
         assert args.policy == "uniform"
 
 
@@ -369,7 +372,9 @@ def test_the_emitted_p12_lines_are_the_full_horizon(emit, tmp_path):
     for line in lines:
         args = parser.parse_args(shlex.split(line)[1:])
         assert args.rounds == SL.FULL_ROUNDS == 100
-        assert args.clients_per_round == 9 and args.classes == "digits"
+        # the finals must match the screen they were selected from, so they
+        # take search_clients_per_round too
+        assert args.clients_per_round == 8 and args.classes == "digits"
         assert args.old_fold == "all"
     assert len({shlex.split(l)[shlex.split(l).index("--parent") + 1] for l in lines}) == 85
 

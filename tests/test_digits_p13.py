@@ -134,12 +134,38 @@ def test_the_screen_is_every_cell_at_every_fold(p13, parsed):
 def test_every_line_runs_the_screen_protocol(parsed):
     for args in parsed:
         assert args.classes == "digits" and args.resolution == 28
-        assert args.clients_per_round == 9 and args.policy == "uniform"
+        # the SEARCH rate, from search_clients_per_round - see the rate test
+        assert args.clients_per_round == 8 and args.policy == "uniform"
         assert args.rounds == 25 and args.epochs == 5 and args.batch_size == 64
         assert args.aggregation == "fedavg"       # both families per task
         assert args.init == "global" and args.global_name == "g0"
         assert args.save_final_model and args.track_clients
         assert args.old_fold == "all"
+
+
+def test_the_screen_is_emitted_at_the_search_rate_not_the_study_rate(p13, parsed):
+    """
+    The rate is a constant, not a flag.
+
+    This grid was searched at the study's own 9 of 10 because the
+    ``--clients-per-round 8`` the aggregation grid had been given by hand was
+    not given to it, and the mismatch reached the finals and the combinations
+    before anyone read a rate off a line. The generator now takes
+    ``search_clients_per_round`` from the config, so regeneration needs no flag
+    - and the two rates are asserted to be DIFFERENT here, because a test that
+    passed whichever field was read would not have caught the original error.
+    """
+    assert DIGITS_STUDY01.search_clients_per_round == 8
+    assert DIGITS_STUDY01.clients_per_round == 9
+    assert p13.CFG.clients_per_round == DIGITS_STUDY01.search_clients_per_round
+    assert all(
+        args.clients_per_round == DIGITS_STUDY01.search_clients_per_round
+        for args in parsed
+    )
+    assert not any(
+        args.clients_per_round == DIGITS_STUDY01.clients_per_round
+        for args in parsed
+    )
 
 
 def test_every_line_reads_the_cohort_and_the_old_book(parsed):
@@ -388,7 +414,9 @@ def test_the_emitted_p14_lines_are_the_full_horizon(emit, tmp_path):
             continue
         args = parser.parse_args(shlex.split(line)[1:])
         assert args.rounds == SL.FULL_ROUNDS == 100
-        assert args.clients_per_round == 9 and args.classes == "digits"
+        # the finals must match the screen they were selected from, so they
+        # take search_clients_per_round too
+        assert args.clients_per_round == 8 and args.classes == "digits"
         assert args.old_fold == "all" and args.aggregation == "fedavg"
 
 

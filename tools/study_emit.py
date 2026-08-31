@@ -357,6 +357,28 @@ def with_extensions(root: Path, cells: list, grid: str) -> list:
 
 
 
+def searched_at(cfg):
+    """
+    ``cfg`` at the rate its GRIDS ARE SEARCHED AT, not the rate the study runs.
+
+    A grid is searched once, at the harder rate, and the winners are carried to
+    the others - so a stage that screens a grid, or that re-runs or crosses what
+    a screen chose, has to emit at that one rate, or it re-runs the winners
+    under conditions they were not chosen under.  Nothing about the resulting
+    file looks wrong, which is how a 9-of-10 regularisation grid was screened,
+    finalised and crossed against an 8-of-10 aggregation grid before a rate was
+    read off a line.
+
+    The rate lives in the config as ``search_clients_per_round``.  A caller that
+    passes ``--clients-per-round`` sets both fields, so an explicit rate still
+    wins here; what cannot happen any more is a grid stage taking the study's
+    own rate because a flag was left off.
+    """
+    import dataclasses
+
+    return dataclasses.replace(cfg, clients_per_round=cfg.search_clients_per_round)
+
+
 def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = False) -> int:
     """
     Each aggregation method's best cell, as a full-horizon task file.
@@ -365,6 +387,7 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     re-run, so the full stage compares eighteen methods rather than one winner
     against nothing.
     """
+    cfg = searched_at(cfg)
     cells = with_extensions(root, agg_cells.screen_cells(), "agg")
 
     rows = agg_selector.summarise(
@@ -600,6 +623,7 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     them would let a method win the table on the strength of one schedule while
     being useless on the other.
     """
+    cfg = searched_at(cfg)
     cells = with_extensions(root, reg_cells.screen_cells(), "reg")
 
     rows = reg_selector.summarise(
@@ -1071,6 +1095,7 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
     combine a rule chosen for one loop with a penalty chosen for another and
     report the result as a property of either.
     """
+    cfg = searched_at(cfg)
     agg_top, reg_top = _top_lists(root)
     aggs = {cell["id"]: cell
             for cell in with_extensions(root, agg_cells.screen_cells(), "agg")}
@@ -1890,8 +1915,15 @@ def main() -> int:
         kwargs["rank_by"] = args.rank_by
     cfg = config(args.study)
     if args.clients_per_round is not None:
+        # BOTH fields.  The grid stages emit at the rate the grid is SEARCHED
+        # at, so setting only the run rate would leave them on the constant and
+        # an explicit flag would do nothing on exactly the stages it is for.
         import dataclasses
-        cfg = dataclasses.replace(cfg, clients_per_round=args.clients_per_round)
+        cfg = dataclasses.replace(
+            cfg,
+            clients_per_round=args.clients_per_round,
+            search_clients_per_round=args.clients_per_round,
+        )
     return generator(cfg, Path(args.root), Path(args.out), args.expect, **kwargs)
 
 

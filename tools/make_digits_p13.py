@@ -23,7 +23,15 @@ from federated_outlier_adaptation.training.study_config import DIGITS_STUDY01 as
 #: same one - two of ten dropped. The winners are carried to the other rates.
 #: Searching both grids at the same rate is what lets their tables be read
 #: against each other.
-CFG = _STUDY
+#:
+#: The rate comes from ``search_clients_per_round``, not from a flag.  This grid
+#: is the reason the constant exists: it was searched at 9 of 10 because the
+#: flag the aggregation grid had been given was not given to it, and the
+#: mismatch reached the finals and the combinations before anyone read a rate
+#: off a line.
+import dataclasses as _dc
+
+CFG = _dc.replace(_STUDY, clients_per_round=_STUDY.search_clients_per_round)
 
 #: Sampler seeds of the screen. Disjoint from every earlier range in this study:
 #: P09 30001-30505, P11 702001-703685, P11-ext 703691-703705, P12 704001-704175,
