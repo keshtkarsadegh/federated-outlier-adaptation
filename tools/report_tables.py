@@ -62,6 +62,24 @@ def baselines(root: Path) -> tuple:
 
 
 # ------------------------------------------------------------------ runs
+def _check_preservation_series(body) -> None:
+    """
+    Refuse a series that behaves like the cohort rather than the source.
+
+    Preservation starts near the shipped model's own accuracy and decays. A
+    series that starts far below it and climbs is the adaptation pool under
+    another name, and reading it as preservation understates forgetting by
+    several points without failing.
+    """
+    series = [v for v in (body.get("source_val_accuracies") or []) if v is not None]
+    if len(series) >= 2 and series[-1] > series[0] + 0.05:
+        raise SystemExit(
+            "the preservation series rises by more than five points across the "
+            "run, which is what the ADAPTATION pool does. Check the field."
+        )
+
+
+
 def read_runs(root: Path, prefix: str) -> dict:
     """
     Final-round adaptation and preservation of every run under a prefix.
@@ -92,11 +110,19 @@ def read_runs(root: Path, prefix: str) -> dict:
             continue
         body = next(iter(json.loads(Path(path).read_text()).values()))
         adaptation = body.get("heldout_client_accuracies") or []
-        preservation = body.get("pool_test_accuracies") or []
+
+        # PRESERVATION IS THE SOURCE POPULATION, not the pool of clients being
+        # adapted to. pool_test_accuracies tracks the cohort and RISES through a
+        # run; source_val_accuracies tracks the writers the shipped model was
+        # trained on and falls. Reading the first as preservation reports a run
+        # that forgot seven points when it forgot one, and it does so silently,
+        # because both are plausible-looking series of the right length.
+        preservation = body.get("source_val_accuracies") or []
         if adaptation:
             out[(cell, family)]["a"].append(adaptation[-1])
         if preservation:
             out[(cell, family)]["p"].append(preservation[-1])
+        _check_preservation_series(body)
         out[(cell, family)]["signals"].append(
             sum(1 for k in SIGNALS if any(v is not None for v in (body.get(k) or [])))
         )
