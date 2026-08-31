@@ -100,38 +100,55 @@ def check(path: Path) -> list[str]:
     return problems
 
 
-def sampler_seeds(path: Path) -> set[int]:
-    """Every ``--sampler-seed`` a task file draws."""
-    seeds: set[int] = set()
+def sampler_seeds(path: Path) -> dict[int, str]:
+    """
+    ``{sampler seed: the output the line writes}`` for one task file.
+
+    The seed alone is not enough to judge a clash. Two files may legitimately
+    carry the SAME task - a smoke file that re-runs four lines of a screen, a
+    subset emitted to re-run the winners that moved - and those share a seed
+    because they are the same run, not because two runs collided.
+    """
+    seeds: dict[int, str] = {}
     for line in path.read_text().splitlines():
         words = line.split()
         if not words or words[0] != "foa":
             continue
         value = flag(words, "--sampler-seed")
-        if value is not None:
-            try:
-                seeds.add(int(value))
-            except ValueError:
-                continue
+        if value is None:
+            continue
+        try:
+            seed = int(value)
+        except ValueError:
+            continue
+        seeds[seed] = flag(words, "--parent") or ""
     return seeds
 
 
-def collisions(spans: dict[str, set[int]]) -> list[str]:
+def collisions(spans: dict[str, dict[int, str]]) -> list[str]:
     """
-    Every pair of task files that would draw the same sampler seed.
+    Every pair of files where one seed drives two DIFFERENT tasks.
 
     Reported as a problem rather than a note: two stages sharing a sampling
-    sequence are not independent, and the correlation is invisible downstream.
+    sequence are not independent, and the correlation is invisible downstream -
+    both run, both write results, and nothing in the output says the two were
+    drawn together.
+
+    A seed shared by the same ``--parent`` is the same task in two files and is
+    not a collision. That distinction matters: without it every smoke file and
+    every re-run subset reads as a clash, the check cries wolf, and the next
+    real collision is waved through by hand.
     """
     found: list[str] = []
     names = list(spans)
     for i, a in enumerate(names):
         for b in names[i + 1:]:
-            shared = spans[a] & spans[b]
-            if shared:
+            clashing = [s for s in set(spans[a]) & set(spans[b])
+                        if spans[a][s] != spans[b][s]]
+            if clashing:
                 found.append(
-                    f"{a} and {b} share {len(shared)} sampler seed(s), "
-                    f"{min(shared)}-{max(shared)}"
+                    f"{a} and {b}: {len(clashing)} seed(s) drive DIFFERENT tasks, "
+                    f"{min(clashing)}-{max(clashing)}"
                 )
     return found
 
@@ -140,7 +157,7 @@ def main() -> int:
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
     all_problems: list[str] = []
-    spans: dict[str, set[int]] = {}
+    spans: dict[str, dict[int, str]] = {}
     for arg in sys.argv[1:]:
         path = Path(arg)
         n = sum(1 for l in path.read_text().splitlines() if l.strip().startswith("foa "))

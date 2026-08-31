@@ -109,7 +109,16 @@ def read_runs(root: Path, prefix: str) -> dict:
         if cell is None:
             continue
         body = next(iter(json.loads(Path(path).read_text()).values()))
-        adaptation = body.get("heldout_client_accuracies") or []
+
+        # REPORT ON TEST. Selection reads the validation halves - that is what a
+        # selection is allowed to see - and reporting reads the test ones. Both
+        # were mixed here until it was checked: this file quoted a validation
+        # preservation against an adaptation series that was neither, and
+        # differed from the selectors by about a third of a point on every row.
+        final = body.get("final_evaluation") or {}
+        clients = final.get("clients") or {}
+        adaptation = ([clients["accuracy"]] if isinstance(clients.get("accuracy"), (int, float))
+                      else body.get("heldout_client_accuracies") or [])
 
         # PRESERVATION IS THE SOURCE POPULATION, not the pool of clients being
         # adapted to. pool_test_accuracies tracks the cohort and RISES through a
@@ -117,7 +126,9 @@ def read_runs(root: Path, prefix: str) -> dict:
         # trained on and falls. Reading the first as preservation reports a run
         # that forgot seven points when it forgot one, and it does so silently,
         # because both are plausible-looking series of the right length.
-        preservation = body.get("source_val_accuracies") or []
+        old_eval = final.get("old") or {}
+        preservation = ([old_eval["mean"]] if isinstance(old_eval.get("mean"), (int, float))
+                        else body.get("source_val_accuracies") or [])
         if adaptation:
             out[(cell, family)]["a"].append(adaptation[-1])
         if preservation:
@@ -149,11 +160,15 @@ def summarise(runs: dict, a0: float, p0: float, folds: int = 5) -> list:
 def show(rows: list, title: str, a0: float, p0: float) -> None:
     print(f"\n{title}")
     print(f"reference: the shipped model  adapt {a0:.4f}  preserve {p0:.4f}")
-    print(f"{'cell':<32}{'sched':<10}{'adapt':>8}{'+-':>7}{'preserve':>10}"
+    print("basis: TEST (final_evaluation). Selection ran on validation.")
+    # sized to the content: a truncated id names a different arm, and the
+    # combination ids are the two cells they were built from joined together
+    width = max([len(r["cell"]) for r in rows] + [len("cell")]) + 2
+    print(f"{'cell':<{width}}{'sched':<10}{'adapt':>8}{'+-':>7}{'preserve':>10}"
           f"{'gained':>9}{'spent':>8}{'score':>8}{'sig':>5}")
-    print("-" * 100)
+    print("-" * (width + 68))
     for r in rows:
-        print(f"{r['cell'][:30]:<32}{r['family']:<10}{r['adaptation']:>8.4f}"
+        print(f"{r['cell']:<{width}}{r['family']:<10}{r['adaptation']:>8.4f}"
               f"{r['adaptation_sd']:>7.4f}{r['preservation']:>10.4f}"
               f"{r['gained']*100:>8.2f}p{r['spent']*100:>7.2f}p"
               f"{r['score']*100:>7.2f}p{r['signals']:>4}/8")
@@ -209,7 +224,7 @@ def main() -> int:
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--what", default="all",
                     choices=("all", "references", "agg-screen", "agg-winners",
-                             "reg-screen", "reg-winners"))
+                             "reg-screen", "reg-winners", "combos"))
     ap.add_argument("--tag", default="c10", help="Reference cohort tag.")
     ap.add_argument("--study-tag", default="d01")
     ap.add_argument("--csv", type=Path, default=None, help="Also write CSVs here.")
@@ -218,7 +233,8 @@ def main() -> int:
     a0, p0 = baselines(args.root)
     t = args.study_tag
     wanted = {"all": ("references", "agg-screen", "agg-winners",
-                      "reg-screen", "reg-winners")}.get(args.what, (args.what,))
+                      "reg-screen", "reg-winners",
+                      "combos")}.get(args.what, (args.what,))
 
     for what in wanted:
         if what == "references":
@@ -230,6 +246,7 @@ def main() -> int:
                 "agg-winners": (f"{t}_aggfull_", "AGGREGATION WINNERS (full horizon)"),
                 "reg-screen":  (f"{t}_reg_",     "REGULARISATION SCREEN (short horizon)"),
                 "reg-winners": (f"{t}_regfull_", "REGULARISATION WINNERS (full horizon)"),
+                "combos":      (f"{t}_combo_",   "COMBINATIONS: server rule x client penalty (full horizon)"),
             }[what]
             rows = summarise(read_runs(args.root, prefix), a0, p0)
         if not rows:

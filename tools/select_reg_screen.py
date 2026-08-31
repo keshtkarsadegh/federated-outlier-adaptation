@@ -28,6 +28,21 @@ every cell so the trade is visible, and the *paper* reports both.
 Five folds of one cell are averaged before anything is compared, and the spread
 is carried, so a cell that wins by less than its own fold-to-fold noise is
 visible as such.
+
+SELECT ON VALIDATION, REPORT ON TEST
+------------------------------------
+Both axes of a *selection* are read on the halves a selection is allowed to
+see: ``pool_val_accuracies`` for adaptation and ``source_val_accuracies`` for
+preservation.  The test columns - ``final_evaluation.clients.accuracy`` and
+``final_evaluation.old.mean`` - ride along as ``adaptation_test`` and
+``preservation_test`` and are what the reporting tools quote, but nothing here
+ranks on them.
+
+This was mixed until it was checked: adaptation came from validation while
+preservation came from the source *test* partitions, so a winner was chosen on
+one half of the data for one axis and the other half for the other.  Making it
+consistent moves six of fourteen regularisation winners - none of them the
+leading methods, all among the weakest four - and no aggregation winner at all.
 """
 
 from __future__ import annotations
@@ -116,7 +131,15 @@ def read_family_runs(run_dir: Path) -> Dict[str, Dict[str, Any]]:
             "adaptation": adaptation,
             "adaptation_is_test_fallback": fallback,
             "adaptation_test": clients.get("accuracy"),
-            "preservation": old.get("mean"),
+            # SELECTION READS VALIDATION ON BOTH AXES - see the module
+            # docstring. The test columns ride along for the reporters.
+            "preservation": (_last(data.get("source_val_accuracies"))
+                             if _last(data.get("source_val_accuracies")) is not None
+                             else old.get("mean")),
+            "preservation_is_test_fallback":
+                _last(data.get("source_val_accuracies")) is None
+                and old.get("mean") is not None,
+            "preservation_test": old.get("mean"),
             "preservation_sd": old.get("sd"),
             "agg_method_name": data.get("agg_method_name"),
             "path": str(payload_path),

@@ -125,8 +125,15 @@ def per_fold(root: Path, prefix: str, family: str, a0: float, p0: float) -> Dict
                 continue
             if data.get("scenario") != family:
                 continue
-            adaptation = _last(data.get("pool_val_accuracies"))
-            preservation = ((data.get("final_evaluation") or {}).get("old") or {}).get("mean")
+            # REPORT ON TEST: this tool states differences for the paper, so
+            # it reads the test halves. The selectors read validation - a
+            # difference quoted on the half a winner was chosen on would be
+            # reporting the selection back to itself.
+            final = data.get("final_evaluation") or {}
+            adaptation = (final.get("clients") or {}).get("accuracy")
+            preservation = (final.get("old") or {}).get("mean")
+            if adaptation is None:
+                adaptation = _last(data.get("pool_val_accuracies"))
             if adaptation is None or preservation is None:
                 continue
             found.setdefault(cell, {})[fold] = score(adaptation, preservation, a0, p0)
@@ -299,6 +306,7 @@ def main() -> int:
     a0, p0 = baselines(args.root)
     print(f"shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}   "
           f"w={FORGETTING_WEIGHT:g}")
+    print("basis: TEST (final_evaluation). Selection ran on validation.")
 
     wanted = sorted(WHAT) if args.what == "all" else [args.what]
     for name in wanted:
