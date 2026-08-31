@@ -224,3 +224,82 @@ transfers to the 5-, 20- and extreme-client points without re-tuning.
 **Not yet implemented.** To be applied together with the rest of the range
 changes, in one pass, once the regularisation side has been through the same
 discussion.
+
+---
+
+## Method 1 in full: the anchor, as it goes in the paper
+
+**Status: agreed, to be implemented. Not yet in code.**
+
+### The rule
+
+    theta_{t+1}  =  theta_t  +  eta * Delta_bar_t  -  lambda_s * (theta_t - theta_g)
+
+| symbol | meaning |
+|---|---|
+| theta_t | the global model at round t |
+| theta_g | g-0, the shipped model, fixed |
+| Delta_bar_t | the averaged client update of round t |
+| eta | server step: how much of the update is applied |
+| lambda_s | anchor strength: the fraction of the distance to g-0 removed each round |
+
+### What lambda_s does
+
+Isolating the anchor by setting `Delta_bar = 0`:
+
+    theta_{t+1} - theta_g  =  (1 - lambda_s) * (theta_t - theta_g)
+
+so after n rounds
+
+    distance(n)  =  (1 - lambda_s)^n * distance(0)
+
+The distance from the shipped model shrinks geometrically. `lambda_s` is
+therefore not a step size - `eta` is the step size - but the fraction of
+*accumulated* displacement handed back each round.
+
+### Why it must be written as a half-life
+
+Solving `(1 - lambda_s)^h = 1/2`:
+
+    lambda_s  =  1 - 2^(-1/h)
+
+with `h` the number of rounds needed to pull the model halfway back to g-0.
+
+    lambda_s = 0.10    ->  h = 6.6 rounds
+    lambda_s = 0.027   ->  h = 25 rounds
+    lambda_s = 0.0069  ->  h = 100 rounds
+
+A fixed coefficient does not describe a fixed intervention. `lambda_s = 0.05` is
+a quarter-of-the-run half-life over 25 rounds and a half-of-the-run half-life
+over 100: the same number, applied four times as often, is a materially
+different constraint. That is why a value chosen on the 25-round screen could
+not hold the 100-round run - for this knob the mismatch is arithmetic, not luck.
+
+At `lambda_s = 1` the update collapses to `theta_g + eta * Delta_bar_t`: the
+model returns to g-0 every round and carries a single round of learning. It is
+not a strict regulariser but a setting in which nothing accumulates, which is
+why its adaptation (0.8295) sits barely above never adapting at all (0.8225).
+
+### The range
+
+Swept as a half-life relative to the run length R, converted per horizon:
+
+| setting | lambda_s at R=25 | lambda_s at R=100 |
+|---|---|---|
+| h = 2R | 0.014 | 0.0035 |
+| h = R | 0.027 | 0.0069 |
+| h = R/2 | 0.054 | 0.014 |
+| h = R/4 | 0.106 | 0.027 |
+| h = R/8 | 0.199 | 0.054 |
+
+Five cells. Nothing slower than `2R`, where the anchor never acts within the
+run - four of the seven original cells were in that dead zone. Nothing faster
+than `R/8`, where the model stops accumulating.
+
+### To implement
+
+* the cell stores `h_over_R`, not `server_anchor`
+* the line emitter computes `lambda_s = 1 - 2^(-1/(h_over_R * rounds))`
+* the emitted line still carries a concrete `--server-anchor`, so a task file
+  remains readable and re-runnable on its own
+* the selection record reports both, so a winner can be quoted either way
