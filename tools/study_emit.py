@@ -29,6 +29,7 @@ and the caller carries on.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import ast
 import inspect
 import json
@@ -1022,6 +1023,40 @@ def _top_lists(root: Path) -> tuple:
 #: 15000/16000 c20, 17000 combos, 18000 extreme.
 
 
+#: The combination stage's own seed range, and how many slots it holds.
+#:
+#: An identity-hashed seed cannot live in a 1000-wide block: 90 pairs hashed
+#: into the 100 slots a block allows would collide by the birthday bound, and a
+#: probe to resolve the collision would reintroduce the order dependence the
+#: hash exists to remove. So the stage gets a range of its own, wide enough that
+#: uniqueness is checked rather than hoped for.
+#:
+#: In use elsewhere: 2000 agg screen, 4000 agg full, 8000 reg full, 9000 hybrid,
+#: 10000-11395 REG SCREEN (two blocks), 12000 five, 14000 dropout20,
+#: 15000/16000 c20, 18000 extreme, 40000 references. 30000-38995 is free.
+COMBO_SEED_BASE = 30000
+COMBO_SEED_SLOTS = 900
+
+
+def combo_seed(cfg, family: str, agg_id: str, reg_id: str, fold: int) -> int:
+    """
+    A combination's sampler seed, from WHAT IT IS rather than where it sits.
+
+    The index-based scheme this replaced made a seed a function of a pair's
+    position in the cross, so re-ranking a shortlist moved it: two pairs swapped
+    places in the concurrent list and twenty runs already on disk no longer
+    matched the file that claimed to emit them. The runs were fine; the file had
+    stopped reproducing them, and nothing about either says so.
+
+    Hashing the pair means a shortlist can be re-ranked, extended or trimmed and
+    every pair keeps the seed it always had - the same reasoning that put the
+    fold split on a hash of its inputs rather than on a position in a book.
+    """
+    key = f"{cfg.name}|{family}|{agg_id}|{reg_id}|{fold}".encode()
+    slot = int(hashlib.sha256(key).hexdigest(), 16) % COMBO_SEED_SLOTS
+    return cfg.seed_base + COMBO_SEED_BASE + slot * 10 + fold
+
+
 def combos(cfg, root: Path, out: Path, expect: int) -> int:
     """
     The three best aggregations crossed with the three best penalties, per family.
@@ -1043,6 +1078,7 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
         root, reg_cells.screen_cells() + hybrid_cells(root), "reg")}
 
     lines, index, chosen = [], 0, {}
+    drawn: Dict[int, str] = {}
     for family in SL.FAMILIES:
         for agg_id in agg_top.get(family, []):
             for reg_id in reg_top.get(family, []):
@@ -1059,7 +1095,7 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
                 for fold in SL.folds_of(cfg):
                     lines.append(SL.combo_line(
                         cfg, aggs[agg_id], regs[reg_id], fold,
-                        cfg.seed_base + 17000 + index * 10 + fold,
+                        combo_seed(cfg, family, agg_id, reg_id, fold),
                     ))
                 index += 1
 
