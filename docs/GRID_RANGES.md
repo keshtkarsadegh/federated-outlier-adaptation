@@ -1,6 +1,8 @@
 # Grid ranges: what each knob does, and where its values should sit
 
-**Working notes, not paper material.** This is the record of a design discussion
+**Working notes.** The search that produced these ranges is not a result and is
+not reported. The two findings at the end of this file are, and belong in the
+paper. This is the record of a design discussion
 about where each hyperparameter's range belongs. The search that produced it is
 not a result and is not reported; only the ranges it settles are.
 
@@ -303,3 +305,289 @@ than `R/8`, where the model stops accumulating.
 * the emitted line still carries a concrete `--server-anchor`, so a task file
   remains readable and re-runnable on its own
 * the selection record reports both, so a winner can be quoted either way
+
+---
+
+## Methods 2 to 9 in full
+
+### 2. `eta` - the server step
+
+    theta_{t+1}  =  theta_t  +  eta * Delta_bar_t
+
+`eta` scales how much of the averaged client update is applied. `eta = 1` is
+plain FedAvg; smaller damps every round; larger over-relaxes.
+
+This is a step size in the ordinary sense, and it is the one knob in the family
+that behaves the way a learning rate does. It has no fixed point, so unlike the
+anchor its effect does not compound into a clean decay: total travel is roughly
+`eta * R * |Delta|`, but `|Delta|` shrinks as clients converge, so there is no
+exact conversion to a horizon-free quantity. It is still horizon-sensitive in
+the obvious direction - twice the rounds, roughly twice the travel - which is
+one more reason a screen at a quarter of the reported horizon misleads.
+
+Measured, `eta = 0.75` beats `eta = 1.0` on **both** axes. That is not a trade;
+it is the full-size step overshooting. It is also mild evidence against the
+untested direction, so over-relaxation is dropped.
+
+**Range:** `eta in {0.1, 0.3, 0.5, 0.6, 0.8, 0.95, 1.0}`, swept directly.
+
+**Old range:** the parameter existed, fixed at 1.0, never swept.
+
+### 3. `fedavgm` - server momentum
+
+    m_t      =  beta * m_{t-1}  +  Delta_bar_t
+    theta_{t+1}  =  theta_t  +  eta * m_t
+
+Note the buffer is a **sum**, not an average. If the clients keep producing a
+similar update, it settles at `m -> Delta/(1 - beta)`, so the applied step is
+
+    eta * Delta / (1 - beta)
+
+Momentum therefore **multiplies the effective step size** by `1/(1 - beta)`:
+
+| beta | step multiplier | memory |
+|---|---|---|
+| 0.1 | 1.11x | 1.1 rounds |
+| 0.3 | 1.43x | 1.4 |
+| 0.5 | 2x | 2 |
+| 0.7 | 3.3x | 3.3 |
+| 0.9 | 10x | 10 |
+| 0.97 | 33x | 33 |
+| 0.997 | 333x | 333 - longer than the run |
+
+`beta = 0.9` with `eta = 1` is approximately `eta = 10` without momentum. That
+is the whole explanation for its 4.9-point preservation collapse, and it says
+`beta` and `eta` are not independent knobs: they multiply.
+
+This is worth contrasting with FedAdam, whose first moment is an **average**
+(`(1 - beta_1)` factor) and therefore does not amplify. Two knobs that look
+alike behave differently, and the difference is one factor in one line.
+
+Momentum is a device for continuing in the direction already travelled, which is
+what preservation cannot afford. `beta = 0.9` is canonical for FedAvgM because
+that work trains from scratch on non-IID data - a different problem.
+
+**Range:** `beta in {0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9}`, swept directly. Dropped:
+0.97 and 0.997, whose memories exceed the run and whose amplification is 33x and
+333x.
+
+**Old range:** none - no aggregation hyperparameter was swept in the earlier work.
+
+### 4 and 5. `fedadam` and `fedyogi`
+
+    m_t  =  beta_1 * m_{t-1}  +  (1 - beta_1) * Delta_bar_t
+    v_t  =  beta_2 * v_{t-1}  +  (1 - beta_2) * Delta_bar_t^2          (Adam)
+    v_t  =  v_{t-1} - (1 - beta_2) * sign(v_{t-1} - Delta_bar_t^2) * Delta_bar_t^2   (Yogi)
+    theta_{t+1}  =  theta_t  +  eta * m_t / (sqrt(v_t) + tau)
+
+with `beta_1 = 0.9`, `beta_2 = 0.99` fixed, as in the paper that introduced them.
+
+**`tau` is the preservation knob**, and what it does is interpolate between two
+different optimisers:
+
+    sqrt(v_t) >> tau     update is  eta * m_t / sqrt(v_t)  - every coordinate
+                         moves +/- eta regardless of its gradient. Fully adaptive.
+
+    tau >> sqrt(v_t)     denominator is just tau, so the update is
+                         eta * m_t / tau  - a plainly scaled average. This is
+                         FedAvg with step eta/tau.
+
+Measured: `tau = 1e-5` preserves 0.9763, `tau = 1e-1` preserves 0.9977.
+
+**The two knobs are coupled.** In the tau-dominated regime behaviour is governed
+by the ratio `eta/tau`, not by either alone, which is why 66 cells bought so
+little: much of that grid varied both while leaving the ratio unchanged.
+
+**Yogi's difference.** Adam's `v` is a geometric average, so one large round can
+multiply it up and a quiet stretch can let it decay. Yogi changes `v`
+additively, bounded, in whichever direction is warranted. Since `v` is the
+denominator, a collapsing `v` means a suddenly enormous step - the precise event
+that destroys preservation - and Yogi exists to prevent it.
+
+**Range, both methods:**
+
+    lr   in {0.001, 0.01, 0.1, 1.0}                        4
+    tau  in {1e-8, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1, 1}        7      = 28 cells each
+
+This is the grid of Reddi et al., extended at the low end of `tau` toward 1e-8,
+which that paper already sweeps and which our own boundary rule spent three
+rounds crawling toward.
+
+**Dropped:** `lr = 10`, ten times beyond anything published. It was the *first*
+FedYogi winner at 0.9194/0.9587; the cell we now choose gives 0.9185/0.9807 -
+the same adaptation to within 0.001, with 2.2 points more preservation. The
+out-of-literature top end did not merely waste grid, it won under the old rule
+and cost two points for nothing.
+
+**Old range:** neither method existed in the earlier work.
+
+### 6. `trimmed` - trimmed mean
+
+Per coordinate: sort the K client values, discard the `t` largest and `t`
+smallest, average the rest.
+
+    theta_{t+1}[j]  =  mean( sorted(Delta_1[j] ... Delta_K[j])[t : K-t] ),   t = floor(beta * K)
+
+**`beta` is quantised by K.** With eight participants it can only bite in steps
+of an eighth:
+
+    beta = 0.1  ->  floor(0.8) = 0 trimmed  ->  this is the plain mean
+    beta = 0.2  ->  1 from each end          ->  6 of 8 averaged
+    beta = 0.3  ->  2                        ->  4 of 8
+    beta = 0.4  ->  3                        ->  2 of 8
+
+**Our `beta = 0.1` cell trimmed nothing** - it is the control under another
+name, and the numbers agree to within a sampler seed (0.9025/0.9896 against
+0.9043/0.9910). One of the two trimmed cells was a duplicate of FedAvg.
+
+The method discards the most extreme updates. In a Byzantine setting those are
+attackers; here they are the writers the shipped model serves worst - the
+clients the study is about. The data confirms it does not act as a restraint:
+trimming more *raises* adaptation and *lowers* preservation, the opposite of a
+drift control.
+
+**Range: sweep the integer, emit the fraction.**
+
+    t in {1, 2, 3}          beta = (t + 0.5) / K
+
+The half-step keeps floating-point rounding from dropping `floor(beta*K)` to
+`t - 1`. A fixed `beta` does not transfer across federation sizes - 0.2 discards
+one client of eight but four of twenty - whereas a fixed `t` means the same
+thing everywhere.
+
+**Old range:** none.
+
+### 7. Client weighting
+
+    theta_{t+1}  =  theta_t  +  eta * sum_k p_k * Delta_k
+
+The three named schemes differ only in `p_k`:
+
+    proportional   p_k = n_k / sum(n)          FedAvg's default
+    uniform        p_k = 1 / K
+    capped         p_k = min(n_k/sum(n), 1/K), renormalised
+
+**The cap is hardcoded at `1/K`,** which is the average weight, so every client
+above average is clipped to exactly average and only below-average clients keep
+their share. That is very nearly uniform, and the measurements agree:
+0.9090/0.9892 against 0.9120/0.9897, within noise. Two of three cells measure
+one thing.
+
+The literature writes this as a single continuous family, `p_k ∝ n_k^q`, with
+`q = 1` proportional and `q = 0` uniform. We sampled two nearly coincident
+points of that continuum and called them separate methods.
+
+It matters here more than usual: our clients are individual writers holding
+roughly 8 to 60 held-out rows, so `q` decides whether the writer the model
+serves worst counts as much as the one it serves best.
+
+**Range:** `q in {0, 0.25, 0.5, 0.75, 1.0}`, five cells. No horizon dependence.
+
+**Old range:** the same three named schemes existed; the parameter beneath them
+was never swept, then or now.
+
+### 8. `seq_mix` - the cyclic mixing weight
+
+    theta  <-  (1 - alpha) * theta  +  alpha * theta_k
+
+confirmed against `sequential_methods.py`: it blends **weights**, not deltas.
+
+Each visit moves the model a fraction `alpha` toward that client and away from
+everything before it, so an earlier client's contribution is multiplied by
+`(1 - alpha)` at every subsequent visit. After a full pass over K clients, what
+survives of the model that began the round is
+
+    retention  r  =  (1 - alpha)^K
+
+At K = 8: `alpha = 0.05` retains 0.66, `alpha = 0.2` retains 0.17, `alpha = 0.5`
+retains 0.004 - the round's starting point erased within one cycle.
+
+This is the serial-forgetting mechanism the literature names: sequential FL is
+known to reach a lower plateau through "knowledge loss from previous sites", and
+Cyclical Weight Consolidation exists to fix it. Our data agrees - second most
+destructive knob in the grid, 4.8 points across its range, and above 0.3 both
+axes worsen together.
+
+**`alpha`'s natural unit is client visits, not rounds**, and there are K visits
+per round. So the same `alpha` erases far more per round at K = 20 than at
+K = 10, and a winner found at ten clients would silently change meaning when
+carried to five or twenty.
+
+**Range: sweep the retention, emit alpha.**
+
+    r in {0.7, 0.5, 0.3, 0.1, 0.03}          alpha = 1 - r^(1/K)
+
+At K = 8 that is alpha ~ {0.043, 0.083, 0.142, 0.250, 0.346}; at K = 20,
+~{0.018, 0.034, 0.059, 0.109, 0.161} - the same behaviour, correctly rescaled.
+
+**For the paper, not the grid:** the published remedy for cyclic forgetting is
+not in our design space. Worth naming as a limitation.
+
+**Old range:** none.
+
+### 9. `median`
+
+Coordinate-wise median. **No hyperparameter.**
+
+It assumes clients hold equal amounts of data, which our writers do not, and
+with eight participants the median of eight values discards the information of
+six of them in every coordinate. It scores -0.62 at full horizon: it spends more
+preservation than it gains adaptation.
+
+**Range:** one cell, unchanged. Report it as a robustness aggregator evaluated
+outside its assumptions.
+
+**Old range:** none.
+
+---
+
+## Two findings that belong in the paper
+
+### The design space collapses further than we claimed
+
+Section 4 argues that writing every server rule as one update turns a list of
+named methods into a grid with named knobs, so that rules which coincide become
+visibly the same point. Carrying that through, three entries of our own grid are
+not separate methods:
+
+* `seq_fedavg_update` is `seq_mix` at `alpha = n_k / N`
+* `seq_equal_update` is `seq_mix` at `alpha = 1/(i+1)`
+* `seq_fixed_ratio_update` is `seq_mix` at `alpha = 0.3`
+
+(stated in `seq_mix_alpha`'s own docstring), and two more collapse empirically:
+
+* `weight_capped` at `cap = 1/K` is within noise of `weight_uniform`
+* `trimmed` at `beta = 0.1` with eight participants trims nothing, so it *is*
+  the plain mean
+
+Five of eighteen aggregation entries are duplicates or special cases. That is
+the paper's own thesis applied to the paper's own table, and it is a stronger
+claim than the one currently made.
+
+### A coefficient is not an intervention
+
+Three of these knobs are **timescales written as coefficients**, and their
+meaning depends on quantities that change between stages:
+
+| knob | really measures | depends on |
+|---|---|---|
+| `lambda_s` | half-life of displacement | rounds R |
+| `alpha` | retention per cycle | clients K |
+| `t` (trimmed) | clients discarded | clients K |
+
+So `lambda_s = 0.05` is a quarter-of-the-run half-life at 25 rounds and a
+half-of-the-run half-life at 100; `alpha = 0.2` retains 17 per cent per round at
+K = 8 and 1 per cent at K = 20; `beta = 0.2` discards one client of eight and
+four of twenty.
+
+This is not a tuning detail. It is why a screen at a quarter of the reported
+horizon selected settings that could not hold the full run, and why a winner
+found at ten clients cannot simply be carried to five or twenty. The remedy is
+to sweep the quantity with a stable meaning - half-life, retention, count - and
+let the emitter compute the coefficient for the stage that is running. The task
+file still carries a concrete number, so it remains readable and re-runnable on
+its own.
+
+A study that sweeps coefficients across several horizons and federation sizes is
+not sweeping one thing. That is worth saying plainly, because the mistake is
+easy, silent, and ours.
