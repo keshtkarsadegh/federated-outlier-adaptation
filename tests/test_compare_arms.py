@@ -76,14 +76,36 @@ def test_one_shared_fold_is_refused():
 # reading the study
 # --------------------------------------------------------------------------- #
 def _run(root: Path, prefix: str, cell: str, fold: int, family: str,
-         adaptation: float, preservation: float) -> None:
+         adaptation: float, preservation: float, name: str = "") -> None:
     d = root / f"{prefix}{cell}_fold{fold}_AnchoredTrainer_grid_search" / "inner"
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"accuracies_{fold}.json").write_text(json.dumps({
+    (d / (name or f"accuracies_{fold}.json")).write_text(json.dumps({
         "scenario": family,
         "pool_val_accuracies": [0.5, adaptation],
         "final_evaluation": {"old": {"mean": preservation}},
     }))
+
+
+def _both_schedules(root: Path, prefix: str, cell: str, fold: int,
+                    concurrent: float, sequential: float,
+                    preservation: float) -> None:
+    """One folder holding BOTH schedules' payloads, as the blends were run."""
+    _run(root, prefix, cell, fold, "concurrent", concurrent, preservation,
+         name="accuracies_concurrent.json")
+    _run(root, prefix, cell, fold, "sequential", sequential, preservation,
+         name="accuracies_sequential.json")
+
+
+def _study(root: Path, reg_ids) -> None:
+    """The two shortlists and the shipped model's own accuracies."""
+    (root / "tables").mkdir(exist_ok=True)
+    (root / "tables" / "p12_agg_top3.json").write_text(
+        json.dumps({"concurrent": ["A"], "sequential": []}))
+    (root / "tables" / "p13_reg_top3.json").write_text(
+        json.dumps({"concurrent": list(reg_ids), "sequential": []}))
+    (root / "g0_perfold_evaluations.json").write_text(
+        json.dumps([{"accuracy": 0.8225}]))
+    (root / "g0_evaluations.json").write_text(json.dumps([{"accuracy": 0.9986}]))
 
 
 def test_a_payload_is_claimed_by_the_family_it_says_it_is(tmp_path):
@@ -135,3 +157,68 @@ def test_the_better_half_is_chosen_on_the_mean_not_per_fold(tmp_path):
     # R has the higher mean, so every fold is differenced against R
     assert rows[0]["right"] == "R"
     assert rows[0]["diffs"] == pytest.approx([3.0, 3.0, 0.0])
+
+
+# --------------------------------------------------------------------------- #
+# where a standalone penalty was written
+# --------------------------------------------------------------------------- #
+def test_a_penalty_stored_without_its_family_is_still_found(tmp_path):
+    """
+    The blends were written bare, and the pairing could not see them.
+
+    A penalty run for one schedule is stored under that schedule's prefix. The
+    blends ran both schedules in one task, so one folder per (cell, fold) holds
+    both payloads and is named without a family at all. Looking only under the
+    family prefix reported NO PAIRED RESULT for every blend while its finals sat
+    on disk - the numbers existed, under a name the tool never asked for.
+    """
+    for fold in (1, 2, 3):
+        _run(tmp_path, "d01_regfull_concurrent_", "R", fold, "concurrent", 0.90, 0.99)
+        _both_schedules(tmp_path, "d01_regfull_", "B", fold,
+                        concurrent=0.92, sequential=0.80, preservation=0.99)
+
+    conc = ca.penalties(tmp_path, "concurrent", 0.8225, 0.9986)
+    assert set(conc) >= {"R", "B"}
+    assert sorted(conc["B"]) == [1, 2, 3]
+    # the concurrent payload's number, not the sequential one it sits beside
+    assert conc["B"][1] == pytest.approx(ca.score(0.92, 0.99, 0.8225, 0.9986))
+
+    seq = ca.penalties(tmp_path, "sequential", 0.8225, 0.9986)
+    assert seq["B"][1] == pytest.approx(ca.score(0.80, 0.99, 0.8225, 0.9986))
+    # the schedule-specific folder is a concurrent run and says so
+    assert "R" not in seq
+
+
+def test_the_family_prefix_stays_authoritative(tmp_path):
+    """
+    The bare read fills gaps; it never overrides a cell stored under its family.
+
+    The bare prefix matches everything the family one does, so without that rule
+    a folder named for a schedule and a folder named for none would race, and
+    which won would depend on the order the directories came back in.
+    """
+    for fold in (1, 2):
+        _run(tmp_path, "d01_regfull_concurrent_", "R", fold, "concurrent", 0.90, 0.99)
+        _run(tmp_path, "d01_regfull_", "R", fold, "concurrent", 0.10, 0.99)
+    found = ca.penalties(tmp_path, "concurrent", 0.8225, 0.9986)
+    assert found["R"][1] == pytest.approx(ca.score(0.90, 0.99, 0.8225, 0.9986))
+
+
+def test_both_layouts_pair_in_the_cross_and_in_the_composition(tmp_path):
+    """Neither view may report a missing half for a run that exists."""
+    _study(tmp_path, ["R", "B"])
+    for fold in (1, 2, 3):
+        _run(tmp_path, "d01_aggfull_", "A", fold, "concurrent", 0.88, 0.99)
+        _run(tmp_path, "d01_regfull_concurrent_", "R", fold, "concurrent", 0.90, 0.99)
+        _both_schedules(tmp_path, "d01_regfull_", "B", fold,
+                        concurrent=0.92, sequential=0.80, preservation=0.99)
+        _run(tmp_path, "d01_combo_", "A_R", fold, "concurrent", 0.93, 0.99)
+        _run(tmp_path, "d01_combo_", "A_B", fold, "concurrent", 0.94, 0.99)
+
+    rows = ca.combos(tmp_path, 0.8225, 0.9986)
+    assert [r["left"] for r in rows] == ["A_R", "A_B"]
+    assert not any(r.get("missing") for r in rows)
+
+    rows = ca.composition(tmp_path, 0.8225, 0.9986)
+    assert [(r["left"], r["right"]) for r in rows] == [("R", "A"), ("B", "A")]
+    assert not any(r.get("missing") for r in rows)

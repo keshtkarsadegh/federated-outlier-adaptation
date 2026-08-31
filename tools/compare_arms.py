@@ -34,6 +34,12 @@ cannot be.
 ``composition``  each client penalty minus each server rule - the comparison
                  that asks which half of the update the preservation comes from.
 
+WHERE THE HALVES ARE READ FROM.  A standalone penalty is looked for under the
+schedule it was selected on and, failing that, under the bare prefix the blends
+were written with; see :func:`penalties`.  A pairing that cannot find one half
+prints NO PAIRED RESULT, which is a statement about this tool's search as much
+as about the study, and the blends spent a while proving it.
+
 THE SCORE is the study's one selection rule, the same one ``study_emit`` selects
 by and ``report_tables`` orders by:
 
@@ -140,6 +146,41 @@ def per_fold(root: Path, prefix: str, family: str, a0: float, p0: float) -> Dict
     return found
 
 
+#: Where a standalone penalty's finals were written, in the order they are
+#: tried.  ``{family}`` is filled in per schedule; the bare prefix is the
+#: fallback and matches everything the first one does, which is why it only
+#: ever fills gaps.
+REG_PREFIXES = ("d01_regfull_{family}_", "d01_regfull_")
+
+
+def penalties(root: Path, family: str, a0: float, p0: float) -> Dict[str, Dict[int, float]]:
+    """
+    Every standalone penalty of ``family``, whichever way its folder was named.
+
+    Most penalty cells are stored under the schedule they were selected on -
+    ``d01_regfull_<family>_<id>_fold*`` - because that run produced one
+    schedule's numbers.  The blends are not: one folder per (cell, fold) holds
+    BOTH schedules' payloads and is named bare, ``d01_regfull_<id>_fold*``, and
+    the two are told apart by each payload's own ``scenario`` field, which
+    :func:`per_fold` already filters on.
+
+    Reading only the family-prefixed name is what left every blend row saying
+    NO PAIRED RESULT while its runs sat on disk: the finals existed, under a
+    name this tool never looked for.  So both names are read and the bare one
+    fills only what the family-prefixed one did not resolve - the family
+    prefix stays authoritative, and any cell stored bare in future is picked up
+    without naming it here.  Ids the bare read invents out of the family-
+    prefixed folders (``concurrent_kd_T0p25_a0p9`` and the like) are never
+    asked for, because the shortlists name cells and not folders.
+    """
+    found: Dict[str, Dict[int, float]] = {}
+    for prefix in REG_PREFIXES:
+        for cell, folds in per_fold(root, prefix.format(family=family),
+                                    family, a0, p0).items():
+            found.setdefault(cell, folds)
+    return found
+
+
 def paired(left: Dict[int, float], right: Dict[int, float]) -> Optional[dict]:
     """
     ``left - right`` on the folds they share, with the spread that qualifies it.
@@ -184,7 +225,7 @@ def combos(root: Path, a0: float, p0: float) -> List[dict]:
     for family in FAMILIES:
         combo = per_fold(root, "d01_combo_", family, a0, p0)
         agg_alone = per_fold(root, "d01_aggfull_", family, a0, p0)
-        reg_alone = per_fold(root, f"d01_regfull_{family}_", family, a0, p0)
+        reg_alone = penalties(root, family, a0, p0)
         for agg_id in agg_top.get(family, []):
             for reg_id in reg_top.get(family, []):
                 key = f"{agg_id}_{reg_id}"
@@ -222,7 +263,7 @@ def composition(root: Path, a0: float, p0: float) -> List[dict]:
     rows: List[dict] = []
     for family in FAMILIES:
         agg_alone = per_fold(root, "d01_aggfull_", family, a0, p0)
-        reg_alone = per_fold(root, f"d01_regfull_{family}_", family, a0, p0)
+        reg_alone = penalties(root, family, a0, p0)
         for reg_id in reg_top.get(family, []):
             for agg_id in agg_top.get(family, []):
                 result = paired(reg_alone.get(reg_id, {}), agg_alone.get(agg_id, {}))
