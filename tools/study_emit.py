@@ -305,6 +305,30 @@ def trade_score(row, a0: float, p0: float) -> float:
 
 
 
+def with_extensions(root: Path, cells: list, grid: str) -> list:
+    """
+    The catalogue, plus every cell the boundary rule invented for this grid.
+
+    THE CATALOGUE IS FIXED AT IMPORT TIME and cannot know which ranges a given
+    cohort will push against. Any stage that rebuilds it from the module - a
+    selection, a shortlist, a crowning - is blind to the extensions, and a cell
+    it cannot see is one it collects nothing for: the run happened, the result
+    is on disk, and the stage behaves as though the method were never measured.
+    That is how a shortlist came to report two scored methods where there were
+    seven.
+    """
+    record = root / "tables" / f"boundary_ext_cells_{grid}.json"
+    if not record.is_file():
+        return cells
+    known = {cell["id"] for cell in cells}
+    added = [cell for cell in json.loads(record.read_text())
+             if cell["id"] not in known]
+    if added:
+        print(f"  boundary extension: {len(added)} extra cell(s) considered")
+    return cells + added
+
+
+
 def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = False) -> int:
     """
     Each aggregation method's best cell, as a full-horizon task file.
@@ -313,18 +337,7 @@ def agg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     re-run, so the full stage compares eighteen methods rather than one winner
     against nothing.
     """
-    cells = agg_cells.screen_cells()
-
-    # Cells the boundary rule added after the screen ran. Without this they are
-    # trained and then ignored, because the candidate list is fixed at import
-    # time and cannot know which ranges a particular cohort will push against.
-    extra = root / "tables" / "boundary_ext_cells_agg.json"
-    if extra.is_file():
-        known = {c["id"] for c in cells}
-        added = [c for c in json.loads(extra.read_text()) if c["id"] not in known]
-        if added:
-            print(f"  boundary extension: {len(added)} extra cell(s) considered")
-            cells = cells + added
+    cells = with_extensions(root, agg_cells.screen_cells(), "agg")
 
     rows = agg_selector.summarise(
         agg_selector.collect(root, cells, prefixes(cfg)["agg_screen"])
@@ -492,7 +505,7 @@ def agg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> i
     """The three best aggregations per family, for a later combination stage."""
     key = rank_key(rank_by)
     a0, p0 = shipped_baselines(root)
-    cells = agg_cells.screen_cells()
+    cells = with_extensions(root, agg_cells.screen_cells(), "agg")
     rows = agg_selector.summarise(
         agg_selector.collect(root, cells, prefixes(cfg)["agg_full"])
     )
@@ -559,17 +572,7 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     them would let a method win the table on the strength of one schedule while
     being useless on the other.
     """
-    cells = reg_cells.screen_cells()
-
-    # Cells the boundary rule added after the screen ran; without this they are
-    # trained and then ignored, the candidate list being fixed at import time.
-    extra = root / "tables" / "boundary_ext_cells_reg.json"
-    if extra.is_file():
-        known = {c["id"] for c in cells}
-        added = [c for c in json.loads(extra.read_text()) if c["id"] not in known]
-        if added:
-            print(f"  boundary extension: {len(added)} extra cell(s) considered")
-            cells = cells + added
+    cells = with_extensions(root, reg_cells.screen_cells(), "reg")
 
     rows = reg_selector.summarise(
         reg_selector.collect(root, cells, prefixes(cfg)["reg_screen"])
@@ -699,7 +702,7 @@ def reg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> i
     """
     key = rank_key(rank_by)
     a0, p0 = shipped_baselines(root)
-    cells = reg_cells.screen_cells() + hybrid_cells(root)
+    cells = with_extensions(root, reg_cells.screen_cells() + hybrid_cells(root), "reg")
     by_id = {cell["id"]: cell for cell in cells}
     chosen: Dict[str, List[str]] = {}
     orderings: Dict[str, Any] = {}
@@ -990,8 +993,10 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
     report the result as a property of either.
     """
     agg_top, reg_top = _top_lists(root)
-    aggs = {cell["id"]: cell for cell in agg_cells.screen_cells()}
-    regs = {cell["id"]: cell for cell in reg_cells.screen_cells() + hybrid_cells(root)}
+    aggs = {cell["id"]: cell
+            for cell in with_extensions(root, agg_cells.screen_cells(), "agg")}
+    regs = {cell["id"]: cell for cell in with_extensions(
+        root, reg_cells.screen_cells() + hybrid_cells(root), "reg")}
 
     lines, index, chosen = [], 0, {}
     for family in SL.FAMILIES:
