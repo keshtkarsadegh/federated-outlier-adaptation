@@ -468,6 +468,21 @@ only `fedadam` moves decisively, trading 4.76 points of adaptation for 1.73 of
 preservation.
 
 The honest way to report this is a sensitivity row, not a defended constant.
+It is measured, not asserted:
+
+```bash
+python tools/weight_sensitivity.py --root "$FOA_STUDY_DIR" --grid both
+```
+
+which reports, from the screens on disk: **1 of 17** aggregation winners differ
+from `w = 1` at `w = 2`, **5 of 17** at `w = 3`, **6 of 17** at `w = 5`; and
+**3 of 14** regularisation winners at `w = 2`, **4 of 14** at `w = 3`, **7 of
+14** at `w = 5`. Where a winner moves it moves to a gentler setting, and in
+every case but `fedadam` it gives up under a point of adaptation.
+
+None of this changes what the study reports. `w = 1` is the setting both grids
+were selected and run under, and every winner in this document is the `w = 1`
+winner.
 
 ## Two horizons, two jobs
 
@@ -531,7 +546,12 @@ made. g-0's predictions on both reference sets are computed once per run and
 cached.
 
 **Verified populated in this programme: 8 of 8 signals, on both horizons** -
-25-point series across the screen, 100-point across the finals. This matters
+25-point series across the screen, 100-point across the finals, across all
+2,215 payloads of all five stages:
+
+```bash
+python tools/check_signals.py --root "$FOA_STUDY_DIR" --all
+``` This matters
 because in an earlier run four of the eight were silently empty: the MNIST proxy
 set had never been built and the winning fold's Fisher was never promoted to the
 name the artefact resolver looks for. Both are fixed, and the fold selector now

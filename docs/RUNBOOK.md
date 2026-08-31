@@ -174,6 +174,23 @@ python tools/freeze_selection.py verify "$FOA_STUDY_DIR"
   bit-deterministic, so the question is not whether the files match but whether
   the decisions do.
 
+## After a stage finishes
+
+```bash
+python tools/check_signals.py    --root "$FOA_STUDY_DIR" --all
+python tools/describe_cohort.py  --root "$FOA_STUDY_DIR" --all
+```
+
+- **check_signals** - all eight forgetting signals are present, in every
+  payload, at the horizon the stage ran. Four of the eight were empty across an
+  845-task stage: the proxy set was never built and the Fisher was never
+  promoted. Every task exited zero. A missing signal looks exactly like a
+  present one until something counts them.
+- **describe_cohort** - what the cohort actually holds. The verdict it prints -
+  whether the clients are label-skewed - is what decides how the not-true
+  distillation result may be described, so it is measured rather than
+  remembered.
+
 And run **one** task before launching hundreds, then read its output. Four of
 the eight signals were empty across an 845-task stage because nothing looked at
 a single summary first.
@@ -203,3 +220,8 @@ python tools/compare_arms.py  --root "$FOA_STUDY_DIR" --what all --csv out/
   eleven of eighteen pairs beat both their halves on the means and only one of
   the eighteen is positive on every fold. A mean difference smaller than its own
   fold spread is not a finding, and only the paired view shows that.
+- **weight_sensitivity** - which winners depend on `w`, the one number in the
+  selection rule that is not read off disk. The study selects and reports at
+  `w = 1`; this exists because the repository once asserted the winners do not
+  depend on it, which was never checked and is false. Publish the sensitivity,
+  do not defend the constant.
