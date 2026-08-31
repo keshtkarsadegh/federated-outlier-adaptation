@@ -29,13 +29,18 @@ from federated_outlier_adaptation.data.merged_clients import (
 from federated_outlier_adaptation.training.extreme_cells import (
     CASES,
     FULL_ROUNDS,
-    WINNING_COMBO,
     accuracy_map,
     case_clients,
     case_writers,
     extreme_cells,
     rank_cohort,
+    winning_combo_id,
 )
+
+#: The combination this study crowned, as the record carries it. Written into a
+#: tmp study by :func:`crowned` rather than imported from the module under test:
+#: a winner named in source is the thing these tests exist to stop.
+CROWNED = "seq_delta_capped_hybrid_mix0p5"
 
 TOOLS = str(Path(__file__).resolve().parents[1] / "tools")
 
@@ -296,11 +301,49 @@ def stage10(tools_path):
     return make_stage10_extreme
 
 
-def test_every_line_is_the_winning_method_with_this_case_s_clients(stage10):
+@pytest.fixture()
+def crowned(tmp_path):
+    """A study root carrying nothing but the crowning this stage reads."""
+    tables = tmp_path / "tables"
+    tables.mkdir(parents=True, exist_ok=True)
+    (tables / "p15_stage_winner.json").write_text(json.dumps({
+        "rank_by": "test", "winner": CROWNED, "family": "sequential",
+        "aggregation": "seq_delta_capped", "regulariser": "hybrid_mix0p5",
+    }))
+    return tmp_path
+
+
+def test_the_winner_is_read_from_the_record_not_named_in_source(crowned):
+    assert winning_combo_id(crowned) == CROWNED
+
+
+def test_a_missing_crowning_refuses_by_name(tmp_path):
+    """
+    A guessed winner emits, trains and reports exactly like a real one.
+
+    The only place that shows up is a table nobody can reproduce, so the stage
+    stops and says which file it wanted instead.
+    """
+    with pytest.raises(SystemExit, match="p15_stage_winner.json"):
+        winning_combo_id(tmp_path)
+    (tmp_path / "tables").mkdir()
+    (tmp_path / "tables" / "p15_stage_winner.json").write_text(json.dumps({}))
+    with pytest.raises(SystemExit, match="names no winner"):
+        winning_combo_id(tmp_path)
+
+
+def test_a_crowning_the_cell_list_does_not_know_is_refused(stage10, crowned):
+    (crowned / "tables" / "p15_stage_winner.json").write_text(
+        json.dumps({"winner": "no_such_rule_no_such_penalty"}))
+    with pytest.raises(SystemExit, match="not a stage-8 combination"):
+        stage10.winning_combo(crowned)
+
+
+def test_every_line_is_the_winning_method_with_this_case_s_clients(stage10, crowned):
     from federated_outlier_adaptation.cli import build_parser
 
     parser = build_parser()
-    combo = stage10.winning_combo()
+    combo = stage10.winning_combo(crowned)
     cells = extreme_cells(["w1", "w2", "w3"])
 
     for cell in cells:
@@ -320,11 +363,11 @@ def test_every_line_is_the_winning_method_with_this_case_s_clients(stage10):
             assert args.outliers_file.endswith(f"extreme_{cell['case']}.json")
 
 
-def test_the_winning_penalty_reaches_the_trainer(stage10):
+def test_the_winning_penalty_reaches_the_trainer(stage10, crowned):
     from federated_outlier_adaptation.cli import _trainer_overrides, build_parser
 
     parser = build_parser()
-    combo = stage10.winning_combo()
+    combo = stage10.winning_combo(crowned)
     cell = extreme_cells(["w1", "w2"])[0]
     args = parser.parse_args(shlex.split(stage10.task_line(cell, combo, 1, 100))[1:])
     overrides = _trainer_overrides(args)
@@ -337,12 +380,12 @@ def test_the_winning_penalty_reaches_the_trainer(stage10):
     assert "fisher_path" in overrides and "$G0_FOLD" in overrides["fisher_path"]
 
 
-def test_participation_is_full_and_the_sampler_is_off(stage10):
+def test_participation_is_full_and_the_sampler_is_off(stage10, crowned):
     """Dropping a fifth of a two-client federation is a coin flip, not a study."""
     from federated_outlier_adaptation.cli import build_parser
 
     parser = build_parser()
-    combo = stage10.winning_combo()
+    combo = stage10.winning_combo(crowned)
     for cell in extreme_cells(["w1", "w2", "w3"]):
         args = parser.parse_args(shlex.split(stage10.task_line(cell, combo, 2, 100))[1:])
         assert args.policy == "all"
@@ -350,7 +393,7 @@ def test_participation_is_full_and_the_sampler_is_off(stage10):
         assert args.clients_per_round is None
 
 
-def test_a_changed_stage_eight_line_stops_the_copy(stage10, monkeypatch):
+def test_a_changed_stage_eight_line_stops_the_copy(stage10, crowned, monkeypatch):
     """
     Stage 10 copies stage 8's line; if it stops matching, it must not proceed.
 
@@ -358,7 +401,7 @@ def test_a_changed_stage_eight_line_stops_the_copy(stage10, monkeypatch):
     a stage-10 name, which is the sort of thing nobody notices until the numbers
     are in a table.
     """
-    combo = stage10.winning_combo()
+    combo = stage10.winning_combo(crowned)
     cell = extreme_cells(["w1", "w2"])[0]
     monkeypatch.setattr(
         stage10, "combo_task_line", lambda *a, **k: "foa final --parent something_else"

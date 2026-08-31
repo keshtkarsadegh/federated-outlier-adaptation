@@ -1687,11 +1687,28 @@ def stage_lines(cfg, root: Path, stage: str):
 
     aggs = {cell["id"]: cell for cell in agg_cells.screen_cells()}
     regs = {cell["id"]: cell for cell in reg_cells.screen_cells() + hybrid_cells(root)}
+
+    # BOTH RECORDS ARE REQUIRED, and named here rather than only inside
+    # five_cells, so that the ordering check can see this stage reads them: a
+    # size stage packed ahead of the crowning would otherwise look independent
+    # of it and die on an artefact the later element had not written yet.
+    winner_path = root / "tables" / "p15_stage_winner.json"
     grid_path = root / "tables" / "p15_combination_grid.json"
-    grid = json.loads(grid_path.read_text())["pairs"] if grid_path.is_file() else {}
+    for needed in (winner_path, grid_path):
+        if not needed.is_file():
+            print(
+                f"FATAL: no {needed}; the configurations this stage carries "
+                "forward are the ones the cross selected, and they are read "
+                "from the records rather than named here.",
+                file=sys.stderr,
+            )
+            return None
+    grid = json.loads(grid_path.read_text())["pairs"]
 
     wanted = spec.get("only")
-    cells = [c for c in five_cells.configs()
+    # Read from THIS root: the arms are a shape, the configurations behind
+    # them are whatever the current cross crowned.
+    cells = [c for c in five_cells.configs(root)
              if wanted is None or c["id"] in wanted]
     if wanted is not None and len(cells) != len(wanted):
         print(f"FATAL: {stage} asks for {list(wanted)} and the table offers "
@@ -1718,7 +1735,7 @@ def stage_lines(cfg, root: Path, stage: str):
                 )
                 return None
             pair = [cell["aggregation"], cell["regulariser"]]
-            if grid and pair not in [list(p) for p in grid.get(cell["family"], [])]:
+            if pair not in [list(p) for p in grid.get(cell["family"], [])]:
                 print(
                     f"FATAL: {pair} is not a pair the cross ran; a configuration "
                     "carried forward here must be one that stage measured.",

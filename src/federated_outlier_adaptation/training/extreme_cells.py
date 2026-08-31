@@ -2,11 +2,17 @@
 Stage 10: the extreme cases, run only with the method that won.
 
 Every earlier stage compared methods.  This one does not: the panel is over, the
-winner is the sequential combination stage 8 selected - ``seq_delta_capped``
-aggregation with the kd+fisher hybrid at ``mix=0.5`` - and the only thing that
+winner is whichever combination the cross crowned, and the only thing that
 varies here is how few clients the federation has and how their data is
 arranged.  Running a method panel again would be answering a question that has
 already been answered, at three times the cost.
+
+Which combination that is is **read**, not written down here:
+:func:`winning_combo_id` takes it from the study's own
+``tables/p15_stage_winner.json`` and refuses by name when that record is absent.
+A winner restated in source is correct only until the crowning is re-run, and
+when it stops being correct the stage still emits, still trains, and reports a
+method the current cross never chose.
 
 Three arrangements of the same two writers
 ------------------------------------------
@@ -43,14 +49,42 @@ run's provenance through the client-list files the emitter writes.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Dict, List
 
 #: Rounds every case runs for: the reporting horizon.
 FULL_ROUNDS = 100
 
-#: The stage-8 combination that won, by cell id.  Its aggregation rule and its
-#: penalty are inherited from that table rather than restated here.
-WINNING_COMBO = "seq_delta_capped_hybrid_mix0p5"
+#: The record the crowning is read from, under a study root's ``tables/``.
+WINNER_RECORD = "p15_stage_winner.json"
+
+
+def winning_combo_id(root) -> str:
+    """
+    The id of the combination the cross crowned, read from ``root``.
+
+    Read at call time and never at import, so this module can be imported
+    without a study and so a generator pointed at one study cannot carry
+    another's winner.
+
+    Raises:
+        SystemExit: the record is absent or names no winner. Refusing is the
+            point: a guessed winner produces a task file that looks exactly like
+            a real one, and the error only ever surfaces as a table that cannot
+            be reproduced.
+    """
+    path = Path(root) / "tables" / WINNER_RECORD
+    if not path.is_file():
+        raise SystemExit(
+            f"FATAL: no {path}. This stage runs the winning method only, and "
+            "the winner is a selection result rather than something to be "
+            "named here. Crown the combination stage first."
+        )
+    winner = (json.loads(path.read_text()) or {}).get("winner")
+    if not winner:
+        raise SystemExit(f"FATAL: {path} names no winner.")
+    return str(winner)
 
 #: The three arrangements, and how many of the ranked writers each one takes.
 CASES = ("single", "double", "dual")

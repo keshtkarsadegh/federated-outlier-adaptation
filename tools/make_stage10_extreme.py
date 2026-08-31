@@ -27,9 +27,9 @@ from make_stage8_combos import task_line as combo_task_line
 from federated_outlier_adaptation.training.combo_cells import combo_cells
 from federated_outlier_adaptation.training.extreme_cells import (
     FULL_ROUNDS,
-    WINNING_COMBO,
     extreme_cells,
     rank_cohort,
+    winning_combo_id,
 )
 
 RESULTS = "$FOA_RESULTS_DIR/main_v6"
@@ -45,12 +45,25 @@ SECONDS_PER_IMAGE = 1.94e-4
 ROUND_OVERHEAD = 0.31
 
 
-def winning_combo() -> dict:
-    """The stage-8 cell this stage runs, looked up rather than restated."""
+def winning_combo(root) -> dict:
+    """
+    The stage-8 cell this stage runs: read from ``root``, then looked up.
+
+    Two steps, and both matter. WHICH combination won is a selection result and
+    is read from the crowning record; WHAT that combination is - its rule, its
+    penalty, its hyper-parameters - is looked up in the stage-8 cell list, so
+    the flags this stage copies are the ones that stage measured rather than a
+    second statement of them.
+    """
+    winner = winning_combo_id(root)
     by_id = {cell["id"]: cell for cell in combo_cells()}
-    if WINNING_COMBO not in by_id:
-        raise SystemExit(f"Unknown stage-8 combination {WINNING_COMBO!r}.")
-    return by_id[WINNING_COMBO]
+    if winner not in by_id:
+        raise SystemExit(
+            f"FATAL: the crowning names {winner!r}, which is not a stage-8 "
+            "combination. The record and the cell list describe different "
+            "stages."
+        )
+    return by_id[winner]
 
 
 def client_list_path(case: str) -> str:
@@ -127,7 +140,7 @@ def header(cells, combo, folds, rounds) -> list[str]:
         "# stage10_extreme.txt - EXTREME CASES, with the winning method only.",
         "#",
         "# Every earlier stage compared methods. This one does not. The panel is",
-        f"# over and the winner is stage 8's {WINNING_COMBO}:",
+        f"# over and the winner is stage 8's {combo['id']}:",
         f"#   aggregation  {combo['agg']['rule']}",
         f"#   penalty      {combo['reg']['space']} at "
         + ", ".join(f"{k}={v:g}" for k, v in combo["reg"]["hypers"].items()),
@@ -214,7 +227,7 @@ def readme(cells, combo, folds, rounds, lists) -> str:
         f"{len(cells)} cases x {len(folds)} folds = {len(cells) * len(folds)} tasks, "
         f"{rounds} rounds each, one family per task.",
         "",
-        f"Run with the winning method only - stage 8's `{WINNING_COMBO}`: "
+        f"Run with the winning method only - stage 8's `{combo['id']}`: "
         f"`{combo['agg']['rule']}` aggregation with the `{combo['reg']['space']}` "
         "penalty at "
         + ", ".join(f"`{k}={v:g}`" for k, v in combo["reg"]["hypers"].items())
@@ -299,7 +312,7 @@ def main() -> int:
 
     ranked = rank_cohort(accuracies, list(cohort))
     cells = extreme_cells(ranked)
-    combo = winning_combo()
+    combo = winning_combo(root)
 
     lists = write_client_lists(
         root, cells, Path(args.lists_dir) if args.lists_dir else root / "outliers"

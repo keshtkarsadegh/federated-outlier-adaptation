@@ -405,7 +405,7 @@ def cohort_line(cfg, config: Dict[str, Any], clients_file: Optional[str],
     by the same 60/20/20 rule at the same seed, and ``book`` names it.
 
     Args:
-        config: A cell of :data:`five_cells.CONFIGS`.
+        config: A cell of :func:`five_cells.configs`.
         clients_file: A narrowed client list, or ``None`` to federate the whole
             cohort - which is what a dropout stage does.
         agg: The aggregation cell, or ``None`` for the plain-FedAvg control.
@@ -480,7 +480,11 @@ def counts(cfg) -> Dict[str, int]:
         "reg_full": len(REG_METHODS) * len(FAMILIES) * folds,
         "combos": COMBO_TOP_K * COMBO_TOP_K * len(FAMILIES) * folds,
         "extreme": 3 * folds,
-        "five": len(five_cells.CONFIGS) * folds,
-        "drop20": len(five_cells.CONFIGS) * folds,
-        "c20": (len(five_cells.CONFIGS) - 1) * folds * 2,
+        # The ARMS, not the cells they resolve to: how many arms a size
+        # stage runs is this stage's own shape and is known without a study,
+        # while which configuration each arm names is read from the records
+        # when the stage is emitted.
+        "five": len(five_cells.ARMS) * folds,
+        "drop20": len(five_cells.ARMS) * folds,
+        "c20": (len(five_cells.ARMS) - 1) * folds * 2,
     }

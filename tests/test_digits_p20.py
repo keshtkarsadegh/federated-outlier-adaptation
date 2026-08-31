@@ -44,6 +44,48 @@ NEXT_TEN = [
 TWENTY = TEN + NEXT_TEN
 
 
+# --------------------------------------------------------------------------- #
+# the selection records these stages read their configurations out of
+# --------------------------------------------------------------------------- #
+#: The cross, as ``p15_combination_grid.json`` records it, and the crowning it
+#: produced.  Synthesised into the tmp study rather than pinned in source: which
+#: pair won is a selection result, and a test that named one would be asserting
+#: the same stale thing the emitters used to.
+PAIRS = {
+    "concurrent": [["trimmed_t3", "feature_l2_lam0p1"],
+                   ["anchor_h1", "ntd_b0p01_t0p5"]],
+    "sequential": [["seq_order_shuffle", "feature_l2_lam0p01"]],
+}
+
+#: ``ranked`` order is the crowning's own - gain less spend - so the first entry
+#: of each family is that family's strongest pair.  The balanced arm is instead
+#: the concurrent pair that gave up least preservation, which here is the second
+#: one; the two arms therefore name two configurations rather than one twice.
+PRESERVATION = [
+    ("trimmed_t3_feature_l2_lam0p1", 0.980),
+    ("anchor_h1_ntd_b0p01_t0p5", 0.991),
+    ("seq_order_shuffle_feature_l2_lam0p01", 0.985),
+]
+
+
+def write_selection_records(root):
+    """The cross and its crowning, in the shape ``study_emit`` writes them."""
+    tables = Path(root) / "tables"
+    tables.mkdir(parents=True, exist_ok=True)
+    (tables / "p15_combination_grid.json").write_text(json.dumps(
+        {"rule": "top-3 aggregations x top-3 penalties, within each family",
+         "pairs": PAIRS}))
+    (tables / "p15_stage_winner.json").write_text(json.dumps({
+        "rank_by": "test",
+        "winner": PRESERVATION[0][0],
+        "family": "concurrent",
+        "aggregation": "trimmed_t3",
+        "regulariser": "feature_l2_lam0p1",
+        "ranked": [{"id": combo, "adaptation": 0.92, "preservation": value}
+                   for combo, value in PRESERVATION],
+    }))
+
+
 @pytest.fixture()
 def emit():
     if TOOLS not in sys.path:
@@ -82,6 +124,7 @@ def root(tmp_path):
     books.mkdir()
     _book(TEN, books / CFG.cohort_book_name)
     _book(TWENTY, books / "cohort20")
+    write_selection_records(tmp_path)
     return tmp_path
 
 
@@ -165,6 +208,16 @@ def test_a_cohort_of_the_wrong_size_stops_it(emit, root, tmp_path):
 
 def test_a_missing_cohort_stops_it(emit, root, tmp_path):
     (root / "outliers" / "cohort_worst20.json").unlink()
+    code, out = run(emit, root, tmp_path)
+    assert code == 1
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("missing", ["p15_stage_winner.json",
+                                     "p15_combination_grid.json"])
+def test_a_missing_selection_record_stops_it(emit, root, tmp_path, missing):
+    """The winners this point re-runs are read from the cross, not named here."""
+    (root / "tables" / missing).unlink()
     code, out = run(emit, root, tmp_path)
     assert code == 1
     assert not out.exists()

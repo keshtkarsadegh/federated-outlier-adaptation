@@ -53,6 +53,48 @@ STAGES = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# the selection records these stages read their configurations out of
+# --------------------------------------------------------------------------- #
+#: The cross, as ``p15_combination_grid.json`` records it, and the crowning it
+#: produced.  Synthesised into the tmp study rather than pinned in source: which
+#: pair won is a selection result, and a test that named one would be asserting
+#: the same stale thing the emitters used to.
+PAIRS = {
+    "concurrent": [["trimmed_t3", "feature_l2_lam0p1"],
+                   ["anchor_h1", "ntd_b0p01_t0p5"]],
+    "sequential": [["seq_order_shuffle", "feature_l2_lam0p01"]],
+}
+
+#: ``ranked`` order is the crowning's own - gain less spend - so the first entry
+#: of each family is that family's strongest pair.  The balanced arm is instead
+#: the concurrent pair that gave up least preservation, which here is the second
+#: one; the two arms therefore name two configurations rather than one twice.
+PRESERVATION = [
+    ("trimmed_t3_feature_l2_lam0p1", 0.980),
+    ("anchor_h1_ntd_b0p01_t0p5", 0.991),
+    ("seq_order_shuffle_feature_l2_lam0p01", 0.985),
+]
+
+
+def write_selection_records(root):
+    """The cross and its crowning, in the shape ``study_emit`` writes them."""
+    tables = Path(root) / "tables"
+    tables.mkdir(parents=True, exist_ok=True)
+    (tables / "p15_combination_grid.json").write_text(json.dumps(
+        {"rule": "top-3 aggregations x top-3 penalties, within each family",
+         "pairs": PAIRS}))
+    (tables / "p15_stage_winner.json").write_text(json.dumps({
+        "rank_by": "test",
+        "winner": PRESERVATION[0][0],
+        "family": "concurrent",
+        "aggregation": "trimmed_t3",
+        "regulariser": "feature_l2_lam0p1",
+        "ranked": [{"id": combo, "adaptation": 0.92, "preservation": value}
+                   for combo, value in PRESERVATION],
+    }))
+
+
 @pytest.fixture()
 def emit():
     if TOOLS not in sys.path:
@@ -84,6 +126,7 @@ def root(tmp_path):
     books = tmp_path / "fold_books"
     books.mkdir()
     write_fold_book(book, books / CFG.cohort_book_name)
+    write_selection_records(tmp_path)
     return tmp_path
 
 
@@ -286,7 +329,7 @@ def emitted(emit, root, tmp_path):
 @pytest.mark.parametrize("stage", sorted(STAGES))
 def test_twenty_tasks_four_configurations_five_folds(emitted, stage):
     assert len(emitted[stage]) == 20
-    assert len(five_cells.CONFIGS) * len(SL.FOLDS) == 20
+    assert len(five_cells.ARMS) * len(SL.FOLDS) == 20
 
 
 @pytest.mark.parametrize("stage", sorted(STAGES))
@@ -362,8 +405,8 @@ def test_the_control_is_plain_fedavg_with_no_penalty(emitted, stage):
 
 
 @pytest.mark.parametrize("stage", sorted(STAGES))
-def test_the_selected_configurations_carry_their_rule_and_penalty(emitted, stage):
-    for cell in five_cells.CONFIGS:
+def test_the_selected_configurations_carry_their_rule_and_penalty(emitted, root, stage):
+    for cell in five_cells.configs(root):
         if cell["regulariser"] is None:
             continue
         chosen = [ln for ln in emitted[stage] if f"_{cell['id']}_fold" in ln]
@@ -384,9 +427,9 @@ def test_the_selected_configurations_carry_their_rule_and_penalty(emitted, stage
 
 def test_a_configuration_that_names_an_unknown_cell_stops_it(
         emit, root, tmp_path, monkeypatch):
-    broken = five_cells.configs()
+    broken = five_cells.configs(root)
     broken[0]["aggregation"] = "no_such_rule"
-    monkeypatch.setattr(five_cells, "configs", lambda: broken)
+    monkeypatch.setattr(five_cells, "configs", lambda _root: broken)
     code, out = run(emit, root, tmp_path, "five")
     assert code == 1
     assert not out.exists()
@@ -394,9 +437,78 @@ def test_a_configuration_that_names_an_unknown_cell_stops_it(
 
 def test_a_rule_run_on_the_wrong_schedule_stops_it(emit, root, tmp_path, monkeypatch):
     """A concurrent rule reported as sequential is a claim about a loop it never ran on."""
-    broken = five_cells.configs()
+    broken = five_cells.configs(root)
     broken[0]["family"] = "sequential"
-    monkeypatch.setattr(five_cells, "configs", lambda: broken)
+    monkeypatch.setattr(five_cells, "configs", lambda _root: broken)
+    code, out = run(emit, root, tmp_path, "five")
+    assert code == 1
+    assert not out.exists()
+
+
+# --------------------------------------------------------------------------- #
+# the configurations are read, not written down
+# --------------------------------------------------------------------------- #
+def test_the_arms_are_resolved_from_the_records(root):
+    """
+    Three arms out of the crowning, plus the control, in report order.
+
+    winner is the strongest concurrent pair the crowning ranks; balanced is the
+    concurrent pair that gave up least preservation, which is a different pair;
+    sequential is the strongest sequential one. None of the three is named in
+    the module.
+    """
+    cells = five_cells.configs(root)
+    assert [c["id"] for c in cells] == [a["id"] for a in five_cells.ARMS]
+    carried = {c["id"]: (c["family"], c["aggregation"], c["regulariser"])
+               for c in cells}
+    assert carried["winner"] == ("concurrent", "trimmed_t3", "feature_l2_lam0p1")
+    assert carried["balanced"] == ("concurrent", "anchor_h1", "ntd_b0p01_t0p5")
+    assert carried["sequential"] == (
+        "sequential", "seq_order_shuffle", "feature_l2_lam0p01")
+    assert carried["control"] == ("both", "fedavg", None)
+
+
+def test_a_re_crowning_moves_the_arms_with_it(root):
+    """The point of reading them: a new crowning is carried, not ignored."""
+    record = json.loads((root / "tables" / "p15_stage_winner.json").read_text())
+    record["ranked"] = list(reversed(record["ranked"]))
+    (root / "tables" / "p15_stage_winner.json").write_text(json.dumps(record))
+    carried = {c["id"]: c["aggregation"] for c in five_cells.configs(root)}
+    assert carried["winner"] == "anchor_h1"
+    assert carried["balanced"] == "trimmed_t3"
+
+
+def test_a_missing_record_refuses_by_name_rather_than_guessing(tmp_path):
+    """
+    A guessed winner emits, trains and reports exactly like a chosen one.
+
+    Both records are needed: the crowning says which pair won, and the cross
+    says which schedule a pair belongs to - a combination id is two ids joined
+    by an underscore and cannot be split without the lists it was built from.
+    """
+    with pytest.raises(SystemExit, match="p15_stage_winner.json"):
+        five_cells.configs(tmp_path)
+    write_selection_records(tmp_path)
+    (tmp_path / "tables" / "p15_combination_grid.json").unlink()
+    with pytest.raises(SystemExit, match="p15_combination_grid.json"):
+        five_cells.configs(tmp_path)
+
+
+def test_a_crowning_the_cross_does_not_list_is_refused(root):
+    """Two records describing different stages is not something to average."""
+    record = json.loads((root / "tables" / "p15_stage_winner.json").read_text())
+    record["ranked"].append({"id": "made_up_pair", "adaptation": 0.99,
+                             "preservation": 0.99})
+    (root / "tables" / "p15_stage_winner.json").write_text(json.dumps(record))
+    with pytest.raises(SystemExit, match="different stages"):
+        five_cells.configs(root)
+
+
+@pytest.mark.parametrize("missing", ["p15_stage_winner.json",
+                                     "p15_combination_grid.json"])
+def test_the_size_stage_stops_when_a_record_is_absent(
+        emit, root, tmp_path, missing):
+    (root / "tables" / missing).unlink()
     code, out = run(emit, root, tmp_path, "five")
     assert code == 1
     assert not out.exists()
