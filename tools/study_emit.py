@@ -1005,6 +1005,23 @@ def _top_lists(root: Path) -> tuple:
     return agg, reg
 
 
+#: SEED BLOCKS ARE 1000 WIDE, AND ONE STAGE NO LONGER FITS IN ONE.
+#: The regularisation screen is 140 cells x 5 folds and seeds as
+#: ``seed_base + block + index * 10 + fold``, so it spans 1400 - two blocks,
+#: 710001-711395. It has run at those seeds and cannot be moved without
+#: invalidating 700 results, so ``combos`` moved from +10000 and ``extreme``
+#: from +11000, both of which sat inside that span. Neither had run.
+#:
+#: A collision here is not loud: two stages would draw the same client-sampling
+#: sequence and their results would be correlated in a way nothing in the
+#: output reveals. Before adding a block, check the widest stage, not the
+#: nominal spacing.
+#:
+#: In use: 2000 agg screen, 4000 agg full, 8000 reg full, 9000 hybrid,
+#: 10000-11395 REG SCREEN (two blocks), 12000 five, 14000 dropout20,
+#: 15000/16000 c20, 17000 combos, 18000 extreme.
+
+
 def combos(cfg, root: Path, out: Path, expect: int) -> int:
     """
     The three best aggregations crossed with the three best penalties, per family.
@@ -1042,7 +1059,7 @@ def combos(cfg, root: Path, out: Path, expect: int) -> int:
                 for fold in SL.folds_of(cfg):
                     lines.append(SL.combo_line(
                         cfg, aggs[agg_id], regs[reg_id], fold,
-                        cfg.seed_base + 10000 + index * 10 + fold,
+                        cfg.seed_base + 17000 + index * 10 + fold,
                     ))
                 index += 1
 
@@ -1220,7 +1237,7 @@ def extreme(cfg, root: Path, out: Path, expect: int) -> int:
         for fold in SL.folds_of(cfg):
             lines.append(SL.extreme_line(
                 cfg, cell["case"], clients_file, agg, reg, fold,
-                cfg.seed_base + 11000 + index * 10 + fold,
+                cfg.seed_base + 18000 + index * 10 + fold,
             ))
     return emit(lines, out, expect, "p16/extreme", [
         "# GENERATED, AND NOT AUTHORISED TO RUN.",
