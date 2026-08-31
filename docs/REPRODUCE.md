@@ -71,15 +71,15 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | # | stage | generator | task file | tasks | rounds |
 |---|---|---|---|---|---|
 | 1 | dataset index | `tools/fetch_sd19.py` | - | - | - |
-| 2 | fold books | `d01_p02.txt` | `d01_p02.txt` | | |
-| 3 | g-init / detector | `s01b_detector.txt` | `s01b_detector.txt` | | |
-| 4 | g-0 + cohorts | `s02_selection.txt` | `s02_selection.txt` | 29 | |
+| 2 | fold books | `d01_p02.txt` | `d01_p02.txt` | 4 | - |
+| 3 | g-init / detector | `s01b_detector.txt` | `s01b_detector.txt` | 2 | - |
+| 4 | g-0 + cohorts | `s02_selection.txt` | `s02_selection.txt` | 29 | - |
 | 5 | references | `s03_refs_c10.txt`, `s03b_refs_fl.txt` | | 155 | 100 |
 | 6 | **aggregation screen** | `tools/make_digits_p11.py` | `s09_agg_screen2.txt` | 480 | 25 |
 | 7 | **aggregation finals** | `study_emit.py agg-full` | `s10_agg_full2.txt` | 85 | 100 |
-| 8 | **regularisation screen** | `tools/make_digits_p13.py` | `s11_reg_screen2.txt` | 700 | 25 |
-| 9 | **regularisation finals** | `study_emit.py reg-full` | `s14_reg_full3.txt` | 70 | 100 |
-| 10 | **combinations** | `study_emit.py combos` | `s15_combos3.txt` | 90 | 100 |
+| 8 | **regularisation screen** | `tools/make_digits_p13.py` | `s16_reg_screen3.txt` | 700 | 25 |
+| 9 | **regularisation finals** | `study_emit.py reg-full` | *emitted from the screen* | 70 | 100 |
+| 10 | **combinations** | `study_emit.py combos` | *emitted from both finals* | 90 | 100 |
 
 Superseded task files live in `jobs/superseded/`. They are kept as a record and
 must not be re-run: their seeds and their cells belong to a previous programme.
@@ -95,25 +95,67 @@ cosmetic - see [§7](#7-things-that-look-like-bugs-and-are-not).
 Every task file is generated, never hand-edited, and regenerating one must
 reproduce it byte for byte:
 
+**No flags.** Every command below is the whole command; a task file that needs
+an argument remembered by hand is a task file nobody can regenerate.
+
 ```bash
 python tools/make_digits_p11.py --jobs-dir /tmp/check     # aggregation screen
 python tools/make_digits_p13.py --jobs-dir /tmp/check     # regularisation screen
 diff /tmp/check/d01_p11.txt $FOA_STUDY_DIR/jobs/s09_agg_screen2.txt
+diff /tmp/check/d01_p13.txt $FOA_STUDY_DIR/jobs/s16_reg_screen3.txt
 
-python tools/study_emit.py agg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 85 --clients-per-round 9
-python tools/study_emit.py reg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 70 --clients-per-round 9
-python tools/study_emit.py combos   --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 90 --clients-per-round 9
+python tools/study_emit.py agg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 85
+python tools/study_emit.py reg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 70
+python tools/study_emit.py combos   --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 90
 ```
 
-`--clients-per-round` **must match the screen the winners were selected from**.
-The grid is searched once, at the harder participation rate, and the winners are
-carried to the others. Emitting a final at the study default while the screen ran
-at another rate re-runs the winners under conditions they were not chosen under,
-and nothing about the resulting file looks wrong.
+`diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s10_agg_full2.txt` closes the loop on the
+aggregation finals the same way.
+
+The participation rate these stages emit at is **not** a flag - see
+[§5](#5-seeds-and-the-rate-a-grid-is-searched-at). It was one, and the two grids ended up searched at different
+rates because it was typed on one command line and not on the other.
 
 ---
 
-## 5. Seeds
+## 5. Seeds, and the rate a grid is searched at
+
+### The search rate is a constant
+
+Both grids are searched at **one** participation rate, the harder of the two -
+eight of ten clients per round rather than nine - and the winners are carried to
+the other rates. A configuration chosen where the averaging is noisiest has a
+better claim on the easier rate than the reverse would, and searching every rate
+would multiply the most expensive stage in the programme by the number of rates.
+
+That rate is `search_clients_per_round` in `StudyConfig`, and the grid emitters -
+`make_digits_p11`, `make_digits_p13`, and `study_emit`'s `agg-full`, `reg-full`
+and `combos` - read it from there. The five stages that deliberately run at other
+rates (`five`, `drop20`, `c20`, `extreme`, `reg-hybrid`) are unaffected: their
+rate is the thing they measure.
+
+It used to be a `--clients-per-round` flag with the study's own 9 of 10 as the
+default. The aggregation grid was given the flag; the regularisation grid was
+not, so it was **searched at 9 of 10 against an aggregation table selected at 8**,
+and the two tables are meant to be read against each other. The mismatch then
+propagated the way the pipeline is designed to propagate a rate - each stage
+matches the stage it selects from - so the regularisation finals and the
+combinations inherited it. No error was raised, because no stage was ever told
+what rate it should be at, only what rate the stage before it had used.
+
+**Those results were discarded**: 700 screen runs, 70 finals and 34 partial
+combinations were deleted rather than reported, and their task files are kept
+under `jobs/superseded/` as a record of what ran. The corrected screen is
+`s16_reg_screen3.txt`. It differs from the discarded `s11_reg_screen2.txt` in
+exactly 701 lines - the 700 task lines and the header sentence that states the
+rate - and in nothing else: the sampler seeds are unchanged at 710001-711395,
+because that scheme is a function of a cell's index and not of the participation.
+
+An explicit `--clients-per-round` still wins where one is passed, and it now sets
+both fields, so a flag given to a grid stage reaches the lines rather than being
+overwritten by the constant on exactly the stages the flag is for.
+
+### Seeds
 
 Every task that fits a model or draws a sample carries a seed. Two schemes are in
 use, and **the difference is deliberate**:
