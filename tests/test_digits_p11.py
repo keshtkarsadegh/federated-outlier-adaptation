@@ -189,6 +189,27 @@ def test_every_line_draws_the_search_rate(parsed):
         assert args.policy == "uniform"
 
 
+def test_a_search_rate_its_cohort_cannot_hold_is_refused(emit):
+    """
+    The constant is written for ten clients, and it is not carried down.
+
+    A five-client study inherits ``search_clients_per_round`` unchanged, so a
+    grid stage emitted for it would ask eight of five; an eight-client one would
+    get full participation from a constant whose whole purpose is to be harder
+    than that. Both have to stop before a task file exists.
+    """
+    import dataclasses
+
+    for cohort in (5, 8):
+        small = dataclasses.replace(
+            DIGITS_STUDY01, name="smaller", cohort_size=cohort,
+            clients_per_round=cohort - 1,
+        )
+        with pytest.raises(SystemExit) as raised:
+            emit.searched_at(small)
+        assert f"8 of {cohort}" in str(raised.value)
+
+
 def test_every_line_is_the_digit_task_at_the_screening_horizon(parsed):
     for args in parsed:
         assert args.classes == "digits" and args.resolution == 28
@@ -365,7 +386,10 @@ def test_the_emitted_p12_lines_are_the_full_horizon(emit, tmp_path):
     for cell in agg_cells.screen_cells():
         _result(tmp_path, "d01_agg_", cell["id"], 1, 0.5)
     out = tmp_path / "p12.txt"
-    emit.agg_full(DIGITS_STUDY01, tmp_path, out, 90)
+    # 85, which is what the emitter writes: an expect it cannot meet makes the
+    # emitter halt, and an unchecked return code let this test go on reading an
+    # empty file and passing on nothing at all
+    assert emit.agg_full(DIGITS_STUDY01, tmp_path, out, 85) == 0
 
     parser = build_parser()
     lines = [l for l in out.read_text().splitlines() if l and not l.startswith("#")]

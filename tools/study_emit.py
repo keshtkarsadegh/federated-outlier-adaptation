@@ -373,9 +373,24 @@ def searched_at(cfg):
     passes ``--clients-per-round`` sets both fields, so an explicit rate still
     wins here; what cannot happen any more is a grid stage taking the study's
     own rate because a flag was left off.
+
+    THE RATE IS A CONSTANT AND CONSTANTS DO NOT SHRINK WITH A COHORT.  Eight of
+    ten is the harder rate on a ten-client federation; the same eight on a
+    five-client one is not a participation rule at all, and on an eight-client
+    one it is full participation - the opposite of what the constant is for.
+    Either would emit a file that looks like every other grid file, so the
+    refusal has to happen here, before a line exists.
     """
     import dataclasses
 
+    if not 1 <= cfg.search_clients_per_round < cfg.cohort_size:
+        raise SystemExit(
+            f"FATAL: {cfg.name} would search its grids at "
+            f"{cfg.search_clients_per_round} of {cfg.cohort_size} clients, "
+            "which is not a rate harder than full participation. "
+            "search_clients_per_round is a constant written for one cohort "
+            "size; set it for this study before emitting a grid stage."
+        )
     return dataclasses.replace(cfg, clients_per_round=cfg.search_clients_per_round)
 
 
@@ -938,6 +953,13 @@ def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
     reproduce the KD winner exactly. That is what makes the three blend points
     readable as a line between the two methods rather than three unrelated runs.
     """
+    # THE BLEND IS REPORTED ALONGSIDE THE REG FINALS, so it has to be run at
+    # the rate its two halves were chosen and re-run at. Taking the study's own
+    # participation here would price the blend on an easier loop than the KD and
+    # Fisher winners it sits between, and the three mixes would stop being a
+    # line between two measured methods.
+    cfg = searched_at(cfg)
+
     record_path = root / "tables" / "p13_reg_method_winners.json"
     if not record_path.is_file():
         print(

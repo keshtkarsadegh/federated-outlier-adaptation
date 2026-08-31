@@ -467,7 +467,9 @@ def test_the_hybrid_lines_are_the_full_horizon_and_parse(emit, tmp_path):
             continue
         args = parser.parse_args(shlex.split(line)[1:])
         assert args.rounds == 100 and args.classes == "digits"
-        assert args.clients_per_round == 9 and args.old_fold == "all"
+        # the SEARCH rate, not the study's own: the blend is reported beside the
+        # reg finals, which are re-run at the rate their grid was searched at
+        assert args.clients_per_round == 8 and args.old_fold == "all"
 
 
 def test_the_hybrid_refuses_without_a_selection(emit, tmp_path):
