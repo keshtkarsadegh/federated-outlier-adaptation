@@ -43,7 +43,10 @@ from federated_outlier_adaptation.training import agg_cells, reg_cells
 FULL_ROUNDS = 100
 
 #: The two winners the kd+fisher hybrid is built from, by stage-7 cell id.
-HYBRID_KD_CELL = "kd_T16_a0p7"
+#: Repointed with the re-ranged reg grid: T=16 left the kd row when the top of
+#: that row was dropped as measured-saturated.  Same caveat as AGG_CELLS below -
+#: this should be read from the selection record, not written down here.
+HYBRID_KD_CELL = "kd_T8_a0p7"
 HYBRID_FISHER_CELL = "fisher_lam0p1"
 
 #: Blend weight of the hybrid on each schedule; see the module docstring.
@@ -64,7 +67,10 @@ AGG_CELLS = {
 
 #: The two non-hybrid penalties, by stage-7 cell id.  The hybrid is built rather
 #: than looked up, because it was never a screening cell.
-REG_CELLS = (HYBRID_KD_CELL, "logit_l2_lam0p316")
+#: ``logit_l2_lam0p316`` left the row when it was placed below 1.0, where the
+#: earlier work's own sweep shows the live region; 0.1 is its nearest survivor
+#: and is also that study's reported setting.
+REG_CELLS = (HYBRID_KD_CELL, "logit_l2_lam0p1")
 
 
 def _hybrid_cell(mix: float) -> Dict[str, Any]:

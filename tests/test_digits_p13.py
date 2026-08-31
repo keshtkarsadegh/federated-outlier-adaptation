@@ -1,7 +1,7 @@
 """
 P13: the regularisation screen, and the selections that follow it.
 
-The screen is 585 runs whose only job is to rank penalties, so the tests are
+The screen is 700 runs whose only job is to rank penalties, so the tests are
 about the ways a rank can be wrong without looking wrong: a line that does not
 run the protocol it claims to, a penalty whose coefficients were rounded on the
 way to the command line, a Fisher path that points at nothing, and a selection
@@ -38,6 +38,7 @@ PRIOR_SEEDS = (
     | set(range(702001, 703686))    # P11 screen
     | set(range(703691, 703706))    # P11 boundary extension
     | set(range(704001, 704176))    # P12 full
+    | set(range(706001, 707256))    # the superseded P13 screen
 )
 
 
@@ -89,7 +90,7 @@ def parsed(p13):
     # the screen FILE, not the whole table: the boundary extensions were
     # appended to the table afterwards and are submitted as their own file.
     return [
-        parser.parse_args(shlex.split(line)[1:]) for line in p13.screened_lines()
+        parser.parse_args(shlex.split(line)[1:]) for line in p13.lines()
     ]
 
 
@@ -120,13 +121,13 @@ def test_the_full_horizon_count_is_per_family():
 
 
 # --------------------------------------------------------------------------- #
-# the 585 lines
+# the 700 lines
 # --------------------------------------------------------------------------- #
 def test_the_screen_is_every_cell_at_every_fold(p13, parsed):
-    assert len(parsed) == 585
-    cells = {c["id"] for c in reg_cells.screen_cells()[:p13.SCREENED_CELLS]}
+    assert len(parsed) == 700
+    cells = {c["id"] for c in reg_cells.screen_cells()}
     seen = {(a.parent[len("d01_reg_"):].rsplit("_fold", 1)[0], a.fold) for a in parsed}
-    assert len(seen) == 585
+    assert len(seen) == 700
     assert {c for c, _ in seen} == cells
 
 
@@ -211,16 +212,16 @@ def test_the_fisher_path_is_on_exactly_the_cells_that_need_it(parsed):
             )
         else:
             assert "fisher_path" not in overrides
-    assert with_fisher == 16 * 5 == 80
+    assert with_fisher == 26 * 5 == 130
 
 
-def test_the_lines_are_585_distinct_cells_with_585_distinct_seeds(parsed):
-    assert len({a.parent for a in parsed}) == 585
-    assert len({a.sampler_seed for a in parsed}) == 585
+def test_the_lines_are_700_distinct_cells_with_700_distinct_seeds(parsed):
+    assert len({a.parent for a in parsed}) == 700
+    assert len({a.sampler_seed for a in parsed}) == 700
 
 
 def test_no_seed_collides_with_any_earlier_stage(parsed):
-    """P09, P11, its extension and P12 have all drawn from this study already."""
+    """P09, P11, its extension, P12 and the superseded P13 have all drawn."""
     seeds = {a.sampler_seed for a in parsed}
     assert not seeds & PRIOR_SEEDS
     assert min(seeds) > max(PRIOR_SEEDS)
@@ -403,7 +404,7 @@ def _selection(root: Path, kd_id: str, fisher_id: str):
 
 
 def test_the_hybrid_is_built_from_the_two_winners(emit, tmp_path):
-    _selection(tmp_path, "kd_T8_a0p3", "fisher_lam10000")
+    _selection(tmp_path, "kd_T8_a0p3", "fisher_lam1000")
     out = tmp_path / "hybrid.txt"
     assert emit.reg_hybrid(DIGITS_STUDY01, tmp_path, out, 15) == 0
 
@@ -418,7 +419,7 @@ def test_the_hybrid_is_built_from_the_two_winners(emit, tmp_path):
         (tmp_path / "tables" / "p14_hybrid_construction.json").read_text()
     )
     assert record["kd_winner"] == "kd_T8_a0p3"
-    assert record["fisher_winner"] == "fisher_lam10000"
+    assert record["fisher_winner"] == "fisher_lam1000"
     # T and lam come from the KD half, so mix = 1 would reproduce it exactly
     kd = {c["id"]: c for c in reg_cells.screen_cells()}["kd_T8_a0p3"]
     assert record["T"] == kd["hypers"]["T"]
@@ -548,142 +549,6 @@ def test_the_hybrid_refuses_when_only_one_half_was_measured(emit, tmp_path):
     assert emit.reg_hybrid(DIGITS_STUDY01, tmp_path, tmp_path / "h.txt", 15) == 1
 
 
-# --------------------------------------------------------------------------- #
-# the boundary extensions of the kd and ntd rows
-# --------------------------------------------------------------------------- #
-def test_the_extensions_are_eight_cells_and_forty_tasks(p13):
-    """THIS study's extension. A later one appended eight more cells."""
-    ext = reg_cells.boundary_extension_cells()
-    assert len(ext) == 8
-    assert len(p13.ext_lines()) == 40
-    assert reg_cells.screen_cells()[117:125] == ext
-
-
-def test_the_kd_extension_is_narrowed_to_the_top_of_the_alpha_row():
-    """
-    The KD row is a T x alpha grid, so a full extension would be 14 cells.
-
-    Alpha's optimum was interior and the two families agreed on 0.99, so alpha
-    is not the axis in question; 0.95 comes along only to catch it drifting as
-    T falls.
-    """
-    kd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "kd"]
-    assert len(kd) == 4
-    assert reg_cells.KD_EXT_TEMPERATURES == (0.5, 0.25)
-    assert reg_cells.KD_EXT_ALPHAS == (0.95, 0.99)
-    assert {c["hypers"]["T"] for c in kd} == {0.5, 0.25}
-    assert {c["hypers"]["lam"] for c in kd} == {
-        reg_cells.kd_lam_of_alpha(a) for a in (0.95, 0.99)
-    }
-    # a full T x alpha extension would have been this many
-    assert len(reg_cells.KD_EXT_TEMPERATURES) * len(reg_cells.KD_ALPHAS) == 14
-
-
-def test_the_kd_extension_goes_below_the_row_it_extends():
-    kd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "kd"]
-    assert max(c["hypers"]["T"] for c in kd) < min(reg_cells.KD_TEMPERATURES)
-
-
-def test_the_two_ntd_extensions_are_deduplicated():
-    """They extend one (beta, tau) grid, so it is 4 cells and not 4 + 4."""
-    ntd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "ntd"]
-    assert len(ntd) == 4
-    pairs = {(c["hypers"]["lam"], c["hypers"]["T"]) for c in ntd}
-    assert len(pairs) == 4
-    assert pairs == {
-        (0.01, 0.25), (0.001, 0.25), (0.0001, 0.5), (0.0001, 1.0),
-    }
-
-
-def test_the_ntd_extensions_go_below_the_rows_they_extend():
-    ntd = [c for c in reg_cells.boundary_extension_cells() if c["method"] == "ntd"]
-    taus = {c["hypers"]["T"] for c in ntd}
-    betas = {c["hypers"]["lam"] for c in ntd}
-    assert min(taus) < min(reg_cells.NTD_TAUS)
-    assert min(betas) < min(reg_cells.NTD_BETAS)
-
-
-def test_the_extension_cells_keep_their_methods():
-    """A wider row is not a new method, so P14 stays 70 lines."""
-    assert reg_cells.methods() == [
-        "param_l2", "fisher", "fisher_scaled", "logit_l2", "feature_l2",
-        "kd", "ntd",
-    ]
-    assert SL.counts(DIGITS_STUDY01)["reg_full"] == 70
-    grouped = reg_cells.cells_by_method()
-    assert len(grouped["kd"]) == 49 + 4          # screen + boundary
-    assert len(grouped["ntd"]) == 35 + 4
-    assert len(grouped["fisher"]) == 8
-    assert len(grouped["fisher_scaled"]) == 8
-    assert len(grouped["logit_l2"]) == 5
-
-
-def test_the_screen_file_regenerates_byte_identical(p13):
-    """
-    The 585 already-submitted lines must be exactly what they were.
-
-    Inserting the extensions into their rows would have re-seeded every cell
-    after them; appending is what keeps this true.
-    """
-    screened = p13.screened_lines()
-    assert len(screened) == 585
-    assert screened == p13.lines()[:585]
-    for line in screened:
-        for new in ("kd_T0p5_", "kd_T0p25_", "_t0p25", "b0p0001_"):
-            assert new not in line
-
-
-
-
-def test_the_digit_extension_counts_only_its_own_cells(p13):
-    """
-    Its header and README count the cells they describe.
-
-    Reading the whole extension block, they would have re-counted themselves
-    upwards the moment another study appended anything - reporting six KD cells
-    in a file that contains four.
-    """
-    groups = p13._ext_groups()
-    assert len(groups["kd"]) == 4
-    assert len(groups["ntd"]) == 4
-    assert sum(len(cells) for cells in groups.values()) == 8
-
-
-def test_the_extension_seeds_are_fresh_and_continue_the_scheme(p13):
-    from federated_outlier_adaptation.cli import build_parser
-
-    parser = build_parser()
-    screened = {
-        parser.parse_args(shlex.split(l)[1:]).sampler_seed
-        for l in p13.screened_lines()
-    }
-    ext = {
-        parser.parse_args(shlex.split(l)[1:]).sampler_seed for l in p13.ext_lines()
-    }
-    assert len(ext) == 40
-    assert not ext & screened
-    assert min(ext) > max(screened)
-    assert not ext & PRIOR_SEEDS
-
-
-def test_the_extension_runs_the_screen_protocol(p13):
-    from federated_outlier_adaptation.cli import _trainer_overrides, build_parser
-
-    parser = build_parser()
-    for line in p13.ext_lines():
-        args = parser.parse_args(shlex.split(line)[1:])
-        assert args.classes == "digits" and args.rounds == 25
-        assert args.clients_per_round == 9 and args.policy == "uniform"
-        assert args.aggregation == "fedavg"
-        assert args.init == "global" and args.global_name == "g0"
-        assert args.old_fold == "all"
-        overrides = _trainer_overrides(args)
-        assert overrides["anchor"] == "frozen"
-        assert overrides["space"] in ("kd", "ntd")
-        # neither extended row needs a Fisher
-        assert "fisher_path" not in overrides
-
-
 def test_the_widened_ranges_are_what_boundary_detection_now_sees(emit):
     """
     T=1 was the low edge of [1..50]; it is interior to [0.25..50].
@@ -774,13 +639,13 @@ def test_the_patch_says_whether_the_winner_moved(emit, tmp_path, capsys):
     )
     assert record["changed"] is False
     assert record["winner"] == record["previous_winner"] == "kd_T1_a0p99"
-    # 49 screened + 4 boundary: a re-selection ranks the row as it stands
-    # now, which is the whole point of running one.
-    assert record["cells_in_row"] == 53
+    # the kd row as it stands now: a re-selection ranks the current row,
+    # which is the whole point of running one.
+    assert record["cells_in_row"] == 42
 
 
 def test_the_patch_reports_a_moved_winner(emit, tmp_path, capsys):
-    """The first selection saw only the short row; the extension changes it."""
+    """The first selection saw only the short row; the low end changes it."""
     for cell in reg_cells.screen_cells():
         if cell["id"].startswith(("kd_T0p5_", "kd_T0p25_")):
             continue
@@ -808,7 +673,7 @@ def test_the_patch_reports_a_moved_winner(emit, tmp_path, capsys):
 
 
 def test_the_patch_is_stamped_unauthorised(emit, tmp_path):
-    _row_results(tmp_path, "ntd", "concurrent", "ntd_b0p01_t0p25")
+    _row_results(tmp_path, "ntd", "concurrent", "ntd_b0p01_t0p5")
     out = tmp_path / "patch.txt"
     emit.reg_patch(DIGITS_STUDY01, tmp_path, out, 5,
                    method="ntd", family="concurrent")
@@ -862,17 +727,17 @@ def test_top3_ranks_a_patched_result_against_the_one_it_supersedes(emit, tmp_pat
     assert by_id[chosen["concurrent"][0]]["method"] == "kd"
 
 
-def test_the_screen_is_the_same_cell_table_as_ever(p13):
+def test_the_screen_is_the_whole_re_ranged_table(p13):
     """
-    The table is 125 now; the screen that ran is still its first 117.
+    140 cells, and the file is all of them.
 
-    The eight extra cells are the kd and ntd rows' boundary extensions,
-    appended after the fact - see the extension tests below.
+    The superseded screen held its two edge probes in an appended tail; those
+    probes are inside the kd and ntd rows now, so there is no tail to slice.
     """
-    assert len(reg_cells.screen_cells()) == 125
-    assert p13.SCREENED_CELLS == 117
-    assert len(p13.screened_lines()) == 585
-    assert SL.counts(DIGITS_STUDY01)["reg_screen"] == 625
+    assert len(reg_cells.screen_cells()) == 140
+    assert p13.SCREENED_CELLS == 140
+    assert len(p13.lines()) == 700
+    assert SL.counts(DIGITS_STUDY01)["reg_screen"] == 700
     assert SL.REG_METHODS == [
         "param_l2", "fisher", "fisher_scaled", "logit_l2", "feature_l2",
         "kd", "ntd",

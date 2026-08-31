@@ -24,25 +24,52 @@ The grids, and where the numbers come from
                 exact no-op - the trainer returns zero penalty for any
                 ``lam <= 0`` - which makes it this stage's no-penalty control
                 rather than a near-miss of one.
-``fisher``      EWC's lambda over eight decades.  EWC's own reported values sit
-                in the thousands, so a grid that stops at 100 would only see one
-                side of the optimum.
-``fisher_scaled`` the same eight, under the dynamic cap this codebase's
+``fisher``      EWC's lambda, resolved finely through the region the published
+                work actually uses.  The Fisher diagonal is normalised to mean 1
+                (``normalise_fisher=True``), so ``lam`` is a quantity with a
+                meaning rather than a number absorbing the Fisher's own scale -
+                which is why this row does not need the eight decades an
+                un-normalised penalty would.  The earlier work swept
+                ``[0.2, 1, 4, 8, 10, 20, 100, 200]``; this row covers that span
+                and resolves it.
+``fisher_scaled`` the same values, under the dynamic cap this codebase's
                 ``EWCTrainer`` applies.  Not a duplicate of ``fisher``: the cap
-                changes the penalty, not just its scale.
+                pins the penalty at half the cross-entropy once the client has
+                drifted far enough, so ``lam`` only acts before saturation.  The
+                rows are matched deliberately - if they swept different values a
+                difference between them could not be attributed to the cap.
 ``logit_l2``    a half-decade row at a **fixed** temperature.  The space is a
                 plain MSE between logits and does not read ``T`` at all; it is
                 recorded anyway so the provenance says what was intended.
-``feature_l2``  a decade row.  The evidence for representation-matching on this
-                task is thin, so the row is short and wide rather than dense.
-``kd``          Hinton distillation over seven temperatures and seven alphas.
+                Placed below 1: the earlier work swept
+                ``[1e-3, 1e-2, 0.1, 0.5, 0.9, 1.0]`` and measured adaptation
+                collapsing to 0.85 by ``lam = 0.5``, so everything at and above
+                1.0 is a frozen model.  Its own winner sat on its bottom edge,
+                so this row goes one step further down than theirs.
+``feature_l2``  the representation-matching row.  The earlier work *declared*
+                ``[1e-3, 1e-2, 0.1, 0.5, 0.9, 1.0]`` for it and never ran it -
+                there is no ``feature_alignment_grid_search`` in those results -
+                so this knob has no prior measurement anywhere and the row is
+                wide and evenly filled rather than sparse.
+``kd``          Hinton distillation over six temperatures and seven alphas.
                 The trainer's objective is ``CE + lam * T^2 * KL``, while the
                 literature's is ``alpha * CE + (1 - alpha) * T^2 * KL``; the two
                 have the same minimiser when ``lam = (1 - alpha) / alpha``, so
                 the grid is written in alpha and converted - see
-                :func:`kd_lam_of_alpha`.
-``ntd``         not-true distillation: beta over four decades, tau over the
-                range the NTD paper explores.
+                :func:`kd_lam_of_alpha`.  ``T`` and ``alpha`` **multiply**: the
+                effective weight is ``lam * T^2``, so much of a square grid moves
+                along lines of constant penalty.  The top of the T row is gone:
+                the earlier work measured preservation saturating by ``T = 8``,
+                with ``T = 50`` buying 0.0003 over it and costing adaptation.
+                Note that ``alpha`` was declared swept in that work and never
+                was - every executed cell is ``alpha = 0.95`` bar one - so
+                ``BEST_KD_ALPHA`` was the only value run, not a selected one.
+``ntd``         not-true distillation: beta over five decades, tau over the
+                range the NTD paper explores plus one step up to overlap the kd
+                row.  Its ``beta`` and ``tau`` couple exactly as kd's ``lam`` and
+                ``T`` do.  The earlier work declared
+                ``beta in [0.3, 1, 3] x tau in [1, 3]`` and never ran it either,
+                so the method now leading this study has no prior measurement.
 ``kd+fisher``   deliberately **not** in the screen.  A blend of two penalties is
                 only worth pricing once each one's own strength is known, so its
                 three cells are emitted afterwards from the two winners by
@@ -79,114 +106,64 @@ ANCHOR = "frozen"
 #: FedProx mu, in FedProx's convention.  0 is the exact no-op control.
 PARAM_L2_MUS = (0.0, 1e-4, 1e-3, 1e-2, 0.1, 1.0, 10.0)
 
-#: EWC lambda, eight decades.
-FISHER_LAMS = (0.1, 1.0, 10.0, 1e2, 1e3, 1e4, 1e5, 1e6)
+#: EWC lambda.  The Fisher is normalised to mean 1, so this is a comparable
+#: coefficient rather than a number absorbing the Fisher's scale; the row is
+#: therefore resolved through 1-1000 instead of spread over eight decades.  It
+#: contains the earlier work's own grid, [0.2, 1, 4, 8, 10, 20, 100, 200], and
+#: 8.0 explicitly - that study's reported setting.
+FISHER_LAMS = (
+    0.1, 1.0, 2.0, 3.0, 5.0, 8.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0,
+)
 
-#: Logit-matching lambda, half-decade steps, at a fixed temperature.
-LOGIT_L2_LAMS = (0.1, 0.316, 1.0, 3.16, 10.0)
+#: Logit-matching lambda at a fixed temperature.  Placed below 1.0, where the
+#: earlier work's sweep shows the live region: by lam = 0.5 adaptation had
+#: collapsed to 0.85, barely above doing nothing.  Their winner sat on their
+#: bottom edge (1e-3), so this row adds a step below it.  0.1 is kept because it
+#: is their reported setting.
+LOGIT_L2_LAMS = (0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0)
 
 #: Temperature recorded for the logit row.  The space does not read it.
 LOGIT_L2_T = 2.0
 
-#: Feature-matching lambda, decade steps.
-FEATURE_L2_LAMS = (1e-2, 0.1, 1.0, 10.0, 1e2)
+#: Feature-matching lambda.  ReLU activations are order 1, so squared
+#: differences are far smaller than the logit case and the useful region sits
+#: higher, not lower.  No prior measurement exists for this knob - the earlier
+#: work declared a grid for it and never ran it - so the row is wide and evenly
+#: filled, and it contains that declared grid.
+FEATURE_L2_LAMS = (0.001, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0)
 
 #: Distillation temperatures and alphas; alpha is converted to the trainer's lam.
-KD_TEMPERATURES = (1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 50.0)
+#: The T row stops at 8: the earlier work measured preservation saturating there,
+#: with T = 50 buying 0.0003 over T = 8 and costing adaptation.  It reaches 0.25
+#: because the first screen's winner sat on the low edge - what was a boundary
+#: extension is now part of the row.  The alpha row is unchanged and full: it has
+#: never actually been swept, here or in the earlier work.
+KD_TEMPERATURES = (0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
 KD_ALPHAS = (0.1, 0.3, 0.5, 0.7, 0.9, 0.95, 0.99)
 
-#: Not-true-distillation beta and tau.
-NTD_BETAS = (0.001, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0)
-NTD_TAUS = (0.5, 1.0, 2.0, 3.0, 4.0)
+#: Not-true-distillation beta and tau.  beta gains a step at the strong end so
+#: that end is not an edge; tau gains 8.0 so this row overlaps the kd row, which
+#: measures the same knob in the same units.
+NTD_BETAS = (0.001, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0)
+NTD_TAUS = (0.5, 1.0, 2.0, 3.0, 4.0, 8.0)
 
 #: Blend weights of the kd+fisher hybrid, emitted after the screen.
 HYBRID_MIXES = (0.25, 0.5, 0.75)
 
 # --------------------------------------------------------------------------- #
-# Boundary extensions, added after the screen found winners on a row's edge
+# Boundary extensions
 # --------------------------------------------------------------------------- #
-# These are APPENDED to the table rather than inserted into their rows, so every
-# existing cell keeps its index - and therefore its sampler seed - and a screen
-# that has already been submitted stays reproducible line for line.  Method
-# grouping is by the cell's own ``method`` field, so the selector still sees each
-# extension as a sibling of the row it extends.
-
-#: The KD temperature row ran [1 .. 50] and its winner sat on the LOW end, so
-#: the row is extended downwards.  A full T x alpha extension would be 2 x 7 =
-#: 14 cells for what is a probe of one edge; alpha's optimum was interior and
-#: agreed across both families at 0.99, so only the top of the alpha row comes
-#: along - 0.99 because that is where the winner is, and 0.95 to catch it
-#: drifting as T falls.
-KD_EXT_TEMPERATURES = (0.5, 0.25)
-KD_EXT_ALPHAS = (0.95, 0.99)
-
-#: The NTD tau row ran [0.5 .. 4] and the concurrent winner sat on its LOW end.
-#: Extended downwards at the two betas that won or came close there.
-NTD_EXT_TAUS = (0.25,)
-NTD_EXT_TAU_BETAS = (0.01, 0.001)
-
-#: The NTD beta row ran [0.001 .. 10] and the sequential winner sat on its LOW
-#: end.  Extended downwards at the two lowest taus, which is where that winner
-#: lives.  Disjoint from the tau extension above: no (beta, tau) pair repeats.
-NTD_EXT_BETAS = (0.0001,)
-NTD_EXT_BETA_TAUS = (0.5, 1.0)
-
-
-def kd_extension_cells() -> List[Dict[str, Any]]:
-    """The KD temperature row's downward extension."""
-    return [
-        _cell(
-            f"kd_T{_fmt(temperature)}_a{_fmt(alpha)}", "kd", "kd",
-            f"Hinton distillation from g-0, T={temperature:g}, alpha={alpha:g} "
-            f"(lam={kd_lam_of_alpha(alpha):.4g}) - boundary extension",
-            lam=kd_lam_of_alpha(alpha), T=temperature,
-        )
-        for temperature in KD_EXT_TEMPERATURES
-        for alpha in KD_EXT_ALPHAS
-    ]
-
-
-def ntd_extension_cells() -> List[Dict[str, Any]]:
-    """The NTD tau and beta rows' downward extensions, deduplicated."""
-    cells, seen = [], set()
-    pairs = [(beta, tau) for tau in NTD_EXT_TAUS for beta in NTD_EXT_TAU_BETAS]
-    pairs += [(beta, tau) for beta in NTD_EXT_BETAS for tau in NTD_EXT_BETA_TAUS]
-    for beta, tau in pairs:
-        if (beta, tau) in seen:
-            continue
-        seen.add((beta, tau))
-        cells.append(_cell(
-            f"ntd_b{_fmt(beta)}_t{_fmt(tau)}", "ntd", "ntd",
-            f"not-true distillation, beta={beta:g}, tau={tau:g} - boundary extension",
-            lam=beta, T=tau,
-        ))
-    return cells
-
-
-def boundary_extension_cells() -> List[Dict[str, Any]]:
-    """
-    The FIRST extension only: the KD temperature and NTD tau/beta rows.
-
-    Named apart from :func:`extension_cells` because the digit study emitted
-    exactly these as its own task file, and that file's header counts its cells.
-    Left reading the whole extension block, it would have re-counted itself
-    upwards the moment a second study appended anything - reporting six KD cells
-    in a file that contains four.
-    """
-    return kd_extension_cells() + ntd_extension_cells()
-
-
-def extension_cells() -> List[Dict[str, Any]]:
-    """
-    Every cell added after the screen, appended so existing indices never move.
-
-    A screening seed is a function of a cell's position in this table, so
-    inserting one in the middle would silently re-seed every cell after it - and
-    a screen that has already run would no longer be reproducible from the table
-    that describes it.  Appending costs nothing: the selector groups by the
-    cell's ``method``, not by where it sits.
-    """
-    return boundary_extension_cells()
+# There are none.  The first screen ran narrower rows and appended four KD cells
+# and four NTD cells after finding winners on their edges.  Those probes are now
+# inside the rows themselves - KD reaches 0.25, NTD's beta and tau both gained a
+# step - so keeping them as appended cells would only duplicate ids.
+#
+# The rows above are also placed against the earlier work's measurements rather
+# than around a guess, which is what made the edges in the first place: three of
+# the seven rows had their winner on a boundary because the row had been centred
+# on the wrong decade.  If a winner lands on an edge again the remedy is the same
+# as on the aggregation side - extend that row and re-emit - but nothing is
+# carried forward from the superseded screen.
 
 
 def kd_lam_of_alpha(alpha: float) -> float:
@@ -327,7 +304,6 @@ def screen_cells() -> List[Dict[str, Any]]:
     cells = (
         param_l2_cells() + fisher_cells() + logit_l2_cells()
         + feature_l2_cells() + kd_cells() + ntd_cells()
-        + extension_cells()
     )
     seen = set()
     for cell in cells:

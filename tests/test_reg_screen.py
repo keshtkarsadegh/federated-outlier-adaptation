@@ -62,23 +62,27 @@ def test_every_cell_id_is_unique():
 
 def test_the_grids_are_the_owner_confirmed_values():
     assert PARAM_L2_MUS == (0.0, 1e-4, 1e-3, 1e-2, 0.1, 1.0, 10.0)
-    assert FISHER_LAMS == (0.1, 1.0, 10.0, 1e2, 1e3, 1e4, 1e5, 1e6)
-    assert LOGIT_L2_LAMS == (0.1, 0.316, 1.0, 3.16, 10.0)
-    assert FEATURE_L2_LAMS == (1e-2, 0.1, 1.0, 10.0, 1e2)
-    assert KD_TEMPERATURES == (1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 50.0)
+    assert FISHER_LAMS == (
+        0.1, 1.0, 2.0, 3.0, 5.0, 8.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0,
+        1000.0,
+    )
+    assert LOGIT_L2_LAMS == (0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0)
+    assert FEATURE_L2_LAMS == (
+        0.001, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0,
+    )
+    assert KD_TEMPERATURES == (0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
     assert KD_ALPHAS == (0.1, 0.3, 0.5, 0.7, 0.9, 0.95, 0.99)
-    assert NTD_BETAS == (0.001, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0)
-    assert NTD_TAUS == (0.5, 1.0, 2.0, 3.0, 4.0)
+    assert NTD_BETAS == (0.001, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0)
+    assert NTD_TAUS == (0.5, 1.0, 2.0, 3.0, 4.0, 8.0)
     assert HYBRID_MIXES == (0.25, 0.5, 0.75)
 
 
 def test_the_kd_grid_is_alphas_converted_to_the_trainer_s_lam():
     from federated_outlier_adaptation.training.reg_cells import kd_cells
 
-    # the screened grid, before the boundary extension was appended
     cells = kd_cells()
-    assert len(cells) == 49
-    assert len({(c["hypers"]["T"], c["hypers"]["lam"]) for c in cells}) == 49
+    assert len(cells) == 42
+    assert len({(c["hypers"]["T"], c["hypers"]["lam"]) for c in cells}) == 42
     # alpha = 0.5 is an equal split, i.e. lam = 1
     assert kd_lam_of_alpha(0.5) == pytest.approx(1.0)
     assert kd_lam_of_alpha(0.9) == pytest.approx(1.0 / 9.0)
@@ -109,7 +113,7 @@ def test_the_anchor_is_frozen_everywhere():
 
 def test_only_the_fisher_spaces_ask_for_a_fisher():
     fisher_cells = [c for c in screen_cells() if c["needs_fisher"]]
-    assert len(fisher_cells) == 16
+    assert len(fisher_cells) == 26
     assert {c["method"] for c in fisher_cells} == {"fisher", "fisher_scaled"}
 
 
@@ -507,7 +511,7 @@ def test_the_control_cell_uses_no_anchored_trainer():
 def test_the_hybrid_takes_T_from_kd_and_needs_a_fisher(tools_path):
     from emit_stage7_hybrid import hybrid_cells
 
-    cells, kd, fisher = hybrid_cells("kd_T8_a0p3", "fisher_lam10000")
+    cells, kd, fisher = hybrid_cells("kd_T8_a0p3", "fisher_lam1000")
     assert len(cells) == 3
     assert {c["hypers"]["mix"] for c in cells} == set(HYBRID_MIXES)
     for cell in cells:
@@ -535,7 +539,7 @@ def test_the_hybrid_lines_parse(tools_path, tmp_path):
     from federated_outlier_adaptation.cli import build_parser
 
     parser = build_parser()
-    cells, _, _ = hybrid_cells("kd_T8_a0p3", "fisher_lam10000")
+    cells, _, _ = hybrid_cells("kd_T8_a0p3", "fisher_lam1000")
     for cell in cells:
         line = task_line(cell, 2, 100, 1)
         args = parser.parse_args(shlex.split(line)[1:])
@@ -568,12 +572,40 @@ def test_the_emitted_hyperparameters_round_trip_exactly(tools_path):
 
 def test_the_screen_is_the_documented_size():
     """
-    125 now: the kd and ntd rows gained boundary extensions.
+    140 cells: the rows re-ranged against what the earlier work measured.
 
-    They are appended rather than inserted, so every earlier cell keeps its
-    index - and therefore the sampler seed a screen derives from it.
+    There is no appended tail any more - the first screen's two edge probes sit
+    inside the kd and ntd rows - so the table is exactly the seven grids.
     """
     grouped = cells_by_method()
-    assert len(screen_cells()) == 125
-    assert [len(grouped[m]) for m in methods()] == [7, 8, 8, 5, 5, 53, 39]
+    assert len(screen_cells()) == 140
+    assert [len(grouped[m]) for m in methods()] == [7, 13, 13, 8, 9, 42, 48]
     assert SCREEN_ROUNDS == 25
+
+
+def test_the_fisher_rows_are_matched_so_the_cap_is_what_differs():
+    """
+    ``fisher_scaled`` is an ablation of the dynamic cap, nothing else.
+
+    If the two rows swept different lambdas, a difference between them could
+    not be attributed to the cap rather than to the coefficient.
+    """
+    grouped = cells_by_method()
+    assert (
+        [c["hypers"]["lam"] for c in grouped["fisher"]]
+        == [c["hypers"]["lam"] for c in grouped["fisher_scaled"]]
+    )
+
+
+def test_the_published_settings_are_inside_the_rows_that_replaced_them():
+    """Every value the earlier work reported is measurable in this screen."""
+    grouped = cells_by_method()
+    assert 8.0 in [c["hypers"]["lam"] for c in grouped["fisher"]]        # EWC
+    assert 8.0 in [c["hypers"]["lam"] for c in grouped["fisher_scaled"]]
+    assert 0.1 in [c["hypers"]["lam"] for c in grouped["logit_l2"]]      # logit
+    assert 0.1 in [c["hypers"]["lam"] for c in grouped["feature_l2"]]    # feature
+    assert 1.0 in [c["hypers"]["lam"] for c in grouped["ntd"]]           # ntd beta
+    assert 1.0 in [c["hypers"]["T"] for c in grouped["ntd"]]             # ntd tau
+    kd = {(c["hypers"]["T"], round(c["hypers"]["lam"], 6)) for c in grouped["kd"]}
+    from federated_outlier_adaptation.training.reg_cells import kd_lam_of_alpha
+    assert (8.0, round(kd_lam_of_alpha(0.95), 6)) in kd  # BEST_KD_T / BEST_KD_ALPHA
