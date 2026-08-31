@@ -734,28 +734,127 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     ])
 
 
+#: THE BLEND IS A PER-FAMILY OBJECT. Its two halves are selected per (method,
+#: family), so "the KD winner blended with the Fisher winner" only names a
+#: penalty once a schedule is named: the concurrent selection picks one KD cell
+#: and the sequential one another, and a blend of the first pair is not a
+#: penalty the sequential family ever chose. A blend reported beside a family's
+#: finals therefore has to descend from that family's winners.
+HYBRID_FAMILIES = ("concurrent", "sequential")
+
+#: The family the blend is built for unless another is named. The concurrent
+#: blend was emitted, run and reported before the blend was a per-family object,
+#: so it stays the default and its emission stays exactly what it was.
+HYBRID_FAMILY = "concurrent"
+
+#: The tag a family's blend cells carry in their id. The concurrent cells are
+#: deliberately untagged: fifteen folders are already on disk under those names,
+#: and tagging them now would orphan their results.
+HYBRID_TAGS = {"concurrent": "", "sequential": "seq_"}
+
+#: The blend's seed block, and where each family's three mixes sit inside it.
+#: The mixes are numbered 0-2 within a family, so without an offset the two
+#: families would draw the same client-sampling sequences - a collision nothing
+#: in the output reveals.
+HYBRID_BLOCK = 9000
+HYBRID_SEED_OFFSET = {"concurrent": 0, "sequential": 3}
+
+
+def hybrid_id(family: str, mix: float) -> str:
+    """The cell id of one family's blend at one mix."""
+    return f"hybrid_{HYBRID_TAGS[family]}mix{reg_cells._fmt(mix)}"
+
+
+def hybrid_cell(family: str, mix: float, kd_id: str, fisher_id: str,
+                lam: float, T: float) -> Dict[str, Any]:
+    """
+    One blend cell, built the same way whether it is emitted or read back.
+
+    The emitter names the output folders and the catalogue is what lets those
+    folders be scored, so the two have to agree to the character. Built twice,
+    an id can differ once - and a cell the catalogue cannot name is a run the
+    selection silently never sees.
+    """
+    return reg_cells._cell(
+        hybrid_id(family, mix), "kd+fisher", "kd+fisher",
+        f"kd+fisher blend, mix={mix:g} (KD from {kd_id}, "
+        f"Fisher from {fisher_id})",
+        needs_fisher=True,
+        lam=lam, T=T, mix=mix,
+    )
+
+
+def hybrid_seeds(cfg, family: str) -> List[int]:
+    """
+    Every seed one family's blend draws, in emission order.
+
+    Derived in one place because it is checked in another: the emitter draws
+    from this list rather than recomputing the arithmetic beside it, so the
+    uniqueness check below is a check on what actually gets emitted.
+    """
+    offset = HYBRID_SEED_OFFSET[family]
+    return [
+        cfg.seed_base + HYBRID_BLOCK + (offset + position) * 10 + fold
+        for position in range(len(reg_cells.HYBRID_MIXES))
+        for fold in SL.folds_of(cfg)
+    ]
+
+
+def _hybrid_records(root: Path) -> List[Tuple[str, Path]]:
+    """
+    Each family's construction record, under its own literal name.
+
+    Two literals rather than one name assembled from the family: the ordering
+    check reads this module's syntax tree, and a path built at runtime is a path
+    it cannot see - which is exactly the blindness that check exists to avoid.
+    """
+    return [
+        ("concurrent", root / "tables" / "p14_hybrid_construction.json"),
+        ("sequential",
+         root / "tables" / "p14_hybrid_construction_sequential.json"),
+    ]
+
+
+def write_hybrid_record(payload: Dict[str, Any], root: Path,
+                        family: str) -> Path:
+    """
+    The construction record, written under its family's name and no other.
+
+    A second family must not overwrite the first: the concurrent record is what
+    lets fifteen finished folders still be named, and a blend that replaced it
+    would leave those results unreadable while looking like a fresh emission.
+    """
+    if family == "sequential":
+        return write_table(payload, root,
+                           "p14_hybrid_construction_sequential.json")
+    return write_table(payload, root, "p14_hybrid_construction.json")
+
+
 def hybrid_cells(root: Path) -> List[Dict[str, Any]]:
     """
-    The kd+fisher blend cells, rebuilt from the record its emitter wrote.
+    The kd+fisher blend cells of EVERY family, rebuilt from their records.
 
-    They are not in the screening table - the blend is priced after both of its
+    They are not in the screening table - a blend is priced after both of its
     halves are known - so anything that ranks full-horizon results has to be
-    told they exist, or the blend could never take a slot it had earned.
+    told they exist, or a blend could never take a slot it had earned. Both
+    families are returned: each was emitted against its own winners, and a
+    catalogue that carried only one would hide the other's runs from the
+    selection that is supposed to rank them.
+
+    The family a cell belongs to is taken from the record's own filename, which
+    is what the emitter chose its ids beside.
     """
-    record_path = root / "tables" / "p14_hybrid_construction.json"
-    if not record_path.is_file():
-        return []
-    record = json.loads(record_path.read_text())
-    return [
-        reg_cells._cell(
-            f"hybrid_mix{reg_cells._fmt(mix)}", "kd+fisher", "kd+fisher",
-            f"kd+fisher blend, mix={mix:g} (KD from {record['kd_winner']}, "
-            f"Fisher from {record['fisher_winner']})",
-            needs_fisher=True,
-            lam=record["lam"], T=record["T"], mix=mix,
+    cells: List[Dict[str, Any]] = []
+    for family, record_path in _hybrid_records(root):
+        if not record_path.is_file():
+            continue
+        record = json.loads(record_path.read_text())
+        cells.extend(
+            hybrid_cell(family, mix, record["kd_winner"],
+                        record["fisher_winner"], record["lam"], record["T"])
+            for mix in record.get("mixes", reg_cells.HYBRID_MIXES)
         )
-        for mix in record.get("mixes", reg_cells.HYBRID_MIXES)
-    ]
+    return cells
 
 
 def reg_top3(cfg, root: Path, out: Path, expect: int, rank_by: str = "val") -> int:
@@ -939,9 +1038,10 @@ def reg_patch(cfg, root: Path, out: Path, expect: int,
     ])
 
 
-def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
+def reg_hybrid(cfg, root: Path, out: Path, expect: int,
+               hybrid_family: str = HYBRID_FAMILY) -> int:
     """
-    The kd+fisher blend, priced after both of its halves are known.
+    One family's kd+fisher blend, priced after both of its halves are known.
 
     A blend of two penalties is only worth pricing once each one's own strength
     has been measured: screening it alongside the others would mean guessing the
@@ -952,6 +1052,15 @@ def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
     ``mix`` weights the KD term against the Fisher term, so ``mix = 1`` would
     reproduce the KD winner exactly. That is what makes the three blend points
     readable as a line between the two methods rather than three unrelated runs.
+    IT IS NOT A SYMMETRIC INTERPOLATION: ``lam`` and ``T`` are inherited from
+    the KD half, so ``mix = 0`` is the Fisher penalty at the KD winner's
+    coefficient, not the Fisher winner.
+
+    ``hybrid_family`` names WHICH selection the two halves come from. The halves
+    are chosen per (method, family) and the two schedules pick different cells,
+    so a blend is only defined once a family is named; each family's blend gets
+    its own cell ids, its own seeds and its own construction record, because
+    they are different penalties and would otherwise share folders.
     """
     # THE BLEND IS REPORTED ALONGSIDE THE REG FINALS, so it has to be run at
     # the rate its two halves were chosen and re-run at. Taking the study's own
@@ -970,7 +1079,14 @@ def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
         return 1
     record = json.loads(record_path.read_text())
 
-    family = "concurrent"
+    family = hybrid_family or HYBRID_FAMILY
+    if family not in HYBRID_TAGS:
+        print(
+            f"FATAL: no blend is defined for family {family!r}; the schedules "
+            f"are {', '.join(HYBRID_FAMILIES)}.",
+            file=sys.stderr,
+        )
+        return 1
     kd_id = (record.get(f"kd/{family}") or {}).get("winner")
     fisher_id = (record.get(f"fisher/{family}") or {}).get("winner")
     if not kd_id or not fisher_id:
@@ -998,23 +1114,34 @@ def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
     kd, fisher = by_id[kd_id], by_id[fisher_id]
     print(f"hybrid from {kd_id} (KD half) and {fisher_id} (Fisher half)")
 
-    lines = []
-    for index, mix in enumerate(reg_cells.HYBRID_MIXES):
-        cell = reg_cells._cell(
-            f"hybrid_mix{reg_cells._fmt(mix)}", "kd+fisher", "kd+fisher",
-            f"kd+fisher blend, mix={mix:g} (KD from {kd_id}, Fisher from {fisher_id})",
-            needs_fisher=True,
-            lam=kd["hypers"]["lam"], T=kd["hypers"]["T"], mix=mix,
+    # CHECKED, NOT ASSUMED. The families sit in one block at different offsets,
+    # and a repeated seed is two runs drawing one client-sampling sequence -
+    # correlated results that nothing in the output would reveal.
+    drawn = {name: hybrid_seeds(cfg, name) for name in HYBRID_FAMILIES}
+    mine = drawn[family]
+    others = {seed for name, seeds in drawn.items() if name != family
+              for seed in seeds}
+    if len(set(mine)) != len(mine) or set(mine) & others:
+        print(
+            f"FATAL: the {family} blend's seeds are not its own: "
+            f"{sorted(set(mine) & others)} are drawn by another family. "
+            "Move the block offsets before emitting.",
+            file=sys.stderr,
         )
+        return 1
+
+    lines = []
+    seeds = iter(mine)
+    for mix in reg_cells.HYBRID_MIXES:
+        cell = hybrid_cell(family, mix, kd_id, fisher_id,
+                           kd["hypers"]["lam"], kd["hypers"]["T"])
         for fold in SL.folds_of(cfg):
-            lines.append(SL.hybrid_line(
-                cfg, cell, fold, cfg.seed_base + 9000 + index * 10 + fold
-            ))
-    write_table(
+            lines.append(SL.hybrid_line(cfg, cell, fold, next(seeds)))
+    write_hybrid_record(
         {"kd_winner": kd_id, "fisher_winner": fisher_id, "family": family,
          "mixes": list(reg_cells.HYBRID_MIXES),
          "lam": kd["hypers"]["lam"], "T": kd["hypers"]["T"]},
-        root, "p14_hybrid_construction.json",
+        root, family,
     )
     return emit(lines, out, expect, "p14/reg-hybrid", [
         "# GENERATED, AND NOT YET AUTHORISED TO RUN.",
@@ -1024,6 +1151,13 @@ def reg_hybrid(cfg, root: Path, out: Path, expect: int) -> int:
         f"#   KD half     {kd_id}",
         f"#   Fisher half {fisher_id}",
         f"#   mixes       {', '.join(f'{m:g}' for m in reg_cells.HYBRID_MIXES)}",
+    ] + ([] if family == HYBRID_FAMILY else [
+        # Only the later families say so. The concurrent file was written before
+        # the blend was a per-family object and has already run; re-emitting it
+        # must reproduce it to the byte, which is the check that the default
+        # path has not moved.
+        f"#   family      {family}",
+    ]) + [
         "#",
         "# The objective is lam * (mix * KD + (1 - mix) * Fisher), so mix = 1",
         "# would reproduce the KD winner exactly. That is what makes these three",
@@ -1064,7 +1198,8 @@ def _top_lists(root: Path) -> tuple:
 #: output reveals. Before adding a block, check the widest stage, not the
 #: nominal spacing.
 #:
-#: In use: 2000 agg screen, 4000 agg full, 8000 reg full, 9000 hybrid,
+#: In use: 2000 agg screen, 4000 agg full, 8000 reg full, 9000 hybrid
+#: (both families, at offsets 0 and 3 inside the block),
 #: 10000-11395 REG SCREEN (two blocks), 12000 five, 14000 dropout20,
 #: 15000/16000 c20, 17000 combos, 18000 extreme.
 
@@ -1077,7 +1212,8 @@ def _top_lists(root: Path) -> tuple:
 #: hash exists to remove. So the stage gets a range of its own, wide enough that
 #: uniqueness is checked rather than hoped for.
 #:
-#: In use elsewhere: 2000 agg screen, 4000 agg full, 8000 reg full, 9000 hybrid,
+#: In use elsewhere: 2000 agg screen, 4000 agg full, 8000 reg full,
+#: 9000 hybrid (both families),
 #: 10000-11395 REG SCREEN (two blocks), 12000 five, 14000 dropout20,
 #: 15000/16000 c20, 18000 extreme, 40000 references. 30000-38995 is free.
 COMBO_SEED_BASE = 30000
@@ -1910,6 +2046,15 @@ def main() -> int:
         help="reg-patch only: which schedule's selection to re-emit.",
     )
     parser.add_argument(
+        "--hybrid-family", choices=HYBRID_FAMILIES, default=HYBRID_FAMILY,
+        help=(
+            "reg-hybrid only: which family's winners the blend is built from. "
+            "The two halves are selected per schedule, so the blend is a "
+            "different penalty in each - it gets its own cell ids, its own "
+            "seeds and its own construction record."
+        ),
+    )
+    parser.add_argument(
         "--clients-per-round", type=int, default=None, metavar="M",
         help=(
             "Participation the emitted lines run at. MUST MATCH THE SCREEN THEY "
@@ -1930,7 +2075,7 @@ def main() -> int:
     accepted = set(inspect.signature(generator).parameters)
     kwargs = {
         name: getattr(args, name)
-        for name in ("allow_unmeasured", "method", "family")
+        for name in ("allow_unmeasured", "method", "family", "hybrid_family")
         if name in accepted
     }
     if "rank_by" in accepted and args.rank_by is not None:

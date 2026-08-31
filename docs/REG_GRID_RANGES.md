@@ -654,3 +654,192 @@ those two levels, lands between them. That ordering holds on both schedules.
 |---|---|---|---|
 | screen | 700 | 25 | ~25 |
 | finals | 70 | 100 | ~8 |
+
+---
+
+# 2026-08-31: the rerun at the search rate
+
+**Everything above this line was measured on the discarded search.** The
+regularisation grid had been searched at nine of ten clients per round while the
+aggregation table it is meant to be read against was searched at eight
+(`REPRODUCE.md` §5). The mismatch propagated - each stage matches the stage it
+selects from - so the finals and the combinations inherited it, and no stage
+raised anything, because no stage was ever told what rate it should be at. Those
+700 screen runs, 70 finals and 34 partial combinations were deleted rather than
+reported. The tables below replace them; the two tables above are kept as the
+record of what was discarded, and nothing in them should be quoted.
+
+| stage | task file | job | tasks | rounds | GPU-h |
+|---|---|---|---|---|---|
+| screen | `s16_reg_screen3.txt` | 15660629 | 700 / 700 COMPLETED | 25 | 18.2 |
+| finals | `s17_reg_full4.txt` | 15663279 | 70 / 70 | 100 | 3.7 |
+| blend, concurrent | `s18_hybrid.txt` | 15663828 | 15 / 15 | 100 | 0.8 |
+| blend, sequential | `s19_hybrid_seq.txt` | 15664736 | 15 / 15 | 100 | 0.8 |
+
+The screen's sampler seeds are unchanged from the discarded one, 710001-711395:
+the scheme is a function of a cell's index and not of the participation, so only
+the rate on each line moved.
+
+## The screen's winners, per method and schedule
+
+From `tables/p13_reg_method_winners.json`, selected on validation at 25 rounds:
+
+| method | concurrent | adapt / preserve | sequential | adapt / preserve |
+|---|---|---|---|---|
+| `ntd` | `b0.01_t0.5` | 0.9127 / 0.9935 | `b0.01_t2` | 0.9157 / 0.9945 |
+| `kd` | `T0.25_a0.9` | 0.9101 / 0.9927 | `T2_a0.99` | 0.9119 / 0.9932 |
+| `logit_l2` | `lam0.001` | 0.9118 / 0.9929 | `lam0.003` | 0.9063 / 0.9944 |
+| `param_l2` | `mu0.0001` | 0.9118 / 0.9921 | `mu0` *(control)* | 0.9044 / 0.9908 |
+| `feature_l2` | `lam0.001` | 0.9062 / 0.9909 | `lam0.01` | 0.9081 / 0.9919 |
+| `fisher` | `lam8` | 0.8810 / 0.9959 | `lam0.1` | 0.8801 / 0.9952 |
+| `fisher_scaled` | `lam50` | 0.8781 / 0.9957 | `lam0.1` | 0.8791 / 0.9953 |
+
+## The finals, with both blends
+
+    python tools/report_tables.py --root "$FOA_STUDY_DIR" --what reg-winners
+
+Twenty-six rows: the fourteen per-method winners, each under the schedule it was
+selected for, and the six blend cells, which are untagged and so are read under
+both. Basis TEST; selection ran on validation. `gained` is adaptation above the
+shipped model's 0.8225 on the cohort, `spent` is preservation below its 0.9986
+on the source population, and `score` is the difference.
+
+| cell | sched | adapt | +- | preserve | gained | spent | score |
+|---|---|---|---|---|---|---|---|
+| `hybrid_seq_mix0.75` | cyclic | 0.9355 | 0.0123 | 0.9925 | 11.30p | 0.61p | **10.69** |
+| `logit_l2_lam0.003` | cyclic | 0.9374 | 0.0145 | 0.9903 | 11.49p | 0.82p | 10.67 |
+| `hybrid_seq_mix0.75` | parallel | 0.9337 | 0.0145 | 0.9924 | 11.11p | 0.62p | 10.50 |
+| `hybrid_seq_mix0.5` | parallel | 0.9327 | 0.0171 | 0.9926 | 11.02p | 0.59p | 10.43 |
+| `hybrid_seq_mix0.5` | cyclic | 0.9319 | 0.0203 | 0.9923 | 10.93p | 0.63p | 10.31 |
+| `logit_l2_lam0.001` | parallel | 0.9356 | 0.0133 | 0.9877 | 11.30p | 1.08p | **10.22** |
+| `ntd_b0.01_t2` | cyclic | 0.9329 | 0.0202 | 0.9904 | 11.04p | 0.82p | 10.22 |
+| `hybrid_mix0.75` | cyclic | 0.9281 | 0.0131 | 0.9923 | 10.56p | 0.63p | 9.93 |
+| `hybrid_mix0.75` | parallel | 0.9244 | 0.0215 | 0.9929 | 10.19p | 0.56p | 9.62 |
+| `hybrid_seq_mix0.25` | cyclic | 0.9271 | 0.0187 | 0.9901 | 10.46p | 0.84p | 9.62 |
+| `hybrid_seq_mix0.25` | parallel | 0.9243 | 0.0149 | 0.9913 | 10.18p | 0.73p | 9.45 |
+| `hybrid_mix0.5` | parallel | 0.9225 | 0.0201 | 0.9927 | 10.00p | 0.59p | 9.41 |
+| `fisher_lam0.1` | cyclic | 0.9235 | 0.0187 | 0.9916 | 10.10p | 0.69p | 9.40 |
+| `hybrid_mix0.25` | cyclic | 0.9216 | 0.0180 | 0.9920 | 9.91p | 0.66p | 9.25 |
+| `hybrid_mix0.25` | parallel | 0.9216 | 0.0174 | 0.9916 | 9.90p | 0.69p | 9.21 |
+| `fisher_scaled_lam0.1` | cyclic | 0.9225 | 0.0158 | 0.9902 | 10.00p | 0.83p | 9.17 |
+| `fisher_lam8` | parallel | 0.9216 | 0.0172 | 0.9907 | 9.91p | 0.78p | 9.13 |
+| `param_l2_mu0.0001` | parallel | 0.9263 | 0.0192 | 0.9855 | 10.38p | 1.30p | 9.08 |
+| `feature_l2_lam0.01` | cyclic | 0.9299 | 0.0113 | 0.9813 | 10.74p | 1.73p | 9.01 |
+| `ntd_b0.01_t0.5` | parallel | 0.9263 | 0.0190 | 0.9848 | 10.38p | 1.37p | 9.00 |
+| `fisher_scaled_lam50` | parallel | 0.9197 | 0.0257 | 0.9908 | 9.72p | 0.77p | 8.95 |
+| `hybrid_mix0.5` | cyclic | 0.9168 | 0.0208 | 0.9926 | 9.43p | 0.60p | 8.83 |
+| `kd_T2_a0.99` | cyclic | 0.9271 | 0.0133 | 0.9803 | 10.46p | 1.82p | 8.64 |
+| `feature_l2_lam0.001` | parallel | 0.9282 | 0.0181 | 0.9748 | 10.57p | 2.38p | 8.19 |
+| `kd_T0.25_a0.9` | parallel | 0.9235 | 0.0173 | 0.9775 | 10.09p | 2.11p | 7.98 |
+| `param_l2_mu0` *(control)* | cyclic | 0.9169 | 0.0160 | 0.9695 | 9.44p | 2.91p | 6.53 |
+
+Every row is 8/8 significant. Three things to read off it:
+
+**`logit_l2` is the best measured penalty on both schedules** - `lam0.003`
+cyclic and `lam0.001` parallel, first among the fourteen in each family. It was
+the stable method on the discarded search too, at a value three decades below
+where the earlier study looked.
+
+**The no-penalty control is last of the twenty-six.** `param_l2_mu0` is an exact
+no-op, and at the reporting horizon it spends **2.91 points** of preservation
+where `logit_l2` on the same schedule spends **0.82**. The screen's verdict -
+that penalties read as pure cost - does not survive the horizon at which the
+forgetting it is supposed to price actually happens.
+
+**The concurrent `param_l2` winner is `mu = 1e-4`, not the control**, so the
+concurrent family has no exact no-op row here; the 2.91-point figure is the
+sequential one, which is where the control was selected.
+
+## The blend: one per family
+
+The blend is **a per-family object**. Its two halves are selected per (method,
+schedule), and the two schedules pick different cells, so "the KD winner blended
+with the Fisher winner" names two different penalties. Each is built from its own
+family's row of the selection record, and each gets its own cell ids, its own
+seeds and its own construction record:
+
+| | concurrent | sequential |
+|---|---|---|
+| record | `tables/p14_hybrid_construction.json` | `tables/p14_hybrid_construction_sequential.json` |
+| KD half | `kd_T0.25_a0.9` | `kd_T2_a0.99` |
+| Fisher half | `fisher_lam8` | `fisher_lam0.1` |
+| inherited `lam`, `T` | 0.111111, 0.25 | 0.010101, 2.0 |
+| cells | `hybrid_mix{0.25,0.5,0.75}` | `hybrid_seq_mix{0.25,0.5,0.75}` |
+| seeds | 709001-709025 | 709031-709055 |
+
+The objective is
+
+    lam * (mix * KD + (1 - mix) * Fisher)
+
+with `lam` and `T` **inherited from the KD half**.
+
+### The caveat that has to travel with these numbers
+
+`mix = 1` reproduces the KD winner exactly. **`mix = 0` does not reproduce the
+Fisher winner**: it is the Fisher penalty at the KD half's coefficient - 0.111
+where the concurrent selection chose 8, and 0.0101 where the sequential one chose
+0.1. The line is anchored at one end only, so it is **not a symmetric
+interpolation between two measured methods**, and a reading that treats `mix` as
+a dial from one winner to the other is wrong.
+
+### Both families beat both of their parents
+
+Each blend against the two cells it was built from, on its own schedule:
+
+| | mix 0.25 | mix 0.5 | mix 0.75 | KD parent | Fisher parent |
+|---|---|---|---|---|---|
+| concurrent (parallel) | 9.21 | 9.41 | **9.62** | 7.98 | 9.13 |
+| sequential (cyclic) | 9.62 | 10.31 | **10.69** | 8.64 | 9.40 |
+
+Six of six blend points beat both parents, and the score rises monotonically with
+`mix` in both families. Given the caveat above, that monotonicity is the honest
+statement of the effect: adding the KD winner's own term to a Fisher penalty
+*held at the KD winner's coefficient* helps, all the way up.
+
+### What the blends are actually good at is preservation
+
+The **nine highest preservation figures in the table are all blends** (0.9929
+down to 0.9920) before any other cell appears. `hybrid_mix0.75` on the parallel
+schedule spends 0.56 points, the least of anything measured; `hybrid_seq_mix0.75`
+tops the table outright at 10.69 while spending 0.61, against `logit_l2`'s 0.82
+and 1.08. The blends buy their score by not forgetting, where `logit_l2` and
+`ntd` buy theirs by adapting harder.
+
+## The shortlists, after the rerun
+
+    python tools/study_emit.py reg-top3 --root "$FOA_STUDY_DIR" --out "$FOA_STUDY_DIR/tables/p13_reg_top3.json"
+
+| | first | second | third |
+|---|---|---|---|
+| concurrent | `logit_l2_lam0.001` | `hybrid_seq_mix0.5` | `ntd_b0.01_t0.5` |
+| sequential | `ntd_b0.01_t2` | `hybrid_mix0.5` | `logit_l2_lam0.003` |
+
+A blend takes a slot in both lists - one slot, because a family's three slots
+must be three methods and both blends are the one method `kd+fisher`.
+
+**Each list took the OTHER family's blend, and that is worth deciding about
+before the cross runs.** The blend cells are emitted under the untagged
+`d01_regfull_hybrid` prefix, so each blend is measured on both schedules and
+competes in both families; on validation the sequential-built blend ranks ahead
+of the concurrent-built one on the concurrent schedule, and vice versa. The
+measurement is real - both schedules are run for every task - but the penalty in
+the concurrent shortlist did not descend from the concurrent winners. Left as
+selected, and recorded here rather than fixed silently.
+
+## Do the two halves compose?
+
+    python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what composition
+
+Each shortlisted penalty, alone, against each shortlisted server rule, alone,
+differenced within a fold:
+
+| | pairings positive on every fold | margin |
+|---|---|---|
+| concurrent | **6 of 6** | +1.25 to +2.96 points |
+| sequential | **6 of 6** | +3.20 to +4.14 points |
+
+Six rather than nine: the blend in each shortlist has no paired result yet,
+because the cross has not been re-run against these shortlists. Every pairing
+that does exist is positive on all five folds, which is a much stronger statement
+than the mean-against-mean reading that `COMBINATIONS.md` records for the
+discarded run - there, only 1 of 9 survived pairing.

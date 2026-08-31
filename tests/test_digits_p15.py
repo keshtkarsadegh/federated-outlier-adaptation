@@ -118,12 +118,18 @@ def test_the_derived_io_says_what_the_generators_actually_do(emit):
     assert io["agg-full"]["writes"] == ("p11_agg_method_winners.json",)
     assert io["agg-top3"]["writes"] == ("p12_agg_top3.json",)
     assert io["reg-top3"]["writes"] == ("p14_reg_top3.json",)
+    # BOTH construction records, because the blend is a per-family object: the
+    # cross reads whatever blends were built, and each family builds its own.
     assert io["combos"]["reads"] == ("p12_agg_top3.json",
                                      "p14_hybrid_construction.json",
+                                     "p14_hybrid_construction_sequential.json",
                                      "p14_reg_top3.json")
     assert io["reg-full"]["writes"] == ("p13_reg_method_winners.json",)
     assert io["reg-hybrid"]["reads"] == ("p13_reg_method_winners.json",)
-    assert io["reg-hybrid"]["writes"] == ("p14_hybrid_construction.json",)
+    assert io["reg-hybrid"]["writes"] == (
+        "p14_hybrid_construction.json",
+        "p14_hybrid_construction_sequential.json",
+    )
 
 
 def test_the_derivation_covers_every_table_this_module_touches(emit):

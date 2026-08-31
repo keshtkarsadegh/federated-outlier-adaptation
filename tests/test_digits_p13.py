@@ -454,6 +454,79 @@ def test_the_hybrid_is_built_from_the_two_winners(emit, tmp_path):
     assert record["lam"] == kd["hypers"]["lam"]
 
 
+def test_each_family_blends_its_own_winners(emit, tmp_path):
+    """
+    A blend is only defined once a family is named.
+
+    The two schedules select different KD and different Fisher cells, so "the KD
+    winner blended with the Fisher winner" names two different penalties. Each
+    is built from ITS OWN family's row of the selection record, and the two must
+    share no cell id, no output folder and no seed - a shared folder would let
+    one family's runs be read as the other's, and a shared seed would correlate
+    them invisibly.
+    """
+    tables = tmp_path / "tables"
+    tables.mkdir(parents=True, exist_ok=True)
+    (tables / "p13_reg_method_winners.json").write_text(json.dumps({
+        "kd/concurrent": {"winner": "kd_T8_a0p3", "measured": True},
+        "fisher/concurrent": {"winner": "fisher_lam1000", "measured": True},
+        "kd/sequential": {"winner": "kd_T4_a0p9", "measured": True},
+        "fisher/sequential": {"winner": "fisher_lam0p1", "measured": True},
+    }))
+    concurrent, sequential = tmp_path / "conc.txt", tmp_path / "seq.txt"
+    assert emit.reg_hybrid(DIGITS_STUDY01, tmp_path, concurrent, 15) == 0
+    assert emit.reg_hybrid(DIGITS_STUDY01, tmp_path, sequential, 15,
+                           hybrid_family="sequential") == 0
+
+    record = json.loads(
+        (tables / "p14_hybrid_construction_sequential.json").read_text())
+    assert record["family"] == "sequential"
+    assert record["kd_winner"] == "kd_T4_a0p9"
+    assert record["fisher_winner"] == "fisher_lam0p1"
+    # lam and T still come from the KD half - of THIS family
+    kd = {c["id"]: c for c in reg_cells.screen_cells()}["kd_T4_a0p9"]
+    assert record["lam"] == kd["hypers"]["lam"]
+    assert record["T"] == kd["hypers"]["T"]
+    # and the first family's record is still the first family's
+    assert json.loads(
+        (tables / "p14_hybrid_construction.json").read_text()
+    )["kd_winner"] == "kd_T8_a0p3"
+
+    def _flag(path: Path, flag: str):
+        values = []
+        for line in path.read_text().splitlines():
+            if not line or line.startswith("#"):
+                continue
+            words = shlex.split(line)
+            values.append(words[words.index(flag) + 1])
+        return values
+
+    folders = {f: set(_flag(p, "--parent"))
+               for f, p in (("c", concurrent), ("s", sequential))}
+    assert len(folders["s"]) == 15
+    assert folders["c"] & folders["s"] == set()
+    assert all("hybrid_seq_mix" in name for name in folders["s"])
+
+    seeds = {f: _flag(p, "--sampler-seed")
+             for f, p in (("c", concurrent), ("s", sequential))}
+    assert len(set(seeds["s"])) == 15
+    assert set(seeds["c"]) & set(seeds["s"]) == set()
+
+    # the catalogue the full-horizon selection ranks from sees both families,
+    # or the second blend's runs could never take a slot they had earned
+    assert [c["id"] for c in emit.hybrid_cells(tmp_path)] == [
+        "hybrid_mix0p25", "hybrid_mix0p5", "hybrid_mix0p75",
+        "hybrid_seq_mix0p25", "hybrid_seq_mix0p5", "hybrid_seq_mix0p75",
+    ]
+
+
+def test_a_blend_refuses_a_family_that_is_not_a_schedule(emit, tmp_path):
+    """A family with no selection row is not a blend of anything."""
+    _selection(tmp_path, "kd_T8_a0p3", "fisher_lam1000")
+    assert emit.reg_hybrid(DIGITS_STUDY01, tmp_path, tmp_path / "x.txt", 15,
+                           hybrid_family="both") == 1
+
+
 def test_the_hybrid_lines_are_the_full_horizon_and_parse(emit, tmp_path):
     from federated_outlier_adaptation.cli import build_parser
 

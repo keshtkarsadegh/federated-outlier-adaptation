@@ -78,8 +78,14 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | 6 | **aggregation screen** | `tools/make_digits_p11.py` | `s09_agg_screen2.txt` | 480 | 25 |
 | 7 | **aggregation finals** | `study_emit.py agg-full` | `s10_agg_full2.txt` | 85 | 100 |
 | 8 | **regularisation screen** | `tools/make_digits_p13.py` | `s16_reg_screen3.txt` | 700 | 25 |
-| 9 | **regularisation finals** | `study_emit.py reg-full` | *emitted from the screen* | 70 | 100 |
-| 10 | **combinations** | `study_emit.py combos` | *emitted from both finals* | 90 | 100 |
+| 9 | **regularisation finals** | `study_emit.py reg-full` | `s17_reg_full4.txt` | 70 | 100 |
+| 10 | **kd+fisher blend, concurrent** | `study_emit.py reg-hybrid` | `s18_hybrid.txt` | 15 | 100 |
+| 11 | **kd+fisher blend, sequential** | `study_emit.py reg-hybrid --hybrid-family sequential` | `s19_hybrid_seq.txt` | 15 | 100 |
+| 12 | **combinations** | `study_emit.py combos` | *emitted from both finals* | 90 | 100 |
+
+Stages 8-11 have run at the search rate and are reported in
+`REG_GRID_RANGES.md` under the 2026-08-31 heading; stage 12 has not been
+re-run against the shortlists those stages produced.
 
 Superseded task files live in `jobs/superseded/`. They are kept as a record and
 must not be re-run: their seeds and their cells belong to a previous programme.
@@ -107,7 +113,19 @@ diff /tmp/check/d01_p13.txt $FOA_STUDY_DIR/jobs/s16_reg_screen3.txt
 python tools/study_emit.py agg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 85
 python tools/study_emit.py reg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 70
 python tools/study_emit.py combos   --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 90
+
+python tools/study_emit.py reg-hybrid --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 15
+python tools/study_emit.py reg-hybrid --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 15 --hybrid-family sequential
 ```
+
+`diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s17_reg_full4.txt`, `s18_hybrid.txt` and
+`s19_hybrid_seq.txt` close the loop on those three. **The blend is a per-family
+object**: the two `reg-hybrid` commands build different penalties from different
+rows of the same selection record, and each writes its own construction record -
+`tables/p14_hybrid_construction.json` and
+`tables/p14_hybrid_construction_sequential.json` - so re-running either against
+the live study rewrites its own record with the same content and never the other
+one's.
 
 `diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s10_agg_full2.txt` closes the loop on the
 aggregation finals the same way.
@@ -129,10 +147,12 @@ better claim on the easier rate than the reverse would, and searching every rate
 would multiply the most expensive stage in the programme by the number of rates.
 
 That rate is `search_clients_per_round` in `StudyConfig`, and the grid emitters -
-`make_digits_p11`, `make_digits_p13`, and `study_emit`'s `agg-full`, `reg-full`
-and `combos` - read it from there. The five stages that deliberately run at other
-rates (`five`, `drop20`, `c20`, `extreme`, `reg-hybrid`) are unaffected: their
-rate is the thing they measure.
+`make_digits_p11`, `make_digits_p13`, and `study_emit`'s `agg-full`, `reg-full`,
+`reg-hybrid` and `combos` - read it from there. `reg-hybrid` is on that list
+because the blend is reported beside the finals it is built from: at the study's
+own rate it would be priced on an easier loop than the two winners it sits
+between. The four stages that deliberately run at other rates (`five`, `drop20`,
+`c20`, `extreme`) are unaffected: their rate is the thing they measure.
 
 It used to be a `--clients-per-round` flag with the study's own 9 of 10 as the
 default. The aggregation grid was given the flag; the regularisation grid was
@@ -167,7 +187,8 @@ use, and **the difference is deliberate**:
 where `index` is the row's position in the stage's table. Blocks are 1000 wide.
 
     2000  agg screen        4000  agg finals       8000  reg finals
-    9000  hybrid           10000-11395 REG SCREEN (two blocks - 140 cells span 1400)
+    9000  hybrid, both families (offsets 0 and 3 inside the block)
+   10000-11395 REG SCREEN (two blocks - 140 cells span 1400)
    12000  five             14000  dropout20        15000/16000  c20
    18000  extreme          40000  references
 
