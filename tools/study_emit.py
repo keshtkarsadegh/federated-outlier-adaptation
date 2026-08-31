@@ -313,9 +313,18 @@ def trade_score(row, a0: float, p0: float) -> float:
     closest to plain FedAvg and the table reports that no method preserves
     anything. That is an artefact of the rule, not a property of the methods.
 
-    Weighting a point of forgetting equally against a point of adaptation is a
-    choice, but not a delicate one: on this study the same cell wins at one,
-    two and three points, so the answer does not turn on the number.
+    THE WEIGHT IS A CHOICE, AND IT IS NOT FREE. An earlier version of this
+    docstring claimed the same cell wins at one, two and three points. That is
+    false and was never checked: on the aggregation screen 5 of 17 methods
+    change winner between w=1 and w=3 - eta, fedadam, fedavgm, fedyogi and
+    seq_mix, all toward gentler settings - while anchor, trimmed, weight_q and
+    the sequential family do not. Four of the five are near break-even and flip
+    back at w=2; fedadam moves decisively, trading 4.76 points of adaptation
+    for 1.73 of preservation.
+
+    w=1 is the study's deliberate setting, applied to both grids so their
+    tables can be read against each other. Report it as a choice with a
+    sensitivity row, not as a constant that does not matter.
     """
     a = row["adaptation"]["mean"]
     p = row["preservation"]["mean"]

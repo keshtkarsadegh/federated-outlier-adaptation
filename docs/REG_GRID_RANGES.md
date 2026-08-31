@@ -377,3 +377,260 @@ the wrong place, and no amount of running it would have found the optimum.
 The fix that generalises: **before setting a range, read what the previous
 measurements say about where the knob stops mattering.** Four of the seven rows
 here moved after doing that, and two of them moved by more than a decade.
+
+---
+
+# Provenance: where every range came from
+
+Nothing below is a remembered number. Each row names the file it was read out
+of, so a reader can check it. Three sources are distinguished, because they
+carry different weight:
+
+* **paper** - a grid published by the work that introduced the method.
+* **old repo** - the previous study's own code, at the path given. A grid that
+  is *declared* there is not necessarily a grid that *ran*; the "executed"
+  column says which.
+* **measured here** - a placement decided by numbers in this study or in the
+  old study's result files, cited to the directory they sit in.
+
+| knob | source | where |
+|---|---|---|
+| `param_l2` mu | paper | FedProx, Li et al., *Federated Optimization in Heterogeneous Networks*, MLSys 2020 - tunes `mu` over {0.001, 0.01, 0.1, 1} |
+| `param_l2` old value | old repo | `constants.py: BEST_PROX_LAMBDA = 0.9`; grid at `grid_search/prox.py:22`, `lambda_prox in [1e-3, 1e-2, 0.1, 0.5, 0.9, 1.0]` |
+| `fisher` lambda | paper | EWC, Kirkpatrick et al., *Overcoming catastrophic forgetting in neural networks*, PNAS 2017 - reported values in the hundreds to thousands |
+| `fisher` old grid | old repo | `grid_search/ewc.py:24`, `ewc_lambda in [0.2, 1, 4, 8, 10, 20, 100, 200]` |
+| `fisher_scaled` old value | old repo | `constants.py: BEST_EWC_LAMBDA = 8.0`; the cap is `EWCTrainer.ewc_loss` |
+| `logit_l2` lam | measured here | old grid `grid_search/logit_consistency.py:23`, `[1e-3, 1e-2, 0.1, 0.5, 0.9, 1.0]`; **placement** from its own results in `results/logit_consistency_grid_search/*/accuracies_points_100.csv`, which show adaptation collapsed to 0.851 by `lam = 0.5` |
+| `feature_l2` lam | old repo (declared only) | `grid_search/feature_alignment.py:28`, `beta in [1e-3, 1e-2, 0.1, 0.5, 0.9, 1.0]`. **No `results/feature_alignment_grid_search` directory exists** - never executed |
+| `kd` T, alpha | paper + measured here | Hinton, Vinyals & Dean, *Distilling the Knowledge in a Neural Network*, 2015, for the `alpha`/`T` form; old grid `grid_search/distillation.py:24`, `T in [1,2,4,8,10,50] x alpha in [0.1,0.5,0.95]`. **Top of the T row cut** on that grid's own results in `results/distillation_grid_search/*/accuracies_points_100.csv`: preservation saturates by `T = 8`, and `T = 50` buys 0.0003 over it while costing adaptation |
+| `ntd` beta, tau | paper + old repo (declared only) | FedNTD, Lee et al., *Preservation of the Global Knowledge by Not-True Distillation in Federated Learning*, NeurIPS 2022; old grid `grid_search/ntd.py:26`, `beta in [0.3,1,3] x tau in [1,3]`. **No `results/ntd_grid_search` directory exists** - never executed |
+
+**What the executed column showed.** Of the seven penalties, `param_l2`,
+`fisher` and `logit_l2` were genuinely swept; `kd` declared a two-axis grid and
+swept one axis (every executed cell is `alpha = 0.95` bar a single stray
+`alpha = 0.5` in `concurrent_weights`); `feature_l2` and `ntd` were never run at
+all. So `BEST_FEATURE_BETA`, `BEST_NTD_BETA`, `BEST_NTD_TAU` and `BEST_KD_ALPHA`
+were reported as selected hyperparameters without a selection behind them.
+
+For completeness, the aggregation-side citations, which `GRID_RANGES.md` uses:
+FedAvg (McMahan et al., AISTATS 2017); adaptive server optimisers FedAdam and
+FedYogi with their `lr x tau` grid (Reddi et al., *Adaptive Federated
+Optimization*, ICLR 2021); server momentum FedAvgM (Hsu, Qi & Brown, 2019);
+coordinate-wise trimmed mean and median (Yin et al., ICML 2018).
+
+---
+
+# The selection rule
+
+## The formula
+
+    score(cell) = (adaptation - A_0)  -  w * (P_0 - preservation)
+                   \_____________/         \________________/
+                    what it GAINED           what it SPENT
+
+One formula, both grids, both schedules, `w = 1`.
+
+`A_0` and `P_0` are **the shipped model's own two accuracies**, measured rather
+than assumed, and read off disk at selection time by `shipped_baselines()` in
+`tools/study_emit.py`:
+
+    A_0 = 0.8225   g-0 on the cohort's test rows          <- g0_perfold_evaluations.json
+    P_0 = 0.9986   g-0 on the source population's rows    <- g0_evaluations.json
+
+So the two terms are **differences from doing nothing**, not raw accuracies:
+
+* `adaptation - A_0` is what adapting bought on the new writers. A cell that
+  changes nothing scores 0 here.
+* `P_0 - preservation` is what it cost on the writers the model already served.
+  A cell that forgets nothing scores 0 here.
+
+A configuration is worth choosing when the first exceeds the second.
+
+## Why not rank on adaptation alone
+
+Because it does not measure the thing the study is about. Ranking on adaptation
+picks, for every method, the setting that constrains least - the weakest anchor,
+the largest server step, `mu = 0` - so every "winner" is the cell nearest to
+plain FedAvg and the resulting table appears to show that no method preserves
+anything. That conclusion would be an artefact of the ranking, not a property of
+the methods.
+
+## The weight `w`, honestly
+
+`w` is a choice and it was made deliberately at 1, matching the aggregation
+grid. It is **not** true that the choice never matters - a claim to that effect
+sat in `trade_score`'s docstring and has been corrected. On the aggregation
+screen, **5 of 17 methods change winner between `w = 1` and `w = 3`**
+(`eta`, `fedadam`, `fedavgm`, `fedyogi`, `seq_mix`), all toward gentler
+settings; `anchor`, `trimmed`, `weight_q` and the whole sequential family do
+not. Four of the five that move are near break-even and flip back at `w = 2`;
+only `fedadam` moves decisively, trading 4.76 points of adaptation for 1.73 of
+preservation.
+
+The honest way to report this is a sensitivity row, not a defended constant.
+
+## Two horizons, two jobs
+
+    screen  25 rounds   RANKS cells within a method.   Nothing here is reported.
+    finals 100 rounds   REPORTS the winners, 5 folds.
+
+The screen exists because the full grid at the reporting horizon is unaffordable.
+A 25-round result is a ranking signal, and this study now has direct evidence of
+the difference between the two jobs - see the finals below.
+
+---
+
+# What is recorded beyond the two headline numbers
+
+## The two headline quantities, defined
+
+Read by `select_reg_screen.read_family_runs`, per (cell, fold, family):
+
+* **adaptation** - the last value of `pool_val_accuracies`: the cohort's
+  held-out **validation** half. Validation, not test, is the protocol letter;
+  the test column is carried alongside and both orderings are recorded, so a
+  selection can be re-read either way.
+* **preservation** - `final_evaluation.old.mean`: the source population's five
+  fold test partitions, scored separately, with their mean and spread.
+
+**Preservation is `source_val_accuracies`, and it FALLS.** `pool_test_accuracies`
+tracks the cohort and RISES through a run; reading it as preservation reports a
+run that forgot seven points when it forgot one, and does so silently. That
+substitution happened once in this project and is now refused at read time by
+`_check_preservation_series` in `tools/report_tables.py`, which rejects any
+preservation series climbing more than five points across a run.
+
+## The eight forgetting signals
+
+The study's own constraint is that **a running experiment may not read the
+source population**: once the model is shipped, those writers are gone. Every
+number reported on the source split is therefore an *evaluation* quantity - fine
+for the paper's tables, forbidden as an input to a stopping or selection rule.
+
+So every run also records, every round, the eight quantities a server *is*
+allowed to compute (`runners/forgetting_signals.py`):
+
+| signal | what it needs | direction |
+|---|---|---|
+| `dist_l2_to_global` | nothing but the weights | grows with forgetting |
+| `dist_fisher_to_global` | the shipped Fisher the server already owns | grows |
+| `dist_fisher_norm_to_global` | the same, unit-mass normalised | grows |
+| `retention_known` | the clients' own held-out half | shrinks |
+| `agreement_with_global` | the same | shrinks |
+| `kl_global_to_current` | the same | grows |
+| `proxy_acc` | public data the server owns (MNIST) | shrinks |
+| `proxy_kl` | the same | grows |
+
+`retention_known` is the pointed one: accuracy of the current model restricted
+to the samples the *shipped* model got right - "how much of what it already knew
+is left" - computed only from data the clients are allowed to be asked about.
+
+The cost is one extra forward pass per round over the pool's validation halves
+and one over the proxy set, the same order as the evaluation passes already
+made. g-0's predictions on both reference sets are computed once per run and
+cached.
+
+**Verified populated in this programme: 8 of 8 signals, on both horizons** -
+25-point series across the screen, 100-point across the finals. This matters
+because in an earlier run four of the eight were silently empty: the MNIST proxy
+set had never been built and the winning fold's Fisher was never promoted to the
+name the artefact resolver looks for. Both are fixed, and the fold selector now
+promotes the Fisher as part of choosing the fold.
+
+`analysis/forgetting_signals.py` then asks the three questions that decide
+whether a signal can stand in for the forbidden source split: does it correlate
+with true forgetting; would stopping on it have worked, against oracle stopping
+and against no stopping at all; and would selecting on it have worked, with the
+gap to what an oracle would have picked.
+
+---
+
+# Results
+
+## The screen - 140 cells, 700 tasks, 25 rounds
+
+All 700 completed, no failures, including the strongest corner in the grid
+(`ntd_b30_t8`, effective weight `30 x 8^2 = 1920`, never previously run - it did
+not diverge, it froze: adaptation 0.8081, *below* the 0.8225 of doing nothing).
+
+Winners, `w = 1`:
+
+| method | concurrent | | | sequential | | |
+|---|---|---|---|---|---|---|
+| | cell | adapt/preserve | score | cell | adapt/preserve | score |
+| `ntd` | `b0.01_t0.5` | 0.9127 / 0.9934 | **8.50** | `b0.01_t1` | 0.9147 / 0.9942 | **8.78** |
+| `logit_l2` | `lam0.003` | 0.9080 / 0.9941 | 8.11 | `lam0.003` | 0.9118 / 0.9939 | 8.46 |
+| `kd` | `T8_a0.99` | 0.9062 / 0.9952 | 8.03 | `T0.5_a0.99` | 0.9137 / 0.9911 | 8.37 |
+| `param_l2` | `mu0` *(control)* | 0.9100 / 0.9898 | 7.88 | `mu0` *(control)* | 0.9109 / 0.9900 | 7.99 |
+| `feature_l2` | `lam0.1` | 0.9053 / 0.9940 | 7.82 | `lam0.01` | 0.9045 / 0.9920 | 7.54 |
+| `fisher_scaled` | `lam500` | 0.8820 / 0.9962 | 5.71 | `lam0.1` | 0.8829 / 0.9959 | 5.78 |
+| `fisher` | `lam0.1` | 0.8811 / 0.9962 | 5.63 | `lam0.1` | 0.8838 / 0.9954 | 5.81 |
+
+Two things to read off it. **Six of the seven winners sit at the weak end of
+their row**, and `param_l2`'s winner is `mu = 0` - literally no penalty. And
+**only three penalties beat that no-penalty control at all**, two of them by
+under a quarter point.
+
+The boundary rule reports nine edge hits, eight at the weak end:
+`param_l2_mu0` (both families), `fisher_lam0.1` (both), `fisher_scaled_lam0.1`,
+the `alpha = 0.99` corner of `kd` (both), `ntd t = 0.5`; the one exception is
+`kd_T8`, at the top of the trimmed T row.
+
+## The finals - 14 winners, 70 tasks, 100 rounds, 5 folds
+
+| | concurrent | | | sequential | | |
+|---|---|---|---|---|---|---|
+| method | cell | adapt/preserve | score | cell | adapt/preserve | score |
+| `ntd` | `b0.01_t0.5` | 0.9223 / 0.9845 | 8.57 | `b0.01_t1` | 0.9251 / 0.9878 | **9.18** |
+| `logit_l2` | `lam0.003` | 0.9213 / 0.9903 | **9.05** | `lam0.003` | 0.9204 / 0.9903 | 8.96 |
+| `kd` | `T8_a0.99` | 0.9166 / 0.9894 | 8.49 | `T0.5_a0.99` | 0.9212 / 0.9748 | 7.50 |
+| `fisher_scaled` | `lam500` | 0.9119 / 0.9927 | 8.34 | `lam0.1` | 0.9063 / 0.9924 | 7.76 |
+| `fisher` | `lam0.1` | 0.9054 / 0.9915 | 7.57 | `lam0.1` | 0.9138 / 0.9914 | 8.40 |
+| `feature_l2` | `lam0.1` | 0.9101 / 0.9865 | 7.56 | `lam0.01` | 0.9184 / 0.9819 | 7.92 |
+| `param_l2` | `mu0` *(control)* | 0.9090 / 0.9706 | 5.85 | `mu0` *(control)* | 0.9128 / 0.9686 | 6.03 |
+
+## The finding: the screen ranks, but it cannot price
+
+The no-penalty control is **4th of 7 at 25 rounds and last of 7 at 100**, in
+both families, by 2.7 and 3.2 points. Its preservation column says why:
+
+    forgetting with no penalty at all     25 rounds   ~0.9   points
+                                         100 rounds    2.80 / 3.00 points
+
+At the screening horizon there is about one point of forgetting available to
+protect, so any penalty strong enough to bite reads as pure cost, and selection
+walks to the weak end of every row. At the reporting horizon there are three,
+and **every penalty pays for itself**.
+
+This explains the earlier study's regularisation winners - 100x to 80,000x
+weaker than the values it published - without having to call them a mistake.
+They were selected correctly, under a rule applied at a horizon that cannot see
+the quantity being traded. The eight weak-end boundary hits are the same effect:
+they are not ranges placed too narrowly, they are rows being asked to reach a
+setting that does not exist, because the honest answer at 25 rounds is "no
+penalty".
+
+## What is stable, and what is not
+
+**Stable.** `ntd` and `logit_l2` are the top two at both horizons and in both
+families, and the ranking `ntd > logit_l2 > kd` holds across all four screen
+tables. `logit_l2_lam0.003` wins its row in both families at both horizons - and
+it is a cell that **did not exist in the previous range**, sitting three decades
+below where the earlier grid looked.
+
+**Not stable.** `kd` is 3rd concurrent and 6th sequential at full horizon; its
+sequential winner `T0.5_a0.99` gives up 2.4 points of preservation. The
+low-temperature corner does not survive the cyclic schedule.
+
+**The structural result.** The three penalties that beat the control at the
+screen are exactly the three **output-space** ones - they constrain what the
+model says. The two **weight-space** ones, `param_l2` and `fisher`, are the two
+that lose to it, and `feature_l2`, which constrains the representation between
+those two levels, lands between them. That ordering holds on both schedules.
+
+## Cost
+
+| stage | tasks | rounds | GPU-hours |
+|---|---|---|---|
+| screen | 700 | 25 | ~25 |
+| finals | 70 | 100 | ~8 |
