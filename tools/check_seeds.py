@@ -12,9 +12,21 @@ were compared *against* were not.
 A command that only reads a model is exempt, because a forward pass has nothing
 to seed. Everything that fits a model is not.
 
+DO TWO STAGES DRAW THE SAME SEEDS?
+----------------------------------
+A second failure, found the same way the first was - by looking rather than by
+anything breaking. Stages seed as ``seed_base + block + index * 10 + fold`` with
+the blocks 1000 apart, which holds until a stage has more than a hundred cells.
+The regularisation screen is 140, so it spans 1400 and runs through two blocks;
+the combination stage's first emission drew seeds already used by it.
+
+Nothing about that is loud. Both stages run, both write results, and the two
+draw the same client-sampling sequence - so their numbers are correlated, and
+no output says so. Passing every task file at once cross-checks the spans:
+
     python tools/check_seeds.py <task file> [<task file> ...]
 
-Exits non-zero if any training task is unseeded.
+Exits non-zero if any training task is unseeded, or if two files share a seed.
 """
 
 from __future__ import annotations
@@ -88,25 +100,72 @@ def check(path: Path) -> list[str]:
     return problems
 
 
+def sampler_seeds(path: Path) -> set[int]:
+    """Every ``--sampler-seed`` a task file draws."""
+    seeds: set[int] = set()
+    for line in path.read_text().splitlines():
+        words = line.split()
+        if not words or words[0] != "foa":
+            continue
+        value = flag(words, "--sampler-seed")
+        if value is not None:
+            try:
+                seeds.add(int(value))
+            except ValueError:
+                continue
+    return seeds
+
+
+def collisions(spans: dict[str, set[int]]) -> list[str]:
+    """
+    Every pair of task files that would draw the same sampler seed.
+
+    Reported as a problem rather than a note: two stages sharing a sampling
+    sequence are not independent, and the correlation is invisible downstream.
+    """
+    found: list[str] = []
+    names = list(spans)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            shared = spans[a] & spans[b]
+            if shared:
+                found.append(
+                    f"{a} and {b} share {len(shared)} sampler seed(s), "
+                    f"{min(shared)}-{max(shared)}"
+                )
+    return found
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
     all_problems: list[str] = []
+    spans: dict[str, set[int]] = {}
     for arg in sys.argv[1:]:
         path = Path(arg)
         n = sum(1 for l in path.read_text().splitlines() if l.strip().startswith("foa "))
         problems = check(path)
+        seeds = sampler_seeds(path)
+        spans[path.name] = seeds
         status = "OK " if not problems else "GAP"
-        print(f"  {status} {path.name:<28} {n:4d} tasks")
+        span = f"{min(seeds)}-{max(seeds)}" if seeds else "no sampler seeds"
+        print(f"  {status} {path.name:<28} {n:4d} tasks   {span}")
         all_problems += problems
 
-    if all_problems:
+    shared = collisions(spans)
+    if all_problems or shared:
         print()
         for p in all_problems:
             print(f"    {p}")
-        print(f"\n{len(all_problems)} task(s) that fit a model without a seed.")
+        for c in shared:
+            print(f"    COLLISION: {c}")
+        if all_problems:
+            print(f"\n{len(all_problems)} task(s) that fit a model without a seed.")
+        if shared:
+            print(f"{len(shared)} pair(s) of task files drawing the same seeds.")
         return 1
-    print("\nevery task that trains or draws carries a seed.")
+    print("\nevery task that trains or draws carries a seed, "
+          "and no two files share one.")
     return 0
 
 

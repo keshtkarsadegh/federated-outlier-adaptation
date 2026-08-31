@@ -153,7 +153,7 @@ in the manuscript comes from here.
 ## Before submitting anything
 
 ```bash
-python tools/check_seeds.py     "$FOA_STUDY_DIR"/jobs/<file>.txt
+python tools/check_seeds.py     "$FOA_STUDY_DIR"/jobs/*.txt   # ALL of them, together
 python tools/check_programme.py "$FOA_STUDY_DIR/jobs"
 python tools/freeze_selection.py verify "$FOA_STUDY_DIR"
 ```
@@ -162,6 +162,12 @@ python tools/freeze_selection.py verify "$FOA_STUDY_DIR"
   seed, and an unclassified command is a failure so a new subcommand cannot
   slip through. The isolated arm ran unseeded for 110 of 135 reference tasks
   before this existed.
+
+  **Pass every task file at once, not one at a time.** It also cross-checks the
+  seed spans, and the second failure it caught was a collision between stages:
+  seed blocks are 1000 wide, the 140-cell regularisation screen spans 1400, and
+  the combination stage's block sat inside it. Both stages would have run and
+  drawn the same client-sampling sequence, with nothing downstream to say so.
 - **check_programme** - every file a stage reads is produced by an earlier
   stage. Two inputs had been made by hand and nothing rebuilt them.
 - **freeze_selection** - the cohort is the same cohort. GPU arithmetic is not
@@ -174,3 +180,26 @@ a single summary first.
 
 Delete a stage's result folders before re-running it. Every task skips work that
 already exists, so a re-run over stale folders is a no-op that reports success.
+
+And delete them before re-running a stage under **changed ranges**, which is a
+different hazard with the same cause. Result folders are named by cell id, so a
+re-ranged grid leaves the cells it dropped on disk as orphans. Nothing collects
+them - the selectors read the catalogue - but anything that reads a *prefix*
+does, and that is how a finals table came to be topped by three cells that exist
+in no current row. 60 stale regularisation folders and 90 stale combination
+folders were removed for exactly this reason.
+
+## Reading the results
+
+```bash
+python tools/report_tables.py --root "$FOA_STUDY_DIR" --what all --csv out/
+python tools/compare_arms.py  --root "$FOA_STUDY_DIR" --what all --csv out/
+```
+
+- **report_tables** - what each arm scored. The manuscript's numbers come from
+  here and from nowhere else.
+- **compare_arms** - what the DIFFERENCE between two arms is worth, paired by
+  fold. Use it for any claim of the form "A beats B": on the combination stage,
+  eleven of eighteen pairs beat both their halves on the means and only one of
+  the eighteen is positive on every fold. A mean difference smaller than its own
+  fold spread is not a finding, and only the paired view shows that.
