@@ -1,0 +1,12 @@
+{
+  "concurrent": [
+    "logit_l2_lam0p001",
+    "hybrid_seq_mix0p5",
+    "ntd_b0p01_t0p5"
+  ],
+  "sequential": [
+    "ntd_b0p01_t2",
+    "hybrid_mix0p5",
+    "logit_l2_lam0p003"
+  ]
+}

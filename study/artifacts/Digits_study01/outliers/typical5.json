@@ -1,0 +1,27 @@
+{
+  "rule": "seeded uniform draw without replacement from the eligible writers",
+  "end": "best",
+  "seed": 20260830,
+  "k": 5,
+  "size": 5,
+  "pool": null,
+  "splittable_only": true,
+  "eligible_clients": 2506,
+  "population_clients": 2506,
+  "clients": [
+    "f1198_41",
+    "f2368_50",
+    "f3603_14",
+    "f3838_46",
+    "f3946_04"
+  ],
+  "accuracies": {
+    "f1198_41": 1.0,
+    "f2368_50": 1.0,
+    "f3603_14": 1.0,
+    "f3838_46": 1.0,
+    "f3946_04": 1.0
+  },
+  "tag": "digits_typical5_v2",
+  "scores": "$FOA_STUDY_DIR/outliers/clients_acc_on_global.json"
+}

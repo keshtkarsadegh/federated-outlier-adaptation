@@ -1,0 +1,507 @@
+{
+  "classes": "digits",
+  "num_classes": 10,
+  "size": 10,
+  "rule": "the 10 worst of the bad pool under the shipped model g-0",
+  "extra_columns": [
+    "ginit"
+  ],
+  "rows": [
+    {
+      "writer": "f3642_03",
+      "accuracy": 0.75,
+      "rank": 1,
+      "of": 1074,
+      "total_rows": 72,
+      "per_class": {
+        "0": 2,
+        "1": 13,
+        "2": 12,
+        "3": 3,
+        "4": 6,
+        "5": 8,
+        "6": 2,
+        "7": 13,
+        "8": 3,
+        "9": 10
+      },
+      "classes_covered": 10,
+      "ginit": 0.9705882352941176,
+      "folds": {
+        "1": {
+          "train": 38,
+          "val": 18,
+          "test": 16
+        },
+        "2": {
+          "train": 38,
+          "val": 16,
+          "test": 18
+        },
+        "3": {
+          "train": 38,
+          "val": 19,
+          "test": 15
+        },
+        "4": {
+          "train": 38,
+          "val": 19,
+          "test": 15
+        },
+        "5": {
+          "train": 38,
+          "val": 16,
+          "test": 18
+        }
+      }
+    },
+    {
+      "writer": "f2023_12",
+      "accuracy": 0.7835051546391752,
+      "rank": 2,
+      "of": 1074,
+      "total_rows": 97,
+      "per_class": {
+        "0": 13,
+        "1": 10,
+        "2": 10,
+        "3": 9,
+        "4": 10,
+        "5": 9,
+        "6": 7,
+        "7": 10,
+        "8": 12,
+        "9": 7
+      },
+      "classes_covered": 10,
+      "ginit": 0.926829268292683,
+      "folds": {
+        "1": {
+          "train": 56,
+          "val": 20,
+          "test": 21
+        },
+        "2": {
+          "train": 56,
+          "val": 21,
+          "test": 20
+        },
+        "3": {
+          "train": 56,
+          "val": 19,
+          "test": 22
+        },
+        "4": {
+          "train": 56,
+          "val": 21,
+          "test": 20
+        },
+        "5": {
+          "train": 56,
+          "val": 21,
+          "test": 20
+        }
+      }
+    },
+    {
+      "writer": "f1331_49",
+      "accuracy": 0.797979797979798,
+      "rank": 3,
+      "of": 1074,
+      "total_rows": 99,
+      "per_class": {
+        "0": 10,
+        "1": 11,
+        "2": 11,
+        "3": 12,
+        "4": 10,
+        "5": 12,
+        "6": 7,
+        "7": 12,
+        "8": 5,
+        "9": 9
+      },
+      "classes_covered": 10,
+      "ginit": 0.9285714285714286,
+      "folds": {
+        "1": {
+          "train": 57,
+          "val": 20,
+          "test": 22
+        },
+        "2": {
+          "train": 57,
+          "val": 21,
+          "test": 21
+        },
+        "3": {
+          "train": 57,
+          "val": 18,
+          "test": 24
+        },
+        "4": {
+          "train": 57,
+          "val": 22,
+          "test": 20
+        },
+        "5": {
+          "train": 57,
+          "val": 20,
+          "test": 22
+        }
+      }
+    },
+    {
+      "writer": "f2564_59",
+      "accuracy": 0.8076923076923077,
+      "rank": 4,
+      "of": 1074,
+      "total_rows": 104,
+      "per_class": {
+        "0": 15,
+        "1": 11,
+        "2": 10,
+        "3": 12,
+        "4": 12,
+        "5": 9,
+        "6": 10,
+        "7": 13,
+        "8": 10,
+        "9": 2
+      },
+      "classes_covered": 10,
+      "ginit": 0.9318181818181818,
+      "folds": {
+        "1": {
+          "train": 60,
+          "val": 23,
+          "test": 21
+        },
+        "2": {
+          "train": 60,
+          "val": 23,
+          "test": 21
+        },
+        "3": {
+          "train": 60,
+          "val": 21,
+          "test": 23
+        },
+        "4": {
+          "train": 60,
+          "val": 23,
+          "test": 21
+        },
+        "5": {
+          "train": 60,
+          "val": 20,
+          "test": 24
+        }
+      }
+    },
+    {
+      "writer": "f2230_67",
+      "accuracy": 0.819047619047619,
+      "rank": 5,
+      "of": 1074,
+      "total_rows": 105,
+      "per_class": {
+        "0": 10,
+        "1": 10,
+        "2": 11,
+        "3": 7,
+        "4": 13,
+        "5": 10,
+        "6": 12,
+        "7": 12,
+        "8": 7,
+        "9": 13
+      },
+      "classes_covered": 10,
+      "ginit": 0.9555555555555556,
+      "folds": {
+        "1": {
+          "train": 60,
+          "val": 22,
+          "test": 23
+        },
+        "2": {
+          "train": 60,
+          "val": 20,
+          "test": 25
+        },
+        "3": {
+          "train": 60,
+          "val": 23,
+          "test": 22
+        },
+        "4": {
+          "train": 60,
+          "val": 24,
+          "test": 21
+        },
+        "5": {
+          "train": 60,
+          "val": 23,
+          "test": 22
+        }
+      }
+    },
+    {
+      "writer": "f2145_89",
+      "accuracy": 0.8333333333333334,
+      "rank": 6,
+      "of": 1074,
+      "total_rows": 96,
+      "per_class": {
+        "0": 8,
+        "1": 11,
+        "2": 12,
+        "3": 6,
+        "4": 10,
+        "5": 10,
+        "6": 9,
+        "7": 12,
+        "8": 7,
+        "9": 11
+      },
+      "classes_covered": 10,
+      "ginit": 0.9523809523809523,
+      "folds": {
+        "1": {
+          "train": 54,
+          "val": 21,
+          "test": 21
+        },
+        "2": {
+          "train": 54,
+          "val": 22,
+          "test": 20
+        },
+        "3": {
+          "train": 54,
+          "val": 21,
+          "test": 21
+        },
+        "4": {
+          "train": 54,
+          "val": 22,
+          "test": 20
+        },
+        "5": {
+          "train": 54,
+          "val": 22,
+          "test": 20
+        }
+      }
+    },
+    {
+      "writer": "f2307_62",
+      "accuracy": 0.8380952380952381,
+      "rank": 7,
+      "of": 1074,
+      "total_rows": 105,
+      "per_class": {
+        "0": 10,
+        "1": 12,
+        "2": 9,
+        "3": 10,
+        "4": 10,
+        "5": 9,
+        "6": 11,
+        "7": 14,
+        "8": 10,
+        "9": 10
+      },
+      "classes_covered": 10,
+      "ginit": 0.9090909090909091,
+      "folds": {
+        "1": {
+          "train": 61,
+          "val": 23,
+          "test": 21
+        },
+        "2": {
+          "train": 61,
+          "val": 23,
+          "test": 21
+        },
+        "3": {
+          "train": 61,
+          "val": 21,
+          "test": 23
+        },
+        "4": {
+          "train": 61,
+          "val": 22,
+          "test": 22
+        },
+        "5": {
+          "train": 61,
+          "val": 23,
+          "test": 21
+        }
+      }
+    },
+    {
+      "writer": "f3211_20",
+      "accuracy": 0.8442622950819673,
+      "rank": 8,
+      "of": 1074,
+      "total_rows": 122,
+      "per_class": {
+        "0": 10,
+        "1": 15,
+        "2": 14,
+        "3": 13,
+        "4": 16,
+        "5": 9,
+        "6": 10,
+        "7": 13,
+        "8": 9,
+        "9": 13
+      },
+      "classes_covered": 10,
+      "ginit": 0.9433962264150944,
+      "folds": {
+        "1": {
+          "train": 69,
+          "val": 26,
+          "test": 27
+        },
+        "2": {
+          "train": 69,
+          "val": 26,
+          "test": 27
+        },
+        "3": {
+          "train": 69,
+          "val": 26,
+          "test": 27
+        },
+        "4": {
+          "train": 69,
+          "val": 26,
+          "test": 27
+        },
+        "5": {
+          "train": 69,
+          "val": 26,
+          "test": 27
+        }
+      }
+    },
+    {
+      "writer": "f3200_41",
+      "accuracy": 0.8467741935483871,
+      "rank": 9,
+      "of": 1074,
+      "total_rows": 124,
+      "per_class": {
+        "0": 13,
+        "1": 14,
+        "2": 13,
+        "3": 12,
+        "4": 12,
+        "5": 13,
+        "6": 13,
+        "7": 12,
+        "8": 10,
+        "9": 12
+      },
+      "classes_covered": 10,
+      "ginit": 0.9444444444444444,
+      "folds": {
+        "1": {
+          "train": 70,
+          "val": 27,
+          "test": 27
+        },
+        "2": {
+          "train": 70,
+          "val": 26,
+          "test": 28
+        },
+        "3": {
+          "train": 70,
+          "val": 27,
+          "test": 27
+        },
+        "4": {
+          "train": 70,
+          "val": 27,
+          "test": 27
+        },
+        "5": {
+          "train": 70,
+          "val": 28,
+          "test": 26
+        }
+      }
+    },
+    {
+      "writer": "f0048_00",
+      "accuracy": 0.85,
+      "rank": 10,
+      "of": 1074,
+      "total_rows": 60,
+      "per_class": {
+        "0": 8,
+        "1": 8,
+        "2": 5,
+        "3": 0,
+        "4": 7,
+        "5": 4,
+        "6": 8,
+        "7": 11,
+        "8": 4,
+        "9": 5
+      },
+      "classes_covered": 9,
+      "ginit": 0.9642857142857143,
+      "folds": {
+        "1": {
+          "train": 32,
+          "val": 14,
+          "test": 14
+        },
+        "2": {
+          "train": 32,
+          "val": 13,
+          "test": 15
+        },
+        "3": {
+          "train": 32,
+          "val": 14,
+          "test": 14
+        },
+        "4": {
+          "train": 32,
+          "val": 14,
+          "test": 14
+        },
+        "5": {
+          "train": 32,
+          "val": 14,
+          "test": 14
+        }
+      }
+    }
+  ],
+  "population": {
+    "scored_writers": 1074,
+    "median_rows": 117,
+    "mean_accuracy": 0.9764590825961985
+  },
+  "summary": {
+    "min_accuracy": 0.75,
+    "max_accuracy": 0.85,
+    "min_rows": 60,
+    "max_rows": 124,
+    "mean_rows": 98.4
+  },
+  "clients_file": "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+  "scores": "$FOA_STUDY_DIR/outliers/bad_acc_on_g0.json",
+  "counts": "$FOA_STUDY_DIR/outliers/writer_counts.json",
+  "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
+}

@@ -1,0 +1,74 @@
+# d01_p02.txt - Digits_study01, P02: the detector.
+#
+# NIST SD19, DIGITS 0-9 ONLY. --classes digits gives the dataset ten
+# labels and the provider hands FedAvgCNN num_classes=10, so the head is
+# McMahan's exactly rather than the 62-unit by-class head.
+#
+# WHO IS IN THE BOOK, AND THE RULE.
+#
+# The cache holds 3597 writers over the full character set. Restricted to
+# digits, 3580 of them remain: 17 writers contribute no digit at all and
+# are absent from the dataset entirely rather than present with a zero.
+# Those 3580 writers hold 402,953 digit images between them.
+#
+# The splittability rule is the book's own: a writer is splittable when a
+# per-label stratified 60/20/20 leaves it at least one training row AND
+# at least one validation row. Counted against the cache:
+#
+#   digits    3580 of 3580 survive - NONE are dropped
+#   (62-class  3588 of 3597 survive - 9 are dropped)
+#
+# The digit filter is a no-op, and that is not luck. Fewer classes means
+# more rows per class: a digit writer holds ~113 rows over 10 labels,
+# about 11 each, where the same writer holds ~226 over 62, about 3.6
+# each. int(3.6 * 0.6) can be zero; int(11 * 0.6) cannot. The book is
+# therefore built over every writer, and it records any unsplittable
+# writer per fold in its own metadata - which here will be empty.
+#
+# ONE FOLD, AND WHY THAT IS ENOUGH.
+#
+# The detector is not an experiment. It draws one coarse line: the
+# worst writers become the bad pool. The study's ten clients are cut
+# from that pool later, by g-0, so g-init only has to put the badly
+# served writers inside a net of about a thousand - it does not have to
+# rank them precisely.
+#
+# Measured: re-ranking with a whole fold dropped, which is a far larger
+# perturbation than retraining the same fold, the net still contained
+# 100% of the reference worst-fifty at every width tried. The pool's
+# boundary moves, but the writers who move are its least bad members,
+# and g-0 would never select them.
+#
+# One fold also removes a defect instead of managing it. With five, one
+# had to be crowned, and the five sat within six ten-thousandths of a
+# point of one another - so the order in which floating-point error
+# accumulates chose the study's clients. A rebuild crowned fold 4 where
+# the first run crowned fold 3 and re-derived a cohort sharing three
+# writers of ten with the published one. With one fold there is nothing
+# to crown, and no fold number to substitute anywhere in the chain.
+#
+# THE EXPERIMENTS ARE STILL FIVE-FOLD. This is the detector only. Every
+# adaptation and preservation number in the study is a mean over the
+# five folds of this same book, with fold-matched tests against FedAvg.
+#
+# WHY THE SCORING USES HELD-OUT ROWS. g-init trained on the whole digit
+# dataset, so every writer contributed training images to it. Scoring a
+# writer on all of its data would be scoring the model on its own
+# training set, and the ranking would measure memorisation rather than
+# difficulty. Each writer is scored on its validation+test rows of the
+# detector's fold - exactly the rows that model did not train on. The
+# book stores that assignment, so it is not re-derived from a seed: the
+# rows are the same rows for every later stage that reads the book.
+#
+# THE BANKING STEP (line 1) is independent of everything: it reads the
+# cache and counts. It writes each writer's digit total and its per-class
+# counts, because a reader will ask whether the worst writers were simply
+# the ones with the least data - and a ranking alone cannot answer that.
+#
+# 4 tasks. The chain is: counts+book -> the five folds -> the winner
+# -> the scores.
+#
+foa writer-counts --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/outliers/writer_counts.json --csv $FOA_STUDY_DIR/outliers/writer_counts.csv
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/all_writers_digits --folds 1 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_all_writers
+foa global-train --results-dir $FOA_STUDY_DIR/ginit_fold1 --resolution 28 --classes digits --model fedavg_cnn --population all --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 1 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 1
+foa score-writers --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/ginit_fold1/global_model --fold-book $FOA_STUDY_DIR/fold_books/all_writers_digits.foldbook.npz --fold 1 --batch-size 256 --out $FOA_STUDY_DIR/outliers/writer_scores.json --accuracies-name clients_acc_on_global.json

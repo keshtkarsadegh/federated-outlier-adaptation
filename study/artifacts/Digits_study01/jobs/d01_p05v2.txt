@@ -1,0 +1,95 @@
+# d01_p05v2.txt - Digits_study01, revised P05-P07: the coarse cut, g-0, the cohort.
+#
+# THE REDESIGN. g-init trained on every writer, so its per-writer
+# accuracy is contaminated by memorisation - a writer can score well
+# because the model remembers it, not because it is easy. That is
+# survivable in a COARSE CUT and fatal in a SELECTION, so the two jobs
+# are now split:
+#
+#   g-init  cuts the population at the worst 30% - BAD vs GOOD, and
+#           nothing else. Its job ends there.
+#   g-0     is trained on GOOD writers only, then scores every BAD
+#           writer it has never seen. Those scores pick the cohort.
+#
+# NO LEAKAGE, BY CONSTRUCTION. The old data is drawn from GOOD, so g-0
+# never trains on a writer it will later score. That is the whole reason
+# the draw is restricted rather than merely cohort-excluded.
+#
+# LINE 1 ARCHIVES v1. The previous g-0 (winner fold 5), its evaluations, the
+# old-data draw, the cohort, both books, the table and the gallery are
+# all superseded - they were built around a selection that no longer
+# stands. They are MOVED, not deleted, to
+#   $FOA_STUDY_DIR/v1_superseded/
+# keeping their relative paths. Nothing downstream can pick them up:
+# every reader names an exact path in the study root, and after this
+# line those paths are empty until v2 refills them. Recoverable if a
+# comparison is ever wanted.
+#
+# WHAT SURVIVES v1: ginit_*, the all-writers book, writer_scores.json,
+# clients_acc_on_global.json and writer_counts.*. The coarse detector and
+# the census are still exactly what they were.
+#
+# LINE 2 cuts the pools at ceil(0.3 * 3580) = 1074: BAD is the worst
+# 1074, GOOD the remaining 2506. Banked with the rule, the cut rank and
+# the accuracy there, plus both lists as ordinary pool files.
+#
+# LINE 3 draws 200 old writers from GOOD only, seeded 20260829.
+# LINE 4 books them. LINES 5-9 train g-0, five folds, each writing its
+# own Fisher to g0_fold<k>/global_results/fisher - the path the
+# regularisation stages name. LINE 10 picks the winner by VALIDATION.
+#
+# LINE 11 IS THE SELECTION PASS: g-0 on EVERY row of each of the 1074
+# bad writers - about 121,000 images, one GPU task, minutes. Every row,
+# not a held-out partition: g-0 has never seen these writers at all, so
+# there is nothing to hold out from, and using all of a writer's data is
+# what makes the estimate as tight as that writer allows. These are the
+# small difficult ones; the tightness matters.
+#
+# LINE 12 cuts the cohort - the worst 10 of that ranking, not of g-init's.
+# LINE 13 books them. LINE 14 banks the table: each writer's rank within
+# the 1074-writer bad pool, the g-0 accuracy that selected it, its g-init
+# accuracy alongside so the two rankings can be compared, its per-class
+# counts and its per-fold split sizes.
+#
+# LINES 15-16 redraw the figure's reference writers from GOOD and render
+# it again. LINES 17-26 are the baselines: preservation on the five old
+# folds, and the do-nothing baseline per cohort writer. Same two
+# filenames and shapes as before, so every downstream reader is
+# unchanged.
+#
+# BOTH EVALUATION GROUPS APPEND, keyed by tag - submit them %1.
+#
+# 30 tasks. Chain: archive -> pools -> draw -> book -> folds 1-5
+# -> winner -> score-bad -> cohort -> book -> table/typical/gallery
+# -> evaluations.
+#
+D=$FOA_STUDY_DIR; A=$FOA_STUDY_DIR/v1_superseded; mkdir -p "$A/outliers" "$A/fold_books" "$A/tables" && for F in "$D/g0_fold1" "$D/g0_fold2" "$D/g0_fold3" "$D/g0_fold4" "$D/g0_fold5" "$D/g0_model" "$D/g0_selection.json" "$D/g0_evaluations.json" "$D/g0_perfold_evaluations.json" "$D/outliers/old_data.json" "$D/outliers/cohort_worst10.json" "$D/outliers/typical5.json" "$D/fold_books/old_data.foldbook.npz" "$D/fold_books/cohort10.foldbook.npz" "$D/tables/cohort_table.json" "$D/tables/cohort_table.csv" "$D/tables/gallery"; do [ -e "$F" ] && mv -f "$F" "$A/${F#$D/}" && echo "archived ${F#$D/}"; done; echo "v1 artefacts archived under $A"; exit 0
+foa split-pools --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --bad-fraction 0.3 --scores $FOA_STUDY_DIR/outliers/clients_acc_on_global.json --require-trainable --out $FOA_STUDY_DIR/outliers/pools.json --csv $FOA_STUDY_DIR/outliers/pools.csv
+foa draw-old-data --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --size 200 --seed 20260829 --min-samples 100 --require-trainable --exclude-file $FOA_STUDY_DIR/outliers/pool_bad.json --out $FOA_STUDY_DIR/outliers/old_data.json
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/old_data --clients-file $FOA_STUDY_DIR/outliers/old_data.json --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_old200_v2
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold1 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 1 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 1
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold2 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 2 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 2
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold3 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 3 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 3
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold4 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 4 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 4
+foa global-train --results-dir $FOA_STUDY_DIR/g0_fold5 --resolution 28 --classes digits --model fedavg_cnn --population file --writers-file $FOA_STUDY_DIR/outliers/old_data.json --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 5 --epochs 100 --early-stopping-patience 10 --min-epochs 20 --batch-size 64 --split-seed 42 --seed 5
+foa select-fold --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --root $FOA_STUDY_DIR --prefix g0 --name g0 --folds 1 2 3 4 5
+foa score-pool --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --clients-file $FOA_STUDY_DIR/outliers/pool_bad.json --batch-size 256 --out $FOA_STUDY_DIR/outliers/bad_scores_on_g0.json --csv $FOA_STUDY_DIR/outliers/bad_scores_on_g0.csv --accuracies-name bad_acc_on_g0.json
+foa select-outliers --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --mode worst --k 10 --scores $FOA_STUDY_DIR/outliers/bad_acc_on_g0.json --require-trainable --tag digits_cohort10_v2 --force --no-accuracy-table
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/cohort10 --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_cohort10_v2
+foa select-outliers --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --mode worst --k 5 --scores $FOA_STUDY_DIR/outliers/bad_acc_on_g0.json --require-trainable --tag digits_cohort5_v2 --force --no-accuracy-table --out $FOA_STUDY_DIR/outliers/cohort_worst5.json
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/cohort5 --clients-file $FOA_STUDY_DIR/outliers/cohort_worst5.json --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_cohort5_v2
+foa select-outliers --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --mode worst --k 20 --scores $FOA_STUDY_DIR/outliers/bad_acc_on_g0.json --require-trainable --tag digits_cohort20_v2 --force --no-accuracy-table --out $FOA_STUDY_DIR/outliers/cohort_worst20.json
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/cohort20 --clients-file $FOA_STUDY_DIR/outliers/cohort_worst20.json --folds 5 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_cohort20_v2
+foa cohort-table --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --scores $FOA_STUDY_DIR/outliers/bad_acc_on_g0.json --extra-scores ginit=$FOA_STUDY_DIR/outliers/clients_acc_on_global.json --rule "the 10 worst of the bad pool under the shipped model g-0" --out $FOA_STUDY_DIR/tables/cohort_table.json --csv $FOA_STUDY_DIR/tables/cohort_table.csv
+foa draw-cohort --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --best --k 5 --seed 20260830 --scores $FOA_STUDY_DIR/outliers/clients_acc_on_global.json --require-trainable --exclude-file $FOA_STUDY_DIR/outliers/pool_bad.json --tag digits_typical5_v2 --out $FOA_STUDY_DIR/outliers/typical5.json
+foa outlier-figure --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --outliers-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --source-clients-file $FOA_STUDY_DIR/outliers/typical5.json --n-examples 3 --max-columns 10 --batch-size 256 --out $FOA_STUDY_DIR/tables/gallery/cohort_vs_typical.png
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 1 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold1 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 2 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold2 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 3 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold3 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 4 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold4 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/old_data.foldbook.npz --fold 5 --part test --clients-file $FOA_STUDY_DIR/outliers/old_data.json --batch-size 256 --tag old_data_fold5 --out $FOA_STUDY_DIR/g0_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 1 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold1 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 2 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold2 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 3 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold3 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 4 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold4 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz --fold 5 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst10.json --batch-size 256 --tag cohort_fold5 --out $FOA_STUDY_DIR/g0_perfold_evaluations.json

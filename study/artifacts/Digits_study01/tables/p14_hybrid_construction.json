@@ -1,0 +1,12 @@
+{
+  "kd_winner": "kd_T0p25_a0p9",
+  "fisher_winner": "fisher_lam8",
+  "family": "concurrent",
+  "mixes": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "lam": 0.11111111111111108,
+  "T": 0.25
+}

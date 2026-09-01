@@ -1,0 +1,189 @@
+{
+  "concurrent/eta": {
+    "winner": "eta_0p95",
+    "measured": true,
+    "adaptation": 0.9043962787013212,
+    "adaptation_sd": 0.017457113133509675,
+    "preservation": 0.9910312420269144,
+    "gained": 0.0818762460491399,
+    "spent": 0.007519413089920324,
+    "trade_score": 0.07435683295921958,
+    "considered": 7
+  },
+  "concurrent/weight_q": {
+    "winner": "weight_q0",
+    "measured": true,
+    "adaptation": 0.914639730509943,
+    "adaptation_sd": 0.014526224051910144,
+    "preservation": 0.9901941772601003,
+    "gained": 0.09211969785776164,
+    "spent": 0.008356477856734434,
+    "trade_score": 0.0837632200010272,
+    "considered": 4
+  },
+  "concurrent/median": {
+    "winner": "median",
+    "measured": true,
+    "adaptation": 0.9025028432497776,
+    "adaptation_sd": 0.006466252275471416,
+    "preservation": 0.9865450004001876,
+    "gained": 0.07998281059759627,
+    "spent": 0.012005654716647163,
+    "trade_score": 0.0679771558809491,
+    "considered": 1
+  },
+  "concurrent/trimmed": {
+    "winner": "trimmed_t3",
+    "measured": true,
+    "adaptation": 0.9118519447771766,
+    "adaptation_sd": 0.011142223502947383,
+    "preservation": 0.9853731509667802,
+    "gained": 0.08933191212499525,
+    "spent": 0.013177504150054475,
+    "trade_score": 0.07615440797494077,
+    "considered": 3
+  },
+  "concurrent/anchor": {
+    "winner": "anchor_h2",
+    "measured": true,
+    "adaptation": 0.9025483205207341,
+    "adaptation_sd": 0.018458381172613583,
+    "preservation": 0.9921356938925597,
+    "gained": 0.08002828786855276,
+    "spent": 0.006414961224274984,
+    "trade_score": 0.07361332664427778,
+    "considered": 5
+  },
+  "concurrent/fedavgm": {
+    "winner": "fedavgm_b0p3",
+    "measured": true,
+    "adaptation": 0.912796184930232,
+    "adaptation_sd": 0.011678722420986285,
+    "preservation": 0.9869223967410593,
+    "gained": 0.09027615227805064,
+    "spent": 0.011628258375775413,
+    "trade_score": 0.07864789390227522,
+    "considered": 7
+  },
+  "concurrent/fedadam": {
+    "winner": "fedadam_lr0p001_tau1em06",
+    "measured": true,
+    "adaptation": 0.9212681147574797,
+    "adaptation_sd": 0.015540166970335082,
+    "preservation": 0.9786758553910657,
+    "gained": 0.0987480821052984,
+    "spent": 0.019874799725769,
+    "trade_score": 0.0788732823795294,
+    "considered": 28
+  },
+  "concurrent/fedyogi": {
+    "winner": "fedyogi_lr0p001_tau1em08",
+    "measured": true,
+    "adaptation": 0.9260166920888725,
+    "adaptation_sd": 0.013985123906835166,
+    "preservation": 0.9765467237332048,
+    "gained": 0.10349665943669117,
+    "spent": 0.022003931383629882,
+    "trade_score": 0.08149272805306129,
+    "considered": 28
+  },
+  "sequential/seq_fedavg": {
+    "winner": "seq_fedavg",
+    "measured": true,
+    "adaptation": 0.9099911890859477,
+    "adaptation_sd": 0.010734218277311242,
+    "preservation": 0.9898911710427906,
+    "gained": 0.08747115643376635,
+    "spent": 0.008659484074044155,
+    "trade_score": 0.0788116723597222,
+    "considered": 1
+  },
+  "sequential/seq_equal": {
+    "winner": "seq_equal",
+    "measured": true,
+    "adaptation": 0.9175791965236187,
+    "adaptation_sd": 0.01598695007735408,
+    "preservation": 0.9794728745470204,
+    "gained": 0.09505916387143742,
+    "spent": 0.01907778056981435,
+    "trade_score": 0.07598138330162307,
+    "considered": 1
+  },
+  "sequential/seq_incremental": {
+    "winner": "seq_incremental",
+    "measured": true,
+    "adaptation": 0.9101047287601126,
+    "adaptation_sd": 0.01519728628352589,
+    "preservation": 0.9831975127080635,
+    "gained": 0.08758469610793129,
+    "spent": 0.01535314240877117,
+    "trade_score": 0.07223155369916012,
+    "considered": 1
+  },
+  "sequential/seq_delta_scaled": {
+    "winner": "seq_delta_scaled",
+    "measured": true,
+    "adaptation": 0.9110421432630667,
+    "adaptation_sd": 0.01336171110550065,
+    "preservation": 0.9903074891735183,
+    "gained": 0.08852211061088533,
+    "spent": 0.008243165943316422,
+    "trade_score": 0.08027894466756891,
+    "considered": 1
+  },
+  "sequential/seq_delta_capped": {
+    "winner": "seq_delta_capped",
+    "measured": true,
+    "adaptation": 0.9082299246581829,
+    "adaptation_sd": 0.014880522573166731,
+    "preservation": 0.990272697567156,
+    "gained": 0.08570989200600154,
+    "spent": 0.00827795754967875,
+    "trade_score": 0.07743193445632279,
+    "considered": 1
+  },
+  "sequential/seq_mix": {
+    "winner": "seq_mix_r0p3",
+    "measured": true,
+    "adaptation": 0.911019784903276,
+    "adaptation_sd": 0.01314536362154696,
+    "preservation": 0.9895134509131399,
+    "gained": 0.08849975225109463,
+    "spent": 0.009037204203694804,
+    "trade_score": 0.07946254804739983,
+    "considered": 5
+  },
+  "sequential/seq_order": {
+    "winner": "seq_order_shuffle",
+    "measured": true,
+    "adaptation": 0.9138025471564015,
+    "adaptation_sd": 0.013193020511753771,
+    "preservation": 0.9907651654468462,
+    "gained": 0.0912825145042202,
+    "spent": 0.007785489669988488,
+    "trade_score": 0.08349702483423171,
+    "considered": 1
+  },
+  "control/control_fedavg": {
+    "winner": "control_fedavg",
+    "measured": true,
+    "adaptation": 0.8977681895604536,
+    "adaptation_sd": 0.017664992951788642,
+    "preservation": 0.9903884699045957,
+    "gained": 0.07524815690827225,
+    "spent": 0.008162185212238993,
+    "trade_score": 0.06708597169603325,
+    "considered": 1
+  },
+  "control/control_fedavg_earlystop": {
+    "winner": "control_fedavg_earlystop",
+    "measured": true,
+    "adaptation": 0.9090819734082246,
+    "adaptation_sd": 0.012170961653496412,
+    "preservation": 0.9899668482899424,
+    "gained": 0.08656194075604329,
+    "spent": 0.008583806826892304,
+    "trade_score": 0.07797813392915098,
+    "considered": 1
+  }
+}

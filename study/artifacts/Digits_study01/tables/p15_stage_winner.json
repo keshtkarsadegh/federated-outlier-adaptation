@@ -1,0 +1,292 @@
+{
+  "rule": "fold-mean VALIDATION adaptation, one cell per method on the clients",
+  "rank_by": "val",
+  "rankings": {
+    "val": [
+      {
+        "id": "anchor_h2_ntd_b0p01_t0p5",
+        "adaptation": 0.9288498162850046,
+        "adaptation_test": 0.9346802594864071
+      },
+      {
+        "id": "weight_q0_ntd_b0p01_t0p5",
+        "adaptation": 0.927909466853695,
+        "adaptation_test": 0.9262672273133256
+      },
+      {
+        "id": "eta_0p95_ntd_b0p01_t0p5",
+        "adaptation": 0.9260268497778276,
+        "adaptation_test": 0.9319526487696588
+      },
+      {
+        "id": "eta_0p95_logit_l2_lam0p001",
+        "adaptation": 0.9250506588853863,
+        "adaptation_test": 0.9374183778358841
+      },
+      {
+        "id": "seq_fedavg_ntd_b0p01_t2",
+        "adaptation": 0.9242268089605755,
+        "adaptation_test": 0.9356164123845313
+      },
+      {
+        "id": "seq_delta_capped_ntd_b0p01_t2",
+        "adaptation": 0.9241667613997878,
+        "adaptation_test": 0.9374987343537297
+      },
+      {
+        "id": "seq_mix_r0p3_ntd_b0p01_t2",
+        "adaptation": 0.9232967419868532,
+        "adaptation_test": 0.9328211688000396
+      },
+      {
+        "id": "seq_mix_r0p3_logit_l2_lam0p003",
+        "adaptation": 0.9232609709991045,
+        "adaptation_test": 0.9365828766199409
+      },
+      {
+        "id": "anchor_h2_logit_l2_lam0p001",
+        "adaptation": 0.9222844849999942,
+        "adaptation_test": 0.931761868157621
+      },
+      {
+        "id": "weight_q0_logit_l2_lam0p001",
+        "adaptation": 0.9213710063940054,
+        "adaptation_test": 0.9291459223142192
+      },
+      {
+        "id": "seq_fedavg_logit_l2_lam0p003",
+        "adaptation": 0.9195601721050553,
+        "adaptation_test": 0.9365237753850547
+      },
+      {
+        "id": "seq_delta_capped_logit_l2_lam0p003",
+        "adaptation": 0.9194541253941807,
+        "adaptation_test": 0.9355762766160474
+      },
+      {
+        "id": "weight_q0_hybrid_seq_mix0p5",
+        "adaptation": 0.9183579098535469,
+        "adaptation_test": 0.9262202071700397
+      },
+      {
+        "id": "anchor_h2_hybrid_seq_mix0p5",
+        "adaptation": 0.9146682244418429,
+        "adaptation_test": 0.9308573562947153
+      },
+      {
+        "id": "eta_0p95_hybrid_seq_mix0p5",
+        "adaptation": 0.9128648831161832,
+        "adaptation_test": 0.929040096716173
+      },
+      {
+        "id": "seq_fedavg_hybrid_mix0p5",
+        "adaptation": 0.9100673595697629,
+        "adaptation_test": 0.9177612368527654
+      },
+      {
+        "id": "seq_delta_capped_hybrid_mix0p5",
+        "adaptation": 0.9100287535183125,
+        "adaptation_test": 0.9196791481134888
+      },
+      {
+        "id": "seq_mix_r0p3_hybrid_mix0p5",
+        "adaptation": 0.9099926418544899,
+        "adaptation_test": 0.9262689595522583
+      }
+    ],
+    "test": [
+      {
+        "id": "seq_delta_capped_ntd_b0p01_t2",
+        "adaptation": 0.9241667613997878,
+        "adaptation_test": 0.9374987343537297
+      },
+      {
+        "id": "eta_0p95_logit_l2_lam0p001",
+        "adaptation": 0.9250506588853863,
+        "adaptation_test": 0.9374183778358841
+      },
+      {
+        "id": "seq_mix_r0p3_logit_l2_lam0p003",
+        "adaptation": 0.9232609709991045,
+        "adaptation_test": 0.9365828766199409
+      },
+      {
+        "id": "seq_fedavg_logit_l2_lam0p003",
+        "adaptation": 0.9195601721050553,
+        "adaptation_test": 0.9365237753850547
+      },
+      {
+        "id": "seq_fedavg_ntd_b0p01_t2",
+        "adaptation": 0.9242268089605755,
+        "adaptation_test": 0.9356164123845313
+      },
+      {
+        "id": "seq_delta_capped_logit_l2_lam0p003",
+        "adaptation": 0.9194541253941807,
+        "adaptation_test": 0.9355762766160474
+      },
+      {
+        "id": "anchor_h2_ntd_b0p01_t0p5",
+        "adaptation": 0.9288498162850046,
+        "adaptation_test": 0.9346802594864071
+      },
+      {
+        "id": "seq_mix_r0p3_ntd_b0p01_t2",
+        "adaptation": 0.9232967419868532,
+        "adaptation_test": 0.9328211688000396
+      },
+      {
+        "id": "eta_0p95_ntd_b0p01_t0p5",
+        "adaptation": 0.9260268497778276,
+        "adaptation_test": 0.9319526487696588
+      },
+      {
+        "id": "anchor_h2_logit_l2_lam0p001",
+        "adaptation": 0.9222844849999942,
+        "adaptation_test": 0.931761868157621
+      },
+      {
+        "id": "anchor_h2_hybrid_seq_mix0p5",
+        "adaptation": 0.9146682244418429,
+        "adaptation_test": 0.9308573562947153
+      },
+      {
+        "id": "weight_q0_logit_l2_lam0p001",
+        "adaptation": 0.9213710063940054,
+        "adaptation_test": 0.9291459223142192
+      },
+      {
+        "id": "eta_0p95_hybrid_seq_mix0p5",
+        "adaptation": 0.9128648831161832,
+        "adaptation_test": 0.929040096716173
+      },
+      {
+        "id": "seq_mix_r0p3_hybrid_mix0p5",
+        "adaptation": 0.9099926418544899,
+        "adaptation_test": 0.9262689595522583
+      },
+      {
+        "id": "weight_q0_ntd_b0p01_t0p5",
+        "adaptation": 0.927909466853695,
+        "adaptation_test": 0.9262672273133256
+      },
+      {
+        "id": "weight_q0_hybrid_seq_mix0p5",
+        "adaptation": 0.9183579098535469,
+        "adaptation_test": 0.9262202071700397
+      },
+      {
+        "id": "seq_delta_capped_hybrid_mix0p5",
+        "adaptation": 0.9100287535183125,
+        "adaptation_test": 0.9196791481134888
+      },
+      {
+        "id": "seq_fedavg_hybrid_mix0p5",
+        "adaptation": 0.9100673595697629,
+        "adaptation_test": 0.9177612368527654
+      }
+    ]
+  },
+  "winner": "anchor_h2_ntd_b0p01_t0p5",
+  "family": "concurrent",
+  "aggregation": "anchor_h2",
+  "regulariser": "ntd_b0p01_t0p5",
+  "adaptation": 0.9288498162850046,
+  "adaptation_sd": 0.013061130515703399,
+  "adaptation_test": 0.9346802594864071,
+  "preservation": 0.9869236859448692,
+  "preservation_sd": 0.0024145997328792455,
+  "considered": 18,
+  "ranked": [
+    {
+      "id": "anchor_h2_ntd_b0p01_t0p5",
+      "adaptation": 0.9288498162850046,
+      "preservation": 0.9869236859448692
+    },
+    {
+      "id": "seq_fedavg_ntd_b0p01_t2",
+      "adaptation": 0.9242268089605755,
+      "preservation": 0.9906875014945784
+    },
+    {
+      "id": "seq_delta_capped_ntd_b0p01_t2",
+      "adaptation": 0.9241667613997878,
+      "preservation": 0.9905729551075652
+    },
+    {
+      "id": "eta_0p95_logit_l2_lam0p001",
+      "adaptation": 0.9250506588853863,
+      "preservation": 0.9887126871746507
+    },
+    {
+      "id": "seq_mix_r0p3_logit_l2_lam0p003",
+      "adaptation": 0.9232609709991045,
+      "preservation": 0.9901963166669652
+    },
+    {
+      "id": "seq_mix_r0p3_ntd_b0p01_t2",
+      "adaptation": 0.9232967419868532,
+      "preservation": 0.989888725148577
+    },
+    {
+      "id": "weight_q0_ntd_b0p01_t0p5",
+      "adaptation": 0.927909466853695,
+      "preservation": 0.9846806543569281
+    },
+    {
+      "id": "anchor_h2_logit_l2_lam0p001",
+      "adaptation": 0.9222844849999942,
+      "preservation": 0.9894313232306902
+    },
+    {
+      "id": "eta_0p95_ntd_b0p01_t0p5",
+      "adaptation": 0.9260268497778276,
+      "preservation": 0.984755519708356
+    },
+    {
+      "id": "seq_fedavg_logit_l2_lam0p003",
+      "adaptation": 0.9195601721050553,
+      "preservation": 0.990917858405419
+    },
+    {
+      "id": "weight_q0_hybrid_seq_mix0p5",
+      "adaptation": 0.9183579098535469,
+      "preservation": 0.9918280685309291
+    },
+    {
+      "id": "weight_q0_logit_l2_lam0p001",
+      "adaptation": 0.9213710063940054,
+      "preservation": 0.9880651660573239
+    },
+    {
+      "id": "seq_delta_capped_logit_l2_lam0p003",
+      "adaptation": 0.9194541253941807,
+      "preservation": 0.9898483952827987
+    },
+    {
+      "id": "anchor_h2_hybrid_seq_mix0p5",
+      "adaptation": 0.9146682244418429,
+      "preservation": 0.9908342780414015
+    },
+    {
+      "id": "eta_0p95_hybrid_seq_mix0p5",
+      "adaptation": 0.9128648831161832,
+      "preservation": 0.9920537054877683
+    },
+    {
+      "id": "seq_delta_capped_hybrid_mix0p5",
+      "adaptation": 0.9100287535183125,
+      "preservation": 0.9920961164153688
+    },
+    {
+      "id": "seq_mix_r0p3_hybrid_mix0p5",
+      "adaptation": 0.9099926418544899,
+      "preservation": 0.9916755550070702
+    },
+    {
+      "id": "seq_fedavg_hybrid_mix0p5",
+      "adaptation": 0.9100673595697629,
+      "preservation": 0.9901951038061848
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "g0",
+  "prefix": "g0",
+  "fisher_dir": "$FOA_STUDY_DIR/global_results/fisher_g0",
+  "rule": "highest validation accuracy; ties to the lower fold",
+  "accuracy_source": "training metrics",
+  "selected_fold": 1,
+  "folds": [
+    {
+      "fold": 1,
+      "val_accuracy": 0.997535077739856,
+      "test_accuracy": 0.9967544864452081,
+      "epochs_run": 50,
+      "best_epoch": 39,
+      "stopped_early": true,
+      "metrics_path": "$FOA_STUDY_DIR/g0_fold1/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/g0_fold1/global_model"
+    },
+    {
+      "fold": 2,
+      "val_accuracy": 0.9950607902735562,
+      "test_accuracy": 0.9956173780487805,
+      "epochs_run": 20,
+      "best_epoch": 8,
+      "stopped_early": true,
+      "metrics_path": "$FOA_STUDY_DIR/g0_fold2/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/g0_fold2/global_model"
+    },
+    {
+      "fold": 3,
+      "val_accuracy": 0.9963823305407464,
+      "test_accuracy": 0.994106463878327,
+      "epochs_run": 45,
+      "best_epoch": 34,
+      "stopped_early": true,
+      "metrics_path": "$FOA_STUDY_DIR/g0_fold3/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/g0_fold3/global_model"
+    },
+    {
+      "fold": 4,
+      "val_accuracy": 0.9965688143347312,
+      "test_accuracy": 0.996202050892518,
+      "epochs_run": 32,
+      "best_epoch": 21,
+      "stopped_early": true,
+      "metrics_path": "$FOA_STUDY_DIR/g0_fold4/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/g0_fold4/global_model"
+    },
+    {
+      "fold": 5,
+      "val_accuracy": 0.9950692205575574,
+      "test_accuracy": 0.9952280969650696,
+      "epochs_run": 34,
+      "best_epoch": 23,
+      "stopped_early": true,
+      "metrics_path": "$FOA_STUDY_DIR/g0_fold5/global_results/global_metrics.json",
+      "model_path": "$FOA_STUDY_DIR/g0_fold5/global_model"
+    }
+  ],
+  "val_mean": 0.9961232466892894,
+  "val_spread": 0.000948546952533264,
+  "test_mean": 0.9955816952459806,
+  "test_spread": 0.0009014314083683044,
+  "n_folds": 5,
+  "source_model": "$FOA_STUDY_DIR/g0_fold1/global_model",
+  "model": "$FOA_STUDY_DIR/g0_model",
+  "sha256": "a4194898a67491541604a205ced1d877e9164ec039f5176d5d2db2ba7e203904"
+}

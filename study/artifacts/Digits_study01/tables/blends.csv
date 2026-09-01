@@ -1,0 +1,13 @@
+family,arm,minus,mean,sd,all_positive,folds,diffs
+concurrent,hybrid_mix0p25,kd_T0p25_a0p9,1.2302,0.7882,1,1 2 3 4 5,1.0008 2.3241 1.1619 1.5083 0.1561
+concurrent,hybrid_mix0p25,fisher_lam8,0.0848,1.5148,0,1 2 3 4 5,-2.6103 0.9716 0.7994 0.5331 0.7301
+concurrent,hybrid_mix0p5,kd_T0p25_a0p9,1.4232,0.6880,1,1 2 3 4 5,0.3438 2.0858 1.8605 1.6341 1.1921
+concurrent,hybrid_mix0p5,fisher_lam8,0.2778,2.0387,0,1 2 3 4 5,-3.2673 0.7334 1.4980 0.6589 1.7661
+concurrent,hybrid_mix0p75,kd_T0p25_a0p9,1.6396,1.1714,1,1 2 3 4 5,0.5771 2.8898 1.9672 2.5127 0.2513
+concurrent,hybrid_mix0p75,fisher_lam8,0.4942,1.9980,0,1 2 3 4 5,-3.0340 1.5374 1.6047 1.5375 0.8253
+sequential,hybrid_seq_mix0p25,kd_T2_a0p99,0.9810,1.3535,0,1 2 3 4 5,-1.1847 0.6835 1.4964 2.3948 1.5148
+sequential,hybrid_seq_mix0p25,fisher_lam0p1,0.2124,1.7288,0,1 2 3 4 5,-2.4798 0.8612 2.2059 -0.1562 0.6310
+sequential,hybrid_seq_mix0p5,kd_T2_a0p99,1.6726,1.2473,1,1 2 3 4 5,0.4591 1.7160 1.1101 3.7494 1.3283
+sequential,hybrid_seq_mix0p5,fisher_lam0p1,0.9041,1.1340,0,1 2 3 4 5,-0.8361 1.8937 1.8197 1.1985 0.4446
+sequential,hybrid_seq_mix0p75,kd_T2_a0p99,2.0510,1.2979,1,1 2 3 4 5,1.1846 0.3081 3.5866 2.6766 2.4990
+sequential,hybrid_seq_mix0p75,fisher_lam0p1,1.2825,1.8101,0,1 2 3 4 5,-0.1106 0.4858 4.2961 0.1257 1.6152

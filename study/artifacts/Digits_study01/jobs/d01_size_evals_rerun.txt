@@ -1,0 +1,36 @@
+# d01_size_evals_rerun.txt - the two size cohorts scored on g-0, again.
+#
+# WHY THIS FILE EXISTS. The reference stages point one evaluate-book task per
+# fold at a single accumulator json and run those tasks as one array, so five
+# processes performed the same read-modify-write on one file at the same time.
+# Without a lock the merge loses whatever was written between a reader's read
+# and its write: g0_c5_evaluations.json ended up holding folds 1, 3 and 5 only,
+# with folds 2 and 4 computed, printed, and then overwritten by a later element
+# that had read the file before they landed.
+#
+# g0_c20_evaluations.json held all five - by luck, not by design. Five racing
+# writers can interleave harmlessly, and that file looked exactly like proof
+# the pattern was sound. It is the more dangerous of the two artefacts, which
+# is why BOTH were deleted and both are re-scored here rather than only the one
+# that visibly lost folds.
+#
+# write_evaluation now takes an exclusive lock on a sidecar for the whole
+# read-modify-write and swaps the accumulator in by rename, so the merge is
+# serialised and a reader never sees a half-written file.
+#
+# These lines are the evaluate-book lines of d01_c5_references.txt and
+# d01_c20_references.txt, unchanged. They only read g-0 and a fold book, so
+# they carry no sampler seed and nothing about the runs they score moves.
+#
+# 2 cohorts x 5 folds = 10 tasks.
+#
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz --fold 1 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst5.json --batch-size 256 --tag c5_cohort_fold1 --out $FOA_STUDY_DIR/g0_c5_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz --fold 2 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst5.json --batch-size 256 --tag c5_cohort_fold2 --out $FOA_STUDY_DIR/g0_c5_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz --fold 3 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst5.json --batch-size 256 --tag c5_cohort_fold3 --out $FOA_STUDY_DIR/g0_c5_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz --fold 4 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst5.json --batch-size 256 --tag c5_cohort_fold4 --out $FOA_STUDY_DIR/g0_c5_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort5.foldbook.npz --fold 5 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst5.json --batch-size 256 --tag c5_cohort_fold5 --out $FOA_STUDY_DIR/g0_c5_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort20.foldbook.npz --fold 1 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst20.json --batch-size 256 --tag c20_cohort_fold1 --out $FOA_STUDY_DIR/g0_c20_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort20.foldbook.npz --fold 2 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst20.json --batch-size 256 --tag c20_cohort_fold2 --out $FOA_STUDY_DIR/g0_c20_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort20.foldbook.npz --fold 3 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst20.json --batch-size 256 --tag c20_cohort_fold3 --out $FOA_STUDY_DIR/g0_c20_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort20.foldbook.npz --fold 4 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst20.json --batch-size 256 --tag c20_cohort_fold4 --out $FOA_STUDY_DIR/g0_c20_evaluations.json
+foa evaluate-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --model-path $FOA_STUDY_DIR/g0_model --fold-book $FOA_STUDY_DIR/fold_books/cohort20.foldbook.npz --fold 5 --part test --clients-file $FOA_STUDY_DIR/outliers/cohort_worst20.json --batch-size 256 --tag c20_cohort_fold5 --out $FOA_STUDY_DIR/g0_c20_evaluations.json

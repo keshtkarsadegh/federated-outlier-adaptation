@@ -1,0 +1,2 @@
+foa writer-counts --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/outliers/writer_counts.json --csv $FOA_STUDY_DIR/outliers/writer_counts.csv
+foa fold-book --results-dir $FOA_STUDY_DIR --resolution 28 --classes digits --out $FOA_STUDY_DIR/fold_books/all_writers_digits --folds 1 --seed 42 --train-rate 0.6 --eval-rate 0.2 --tag digits_all_writers

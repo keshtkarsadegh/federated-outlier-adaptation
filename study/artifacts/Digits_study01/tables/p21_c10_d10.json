@@ -1,0 +1,56 @@
+{
+  "rule": "the panel's selected configurations, plus an unmodified control, with the federation varied and nothing else",
+  "stage": "c10d10",
+  "clients": [
+    "f3642_03",
+    "f2023_12",
+    "f1331_49",
+    "f2564_59",
+    "f2230_67",
+    "f2145_89",
+    "f2307_62",
+    "f3211_20",
+    "f3200_41",
+    "f0048_00"
+  ],
+  "n_clients": 10,
+  "dropout": 0.1,
+  "clients_per_round": 9,
+  "participation_rule": "floor((1 - 0.1) * 10) = 9",
+  "fold_book": "cohort10.foldbook.npz",
+  "rounds": 100,
+  "configurations": [
+    {
+      "id": "winner",
+      "family": "concurrent",
+      "aggregation": "anchor_h2",
+      "regulariser": "ntd_b0p01_t0p5",
+      "note": "the cross's strongest concurrent pair",
+      "trim_survivors": null
+    },
+    {
+      "id": "balanced",
+      "family": "concurrent",
+      "aggregation": "eta_0p95",
+      "regulariser": "hybrid_seq_mix0p5",
+      "note": "the concurrent pair that gave up least preservation",
+      "trim_survivors": null
+    },
+    {
+      "id": "sequential",
+      "family": "sequential",
+      "aggregation": "seq_fedavg",
+      "regulariser": "ntd_b0p01_t2",
+      "note": "the strongest sequential pair",
+      "trim_survivors": null
+    },
+    {
+      "id": "control",
+      "family": "both",
+      "aggregation": "fedavg",
+      "regulariser": null,
+      "note": "plain FedAvg, no penalty, both schedules - the baseline that says whether a change at five clients is the method or the size",
+      "trim_survivors": null
+    }
+  ]
+}

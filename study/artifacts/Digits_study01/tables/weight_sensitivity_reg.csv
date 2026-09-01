@@ -1,0 +1,15 @@
+method,w=1,w=2,w=3,w=5,changed
+concurrent/feature_l2,feature_l2_lam0p001,feature_l2_lam0p1,feature_l2_lam0p1,feature_l2_lam0p1,1
+concurrent/fisher,fisher_lam8,fisher_lam8,fisher_lam8,fisher_lam8,0
+concurrent/fisher_scaled,fisher_scaled_lam50,fisher_scaled_lam50,fisher_scaled_lam50,fisher_scaled_lam50,0
+concurrent/kd,kd_T0p25_a0p9,kd_T4_a0p99,kd_T4_a0p99,kd_T4_a0p99,1
+concurrent/logit_l2,logit_l2_lam0p001,logit_l2_lam0p003,logit_l2_lam0p003,logit_l2_lam0p003,1
+concurrent/ntd,ntd_b0p01_t0p5,ntd_b0p01_t0p5,ntd_b0p01_t0p5,ntd_b0p1_t2,1
+concurrent/param_l2,param_l2_mu0p0001,param_l2_mu0p0001,param_l2_mu0p0001,param_l2_mu0p0001,0
+sequential/feature_l2,feature_l2_lam0p01,feature_l2_lam0p01,feature_l2_lam0p01,feature_l2_lam0p3,1
+sequential/fisher,fisher_lam0p1,fisher_lam0p1,fisher_lam0p1,fisher_lam1,1
+sequential/fisher_scaled,fisher_scaled_lam0p1,fisher_scaled_lam0p1,fisher_scaled_lam0p1,fisher_scaled_lam0p1,0
+sequential/kd,kd_T2_a0p99,kd_T2_a0p99,kd_T4_a0p99,kd_T4_a0p99,1
+sequential/logit_l2,logit_l2_lam0p003,logit_l2_lam0p003,logit_l2_lam0p003,logit_l2_lam0p003,0
+sequential/ntd,ntd_b0p01_t2,ntd_b0p01_t2,ntd_b0p01_t2,ntd_b0p01_t2,0
+sequential/param_l2,param_l2_mu0,param_l2_mu0p0001,param_l2_mu0p0001,param_l2_mu0p0001,1

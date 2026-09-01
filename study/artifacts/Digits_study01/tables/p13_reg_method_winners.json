@@ -1,0 +1,100 @@
+{
+  "param_l2/concurrent": {
+    "winner": "param_l2_mu0p0001",
+    "measured": true,
+    "adaptation": 0.9117853351425104,
+    "preservation": 0.9921332081584223,
+    "considered": 7
+  },
+  "param_l2/sequential": {
+    "winner": "param_l2_mu0",
+    "measured": true,
+    "adaptation": 0.9043637377485971,
+    "preservation": 0.99084070369435,
+    "considered": 7
+  },
+  "fisher/concurrent": {
+    "winner": "fisher_lam8",
+    "measured": true,
+    "adaptation": 0.880994712009864,
+    "preservation": 0.9959341909245206,
+    "considered": 13
+  },
+  "fisher/sequential": {
+    "winner": "fisher_lam0p1",
+    "measured": true,
+    "adaptation": 0.8801450328788181,
+    "preservation": 0.995172729174915,
+    "considered": 13
+  },
+  "fisher_scaled/concurrent": {
+    "winner": "fisher_scaled_lam50",
+    "measured": true,
+    "adaptation": 0.8781224707481708,
+    "preservation": 0.9957428617598642,
+    "considered": 13
+  },
+  "fisher_scaled/sequential": {
+    "winner": "fisher_scaled_lam0p1",
+    "measured": true,
+    "adaptation": 0.8790820483689005,
+    "preservation": 0.9953267067474528,
+    "considered": 13
+  },
+  "logit_l2/concurrent": {
+    "winner": "logit_l2_lam0p001",
+    "measured": true,
+    "adaptation": 0.911770640084047,
+    "preservation": 0.9929283044619484,
+    "considered": 8
+  },
+  "logit_l2/sequential": {
+    "winner": "logit_l2_lam0p003",
+    "measured": true,
+    "adaptation": 0.9062886878860918,
+    "preservation": 0.9943751400931753,
+    "considered": 8
+  },
+  "feature_l2/concurrent": {
+    "winner": "feature_l2_lam0p001",
+    "measured": true,
+    "adaptation": 0.9062471013368811,
+    "preservation": 0.9908788960691889,
+    "considered": 9
+  },
+  "feature_l2/sequential": {
+    "winner": "feature_l2_lam0p01",
+    "measured": true,
+    "adaptation": 0.90812220054548,
+    "preservation": 0.9919421575388658,
+    "considered": 9
+  },
+  "kd/concurrent": {
+    "winner": "kd_T0p25_a0p9",
+    "measured": true,
+    "adaptation": 0.9101300469522372,
+    "preservation": 0.9927049122336482,
+    "considered": 42
+  },
+  "kd/sequential": {
+    "winner": "kd_T2_a0p99",
+    "measured": true,
+    "adaptation": 0.9119036823888744,
+    "preservation": 0.9931576452856496,
+    "considered": 42
+  },
+  "ntd/concurrent": {
+    "winner": "ntd_b0p01_t0p5",
+    "measured": true,
+    "adaptation": 0.9127155019808866,
+    "preservation": 0.9935015361585153,
+    "considered": 48
+  },
+  "ntd/sequential": {
+    "winner": "ntd_b0p01_t2",
+    "measured": true,
+    "adaptation": 0.9156609332286347,
+    "preservation": 0.9944898735526873,
+    "considered": 48
+  }
+}

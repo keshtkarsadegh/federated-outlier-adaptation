@@ -1,0 +1,21 @@
+{
+  "rule": "the worst 5 of the g-0 ranking the ten-client cohort was cut from",
+  "tag": "d01_cohort_worst5",
+  "k": 5,
+  "size": 5,
+  "clients": [
+    "f3642_03",
+    "f2023_12",
+    "f1331_49",
+    "f2564_59",
+    "f2230_67"
+  ],
+  "accuracies": {
+    "f3642_03": 0.75,
+    "f2023_12": 0.7835051546391752,
+    "f1331_49": 0.797979797979798,
+    "f2564_59": 0.8076923076923077,
+    "f2230_67": 0.819047619047619
+  },
+  "source": "bad_acc_on_g0.json"
+}
