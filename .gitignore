@@ -37,8 +37,10 @@ htmlcov/
 .DS_Store
 
 # --- manuscript sources (kept outside the public repository) --------------------
-paper/
-ieee/
+# Anchored: unanchored these also matched study/artifacts/*/tables/paper/, which
+# silently kept the manuscript CSV bundle out of the published metadata core.
+/paper/
+/ieee/
 
 # study runtime: caches, per-run outputs and logs are not committed
 data/nist/
