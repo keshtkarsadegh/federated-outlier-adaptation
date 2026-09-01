@@ -82,10 +82,32 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | 10 | **kd+fisher blend, concurrent** | `study_emit.py reg-hybrid` | `s18_hybrid.txt` | 15 | 100 |
 | 11 | **kd+fisher blend, sequential** | `study_emit.py reg-hybrid --hybrid-family sequential` | `s19_hybrid_seq.txt` | 15 | 100 |
 | 12 | **combinations** | `study_emit.py combos` | *emitted from both finals* | 90 | 100 |
+| 13 | five-client references | `tools/make_size_references.py` | `d01_c5_references.txt` | 75 | 100 |
+| 14 | twenty-client references | `tools/make_c20_references.py` | `d01_c20_references.txt` | 235 | 100 |
+| 15 | **five clients, one dropped** | `study_emit.py five` | `d01_five.txt` | 20 | 100 |
+| 16 | **twenty clients, both dropout levels** | `study_emit.py c20` | `d01_c20.txt` | 30 | 100 |
+| 17 | **the extreme cases** | `study_emit.py extreme` | `d01_extreme.txt` | 15 | 100 |
+| 18 | **ten clients, one dropped** | `study_emit.py c10d10` | `d01_c10d10.txt` | 20 | 100 |
+| 19 | size evaluations, re-scored | *the evaluate-book lines of 13 and 14* | `d01_size_evals_rerun.txt` | 10 | - |
 
 Stages 8-11 have run at the search rate and are reported in
 `REG_GRID_RANGES.md` under the 2026-08-31 heading; stage 12 has not been
 re-run against the shortlists those stages produced.
+
+**Stages 13-18 are the carry settings and the extremes.** Nothing in them is
+searched: they take the arms the combination cross crowned and move the
+federation underneath them. Stage 18 is the study's own setting - nine of ten,
+the participation every screen and every final drew - and it is a stage of its
+own so the other three settings have a middle to be read against rather than a
+number borrowed from the selection records. `docs/CARRY_SETTINGS.md` reports
+what they found.
+
+**Stage 19 is a repair, not a measurement.** It re-scores g-0 on the five- and
+twenty-client cohorts because the two accumulator files those reference stages
+wrote had been damaged by a race - see
+[§5](#the-accumulator-race-and-why-both-files-were-deleted). It only reads
+models, so it carries no sampler seed and changes nothing about the runs it
+scores.
 
 Superseded task files live in `jobs/superseded/`. They are kept as a record and
 must not be re-run: their seeds and their cells belong to a previous programme.
@@ -116,6 +138,11 @@ python tools/study_emit.py combos   --root $FOA_STUDY_DIR --out /tmp/x.txt --exp
 
 python tools/study_emit.py reg-hybrid --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 15
 python tools/study_emit.py reg-hybrid --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 15 --hybrid-family sequential
+
+python tools/study_emit.py five    --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 20
+python tools/study_emit.py c10d10  --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 20
+python tools/study_emit.py c20     --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 30
+python tools/study_emit.py extreme --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 15
 ```
 
 `diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s17_reg_full4.txt`, `s18_hybrid.txt` and
@@ -189,8 +216,22 @@ where `index` is the row's position in the stage's table. Blocks are 1000 wide.
     2000  agg screen        4000  agg finals       8000  reg finals
     9000  hybrid, both families (offsets 0 and 3 inside the block)
    10000-11395 REG SCREEN (two blocks - 140 cells span 1400)
-   12000  five             14000  dropout20        15000/16000  c20
-   18000  extreme          40000  references
+   12000  five             13000  c10d10           14000  dropout20
+   15000/16000  c20        18000  extreme
+
+The reference stages sit in bases of their own rather than in 1000-wide blocks,
+because a reference stage seeds per client position and per init rather than per
+cell and needs the room:
+
+   40000  ten-client references      720000  twenty-client references
+   50000  five-client references (base 750000)
+
+`c10d10` was given 13000 - the gap between `five` at 12000 and `drop20` at
+14000 - after checking it against every span above and the combination base at
+30000. It is not a cosmetic choice: the three ten-client stages run the same
+four configurations, so a shared block would have them drawing the same
+client-sampling sequences with nothing in any output to say the three were
+correlated.
 
 **Identity-based** (combinations only):
 
@@ -217,6 +258,35 @@ sequence with nothing downstream to reveal it. The check reports a seed driving
 two *different* tasks; a seed shared by the same task in two files - a smoke file,
 a re-run subset - is not a collision.
 
+### The accumulator race, and why both files were deleted
+
+A reference stage scores every fold of a cohort with its own `evaluate-book`
+task and points all of them at one accumulator JSON. Those tasks are the
+elements of one array, so several of them performed the same read-modify-write
+on the same file at the same moment. Without a lock the merge loses whatever
+landed between a reader's read and its write: each element adds its own fold to
+the file *as it found it*, and the last to write puts back a copy that never saw
+the others.
+
+Nothing fails when this happens. Every task exits zero, every task prints its
+own accuracy, and the file simply holds fewer folds than the stage ran.
+`g0_c5_evaluations.json` ended up with folds 1, 3 and 5; folds 2 and 4 were
+computed, printed, and overwritten. `g0_c20_evaluations.json` next to it held
+all five - **by luck**, which is the more dangerous artefact of the two, because
+it looked exactly like evidence the pattern was sound. Both were deleted and
+both were re-scored by stage 19 rather than only the one that visibly lost
+folds.
+
+`write_evaluation` now takes an exclusive `flock` on a sidecar `.lock` file
+around the whole read-modify-write and swaps the accumulator in with
+`os.replace`. The lock is on the sidecar rather than on the accumulator because
+the accumulator is replaced by rename, and a lock held on a file that gets
+replaced is a lock on an inode nobody else will open. The rename is what makes
+the swap atomic for the selection tools, which read these files without taking
+the lock. `tests/test_nist28_pipeline.py` pins it with twelve concurrent
+processes released from a barrier; against the old code the same test keeps one
+key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
+
 ---
 
 ## 6. Which command produces which claim
@@ -229,6 +299,10 @@ a re-run subset - is not a collision.
 | regularisation screen ranking | `report_tables.py --what reg-screen` |
 | regularisation winners, full horizon | `report_tables.py --what reg-winners` |
 | combination scores | `report_tables.py --what combos` |
+| the carried arms at each federation setting | `report_tables.py --what sizes` |
+| the three extreme arrangements | `report_tables.py --what extremes` |
+| when the extreme cases should have stopped | `extreme_stopping.py --root $FOA_STUDY_DIR` |
+| the extreme-case figure | `extreme_stopping.py --root $FOA_STUDY_DIR --fig $FOA_STUDY_DIR/figures/extreme_stopping.png` |
 | does a combination beat its halves? | `compare_arms.py --what combos` |
 | penalty vs server rule | `compare_arms.py --what composition` |
 | do the winners depend on `w`? | `weight_sensitivity.py --grid both` |
@@ -239,6 +313,10 @@ a re-run subset - is not a collision.
 | does every stage read what an earlier stage wrote? | `check_programme.py $FOA_STUDY_DIR/jobs` |
 
 All take `--root $FOA_STUDY_DIR`; all accept `--csv <dir>`.
+`extreme_stopping.py` is the one exception to the test basis below: it reads the
+**validation** columns, because the round it reports is the round the study's own
+selection rule would have picked and a selection may only see what a selection is
+allowed to see. It says so in its own header line.
 
 **Two bases, and every tool says which it used.**
 
@@ -315,5 +393,9 @@ were removed for exactly this reason.
 | regularisation screen | 700 | 25 | ~25 |
 | regularisation finals | 70 | 100 | ~8 |
 | combinations | 90 | 100 | ~12 |
+| five-client point | 20 | 100 | ~2 |
+| ten-client point, one dropped | 20 | 100 | ~2 |
+| twenty-client pair | 30 | 100 | ~5 |
+| extremes | 15 | 100 | ~1 |
 
 One A100 per task, `grete:shared`.
