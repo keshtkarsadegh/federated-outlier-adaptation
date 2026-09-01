@@ -24,15 +24,16 @@ two hundred retained writers, five-fold cross-validation throughout.
 | `tools/paper_figures/` | the manuscript's seven figures: render only, from the CSV views beside them |
 | `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
 | `tests/` | 1,773 tests, no GPU and no dataset required |
-| `study/jobs/` | every task file the published study ran, with per-stage READMEs |
-| `study/artifacts/` | the derived artefacts needed to *check* results, incl. both model checkpoints |
-| `study/UPSTREAM.sha256` | checksums of the source data, the packed cache, the models |
+| `study/jobs/` | the submission chains, one TOML per wave, with a `SHA256SUMS` |
+| `study/artifacts/` | the derived artefacts needed to *check* results, every task file the study ran among them, with a `SHA256SUMS` |
+| `study/UPSTREAM.sha256` | checksums of the source data and the packed cache |
 | `docs/` | how to reproduce a claim, the study record, data path, runbook, verification, prior pipeline |
 
 `study/artifacts/` is the part that makes this checkable without re-running
 anything: the writer pools and their scores, the three cohorts, all four fold
 books, the g-init and g-0 selection records, the baseline evaluations, every
-selection table each stage produced, and the ten CSV views the manuscript's
+selection table each stage produced, every task file that was submitted, and
+the ten CSV views the manuscript's
 figures are drawn on — so every figure redraws from a clone, with no dataset,
 no GPU and no release asset:
 
@@ -76,15 +77,17 @@ foa prepare-data --dataset nist --zip "$FOA_DATA_DIR/nist/by_write.zip" \
     --out "$FOA_NIST28_DIR" --resolution 28 --classes all
 ```
 
-With a GPU and the cache built, the cheapest real rung is **P09**, the plain
-FedAvg baseline: 10 tasks, about half a GPU-hour, and it produces the reference
-row the whole study is read against.
+With a GPU and the cache built, the cheapest real rung is **the extremes**: 15
+tasks and about one GPU-hour, the smallest stage of the programme and the one
+whose finding - that a fixed horizon at one client is a hazard - needs the least
+compute to see. Every task file the study ran ships in the metadata core.
 
 ```bash
 export FOA_PROJECT_DIR=/path/to/workspace
 export FOA_STUDY_DIR="$FOA_PROJECT_DIR/results/studies/Digits_study01"
-FOA_DRY_RUN=1 slurm/run_tasks.sh study/jobs/d01_p09.txt   # checks, runs nothing
-slurm/run_tasks.sh study/jobs/d01_p09.txt                 # then for real
+JOBS=study/artifacts/Digits_study01/jobs
+FOA_DRY_RUN=1 slurm/run_tasks.sh $JOBS/d01_extreme.txt   # checks, runs nothing
+slurm/run_tasks.sh $JOBS/d01_extreme.txt                 # then for real
 ```
 
 ---
@@ -132,11 +135,12 @@ them. A stage is a text file, which is what makes the experiment definition
 reviewable before it costs anything.
 
 ```bash
+JOBS=study/artifacts/Digits_study01/jobs           # every task file that ran
 sbatch --account=$FOA_ACCOUNT --partition=$FOA_GPU_PARTITION --gres=gpu:1 \
        --export=ALL,FOA_PROJECT_DIR=$FOA_PROJECT_DIR,FOA_STUDY_DIR=$FOA_STUDY_DIR \
-       --array=1-N slurm/study_phase.sbatch study/jobs/d01_p15.txt
-slurm/run_tasks.sh study/jobs/d01_p15.txt          # no scheduler
-FOA_DRY_RUN=1 slurm/run_tasks.sh study/jobs/...    # every check, no execution
+       --array=1-N slurm/study_phase.sbatch $JOBS/s20_combos4.txt
+slurm/run_tasks.sh $JOBS/s20_combos4.txt           # no scheduler
+FOA_DRY_RUN=1 slurm/run_tasks.sh $JOBS/...         # every check, no execution
 ```
 
 > **`--export` is not optional.** Many sites default to `--export=NONE`, so the
@@ -164,8 +168,9 @@ A **fold book** is a persisted CV split: an `int8 [folds, rows]` assignment
 array, per-writer stratified 60/20/20 over five folds. Runs read their train,
 validation and test rows out of the book rather than re-deriving them, so two
 runs of the same fold see the same rows — and a reviewer can check the split
-itself, not just the result. The four books ship in `study/artifacts/fold_books/`
-with their hashes.
+itself, not just the result. The four books ship in
+`study/artifacts/Digits_study01/fold_books/`, and `study/artifacts/SHA256SUMS`
+carries their hashes.
 
 ### Participation is one expression
 

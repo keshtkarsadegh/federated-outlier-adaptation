@@ -43,9 +43,21 @@ cd study/artifacts && sha256sum -c SHA256SUMS
 cd ../jobs        && sha256sum -c SHA256SUMS
 ```
 
-56 derived artefacts (both model checkpoints included) and 40 task files. This proves you hold the fold
-assignments, writer lists, selection records and experiment definitions that
-produced the published numbers.
+128 derived artefacts and 13 submission chains - no model checkpoint among
+them, because this study ships no weights (`study/UPSTREAM.sha256` says so, and
+the metadata core's own README names them as the one thing it excludes). This
+proves you hold the fold assignments, writer lists, selection records, task
+files and experiment definitions that produced the published numbers.
+
+Both manifests are written from the tree by
+
+```bash
+python tools/artifact_checksums.py --dir study/artifacts --check
+python tools/artifact_checksums.py --dir study/jobs      --check
+```
+
+which is the same comparison plus the one `sha256sum -c` cannot make: a file
+that exists and is in no manifest verifies perfectly by never being mentioned.
 
 ### The task files parse
 
@@ -61,7 +73,7 @@ p = build_parser()
 n = 0
 # The runner expands these before exec; substitute them to parse offline.
 SUB = {"$FOA_STUDY_DIR": "/study", "$G0_FOLD": "4", "$GINIT_FOLD": "3"}
-for f in sorted(glob.glob("study/jobs/*.txt")):
+for f in sorted(glob.glob("study/artifacts/Digits_study01/jobs/*.txt")):
     for line in open(f):
         line = line.strip()
         if not line or line.startswith("#") or not line.startswith("foa "):
@@ -76,7 +88,8 @@ PY
 And that the runner accepts them:
 
 ```bash
-FOA_DRY_RUN=1 SLURM_ARRAY_TASK_ID=1 bash slurm/study_phase.sbatch study/jobs/d01_p15.txt
+FOA_DRY_RUN=1 SLURM_ARRAY_TASK_ID=1 bash slurm/study_phase.sbatch \
+    study/artifacts/Digits_study01/jobs/s20_combos4.txt
 ```
 
 ### The selection records agree with each other
@@ -87,7 +100,7 @@ without a GPU:
 ```bash
 python - <<'PY'
 import json
-J = lambda p: json.load(open(f"study/artifacts/{p}"))
+J = lambda p: json.load(open(f"study/artifacts/Digits_study01/{p}"))
 flat = {k: v for e in J("outliers/bad_acc_on_g0.json") for k, v in e.items()}
 order = sorted(flat, key=lambda w: (flat[w], w))
 ten    = J("outliers/cohort_worst10.json")["clients"]
@@ -112,8 +125,8 @@ ours, and every split below is checkable:
 python - <<'PY'
 import numpy as np, json, os
 from federated_outlier_adaptation.data.fold_book import FoldBook
-b = FoldBook.load("study/artifacts/fold_books/cohort10.foldbook.npz")
-c = json.load(open("study/artifacts/outliers/cohort_worst10.json"))["clients"]
+b = FoldBook.load("study/artifacts/Digits_study01/fold_books/cohort10.foldbook.npz")
+c = json.load(open("study/artifacts/Digits_study01/outliers/cohort_worst10.json"))["clients"]
 for w in c:
     assert b.covers(w), w
     for f in (1, 2, 3, 4, 5):
@@ -141,8 +154,8 @@ foa evaluate-book --results-dir "$FOA_STUDY_DIR" --resolution 28 --classes digit
     --batch-size 256 --tag check_old_fold1 --out /tmp/check.json
 ```
 
-Compare against the shipped `study/artifacts/g0_evaluations.json`, key
-`old_data_fold1`.
+Compare against the shipped
+`study/artifacts/Digits_study01/g0_evaluations.json`, key `old_data_fold1`.
 
 **Verify the do-nothing row** (g-0 on the cohort's test rows — the row every
 adaptation number is read against):
@@ -155,40 +168,46 @@ foa evaluate-book --results-dir "$FOA_STUDY_DIR" --resolution 28 --classes digit
     --batch-size 256 --tag check_cohort_fold1 --out /tmp/check.json
 ```
 
-Compare against `study/artifacts/g0_perfold_evaluations.json`, key
-`cohort_fold1`. That file also carries the per-writer column, so you can check
+Compare against
+`study/artifacts/Digits_study01/g0_perfold_evaluations.json`, key `cohort_fold1`. That file also carries the per-writer column, so you can check
 an individual writer, not only the pool.
 
 The same pattern verifies the 20-client baseline against
-`g0_cohort20_evaluations.json` (`cohort20_fold1`..`fold5`).
+`study/artifacts/Digits_study01/g0_c20_evaluations.json`
+(`c20_cohort_fold1`..`c20_cohort_fold5`), with
+`fold_books/cohort20.foldbook.npz` and `outliers/cohort_worst20.json` in place
+of the ten-client pair above.
 
-Both checkpoints ship in `study/artifacts/models/` (6.6 MB each) and are
-covered by `study/artifacts/SHA256SUMS`, so `sha256sum -c` at Level 1 has
-already checked them. Point `--model-path` straight at them if you have not
-re-run the training:
+**This level needs a `g0_model` and the study does not ship one.** The weights
+are outputs of the programme, not records of it: they cannot be diffed, they
+answer no question the evaluation books answer, and a committed copy is how a
+stale checkpoint outlives the ranking that produced it - which is the reason
+`study/UPSTREAM.sha256` stopped listing them and the reason the metadata core's
+README names them as the one artefact it excludes. So Level 3 is available to a
+reader who has re-run the g-0 stage, or to one the owner has published a
+checkpoint to; it is the only level of the four that is.
 
-    --model-path study/artifacts/models/g0_model
-
-Their hashes, for reference:
-
-```
-48689ec85d5921b8bd36fa53545fc368f8e9441f4acbec158da36c4e8b09f950  ginit_model
-cb06fb83b17b3f85730e3763b70560b293b689068d1adc96774f15bd0f2989ed  g0_model
-```
+What ships instead is everything that model was measured with and against: the
+evaluation books above, the fold books the rows come from, the cohort records,
+and - since the figure pipeline landed - g-0's own per-fold training history in
+`g0_fold*/global_results/global_metrics.json`, which is what
+`tools/paper_figures/fig_baselines.py` draws the shipped model from.
 
 ---
 
 ## Level 4 — re-run a stage (hours to days, GPU)
 
-Follow `docs/RUNBOOK.md`. The cheapest meaningful rung is **P09**, the plain
-FedAvg baseline: 10 tasks, ~0.5 GPU-h, and it produces the 9-of-10 reference
-row the whole study is read against.
+Follow `docs/RUNBOOK.md`. The cheapest meaningful rung is **the extremes**,
+`jobs/d01_extreme.txt`: 15 tasks and about one GPU-hour, the smallest stage of
+the programme.
 
-The most expensive are the two screens: P11 (845 tasks, ~15 GPU-h) and P13
-(585 tasks, ~17 GPU-h). You do not need them to check the reported winners —
-the winners and their evidence are shipped in `study/artifacts/tables/`, and
+The most expensive are the two screens: the aggregation screen (480 tasks,
+~16 GPU-h) and the regularisation screen (700 tasks, ~25 GPU-h). You do not
+need either to check the reported winners — the winners and their evidence are
+shipped in `study/artifacts/Digits_study01/tables/`, and
 `study_emit.py --rank-by {val,test}` will re-derive the ordering from whatever
-run folders you do have.
+run folders you do have. `docs/REPRODUCE.md` §3 has every stage with its task
+file and its task count, and §9 the GPU-hours quoted here.
 
 ---
 
