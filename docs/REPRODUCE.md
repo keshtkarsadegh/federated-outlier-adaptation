@@ -303,6 +303,9 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | the three extreme arrangements | `report_tables.py --what extremes` |
 | when the extreme cases should have stopped | `extreme_stopping.py --root $FOA_STUDY_DIR` |
 | the extreme-case figure | `extreme_stopping.py --root $FOA_STUDY_DIR --fig $FOA_STUDY_DIR/figures/extreme_stopping.png` |
+| what the fixed horizon cost every arm | `stopping_table.py --root $FOA_STUDY_DIR` |
+| what a permitted signal would have delivered | `stopping_table.py --root $FOA_STUDY_DIR --csv $FOA_STUDY_DIR/tables/stopping` |
+| do the eight signals track forgetting? | `foa signals --root $FOA_STUDY_DIR` |
 | does a combination beat its halves? | `compare_arms.py --what combos` |
 | penalty vs server rule | `compare_arms.py --what composition` |
 | do the winners depend on `w`? | `weight_sensitivity.py --grid both` |
@@ -313,10 +316,19 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | does every stage read what an earlier stage wrote? | `check_programme.py $FOA_STUDY_DIR/jobs` |
 
 All take `--root $FOA_STUDY_DIR`; all accept `--csv <dir>`.
-`extreme_stopping.py` is the one exception to the test basis below: it reads the
-**validation** columns, because the round it reports is the round the study's own
-selection rule would have picked and a selection may only see what a selection is
-allowed to see. It says so in its own header line.
+`foa signals` writes to `$FOA_STUDY_DIR/signals/` - three CSVs, a summary JSON
+and one Pareto plot per method - and `stopping_table.py --csv` writes one CSV per
+stage plus `stopping_all.csv`. `docs/STOPPING.md` reads all of it.
+
+**The two stopping tools are the exception to the test basis below**: both
+`extreme_stopping.py` and `stopping_table.py` read the **validation** columns,
+because the round they report is the round the study's own selection rule would
+have picked, and a selection may only see what a selection is allowed to see.
+Both say so in their own header lines. `stopping_table.py` imports the fold
+mean, the oracle round and the score from `extreme_stopping.py`, and the drift
+and stopping semantics from `analysis/forgetting_signals.py`, so the three
+cannot come apart: `stopping_table.py --stage extreme` reproduces
+`extreme_stopping.py` row for row, and that is the check.
 
 **Two bases, and every tool says which it used.**
 
