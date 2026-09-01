@@ -47,8 +47,16 @@ RANKED = [
 ACCURACIES = [0.54, 0.71, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89]
 
 #: ``(drawn, parent tag, cohort size, seed block)`` per stage.
+#:
+#: ``c10d10`` is the study's own setting - nine of ten, the participation every
+#: screen and every final in this programme drew - given a stage of its own so
+#: the carried arms have a row at the setting they were selected under. It runs
+#: the same four arms as the other ten-client stage and reads the same book, so
+#: everything parameterised over this table applies to it unchanged; only its
+#: tag and its seed block separate the two.
 STAGES = {
     "five": (4, "d01_five_", 5, 712000),
+    "c10d10": (9, "d01_c10d10_", 10, 713000),
     "drop20": (8, "d01_drop20_", 10, 714000),
 }
 
@@ -532,6 +540,105 @@ def test_the_five_client_record_states_the_rule(emit, root, tmp_path):
     survivors = {c["id"]: c["trim_survivors"] for c in record["configurations"]}
     assert survivors["winner"] == 2        # f=0.4 at K=4 keeps two updates
     assert survivors["balanced"] is None
+
+
+def test_the_nine_of_ten_record_states_the_rule(emit, root, tmp_path):
+    """
+    The setting the whole study was selected under, recorded like any other.
+
+    Its participation is not written into the stage - it is the same
+    ``floor((1 - d) * n)`` every other stage applies, at the study's own rate -
+    so the record has to say nine, and the trimmed winner has to keep what nine
+    participants leave rather than what the five-client stage left.
+    """
+    code, _ = run(emit, root, tmp_path, "c10d10")
+    assert code == 0
+    record = json.loads((root / "tables" / "p21_c10_d10.json").read_text())
+    assert record["clients"] == RANKED
+    assert record["n_clients"] == 10
+    assert record["dropout"] == 0.1
+    assert record["clients_per_round"] == 9 == CFG.clients_per_round
+    assert record["participation_rule"] == "floor((1 - 0.1) * 10) = 9"
+    assert record["fold_book"] == Path(SL.cohort_book(CFG)).name
+    ids = [c["id"] for c in record["configurations"]]
+    assert ids == [arm["id"] for arm in five_cells.ARMS]
+    survivors = {c["id"]: c["trim_survivors"] for c in record["configurations"]}
+    assert survivors["winner"] == 3        # f=0.4 at K=9 keeps three updates
+    assert survivors["balanced"] is None
+
+
+def test_the_nine_of_ten_stage_federates_the_whole_cohort(emit, root, tmp_path):
+    """No narrowing and no book of its own: only the participation is the point."""
+    code, out = run(emit, root, tmp_path, "c10d10")
+    assert code == 0
+    for line in body(out):
+        assert f" --outliers-file {SL.POOLS}/{CFG.cohort_file_name}" in line
+        assert "cohort_worst5" not in line and "cohort20" not in line
+
+
+def test_the_nine_of_ten_stage_carries_the_crowned_arms(emit, root, tmp_path):
+    """
+    The four arms are the crowning's, resolved at emission, control included.
+
+    The control is what makes this stage readable beside the eight-of-ten one:
+    without it a difference between the two could be the method or the draw.
+    """
+    code, out = run(emit, root, tmp_path, "c10d10")
+    assert code == 0
+    lines = body(out)
+    for cell in five_cells.configs(root):
+        chosen = [ln for ln in lines if f"_{cell['id']}_fold" in ln]
+        assert len(chosen) == 5, cell["id"]
+        for line in chosen:
+            if cell["regulariser"] is None:
+                assert " --aggregation fedavg" in line
+                assert " --trainer BaseTrainer" in line
+                assert "--set " not in line
+                assert "--extended-aggregations" not in line
+            else:
+                assert " --extended-aggregations" in line
+                assert "--set " in line
+
+
+def test_the_nine_of_ten_stage_stops_on_a_cohort_of_the_wrong_size(
+        emit, root, tmp_path):
+    (root / "outliers" / CFG.cohort_file_name).write_text(
+        json.dumps({"clients": RANKED[:8]}))
+    code, out = run(emit, root, tmp_path, "c10d10")
+    assert code == 1
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("missing", ["p15_stage_winner.json",
+                                     "p15_combination_grid.json"])
+def test_the_nine_of_ten_stage_stops_when_a_record_is_absent(
+        emit, root, tmp_path, missing):
+    """A guessed winner emits, trains and reports exactly like a chosen one."""
+    (root / "tables" / missing).unlink()
+    code, out = run(emit, root, tmp_path, "c10d10")
+    assert code == 1
+    assert not out.exists()
+
+
+def test_the_nine_of_ten_stage_seeds_in_a_block_of_its_own(emit, root, tmp_path):
+    """
+    Twelve, thirteen and fourteen thousand, and no overlap between them.
+
+    The stage runs the same four configurations as the other two ten-client
+    points, so without its own block it would draw the same client-sampling
+    sequences they did and the three would be correlated with nothing in the
+    output to say so.
+    """
+    spans = {}
+    for stage, (_, _, _, block) in STAGES.items():
+        code, out = run(emit, root, tmp_path, stage)
+        assert code == 0
+        seeds = [int(ln.split(" --sampler-seed ")[1].split()[0])
+                 for ln in body(out)]
+        assert all(block < seed < block + 1000 for seed in seeds), stage
+        spans[stage] = set(seeds)
+    assert spans["c10d10"] & (spans["five"] | spans["drop20"]) == set()
+    assert min(spans["c10d10"]) == CFG.seed_base + 13001
 
 
 def test_the_dropout_record_states_the_rule(emit, root, tmp_path):

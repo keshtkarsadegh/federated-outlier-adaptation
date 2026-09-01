@@ -1503,6 +1503,28 @@ SIZE_STAGES = {
         "dropout": 0.1, "seed_block": 12000, "record": "p18_five_client.json",
         "what": "the selected configurations at five clients",
     },
+    # THE SETTING EVERY FINAL RAN AT, RUN AS A STAGE. Nine of ten is the
+    # study's own participation - it is what the screens, the finals and the
+    # crowning were all measured under - but it had never been emitted as a
+    # size stage, so the carried arms had no row at the setting they were
+    # selected in. Without it the size table compares five clients, twenty at
+    # ten percent and twenty at twenty percent against nothing at the middle,
+    # and the eight-of-ten dropout point sits beside a nine-of-ten reading
+    # that has to be borrowed from a different stage's records.
+    #
+    # Seed block 13000 is the gap between the five-client stage (12000) and
+    # the dropout stage (14000), and it was checked free against every span
+    # this study has occupied: 2000 and 4000 for the aggregation screen and
+    # its finals, 8000 for the regularisation finals, 9000 for the hybrids,
+    # 10000-11000 for the 140-cell regularisation screen (which spans two
+    # blocks), 12000, 14000, 15000, 16000 for the size stages, 18000 for the
+    # extremes, 20000/40000/50000 for the three reference stages, and 30000
+    # upward for the combination cross.
+    "c10d10": {
+        "tag": "c10d10", "clients": 10, "cohort": "study", "book": None,
+        "dropout": 0.1, "seed_block": 13000, "record": "p21_c10_d10.json",
+        "what": "the selected configurations at ten clients, ten percent dropout",
+    },
     "drop20": {
         "tag": "drop20", "clients": 10, "cohort": "study", "book": None,
         "dropout": 0.2, "seed_block": 14000, "record": "p19_dropout20.json",
@@ -1884,12 +1906,26 @@ def drop20(cfg, root: Path, out: Path, expect: int) -> int:
     return size_stage(cfg, root, out, expect, "drop20")
 
 
+def c10d10(cfg, root: Path, out: Path, expect: int) -> int:
+    """
+    The full cohort at ten percent dropout: nine of ten per round.
+
+    The study's own setting, run as a stage of its own. Every screen and every
+    final in this programme drew nine of ten, so this is not a new federation -
+    it is the one the arms were selected under, given a row in the size table
+    so the other three settings have a middle to be read against rather than a
+    number borrowed from the selection stage's records.
+    """
+    return size_stage(cfg, root, out, expect, "c10d10")
+
+
 WHAT = {
     "agg-full": agg_full,
     "combos": combos,
     "stage-winner": stage_winner,
     "extreme": extreme,
     "five": five,
+    "c10d10": c10d10,
     "drop20": drop20,
     "c20": c20,
     "agg-top3": agg_top3,

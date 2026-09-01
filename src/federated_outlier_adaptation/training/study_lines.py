@@ -485,6 +485,7 @@ def counts(cfg) -> Dict[str, int]:
         # while which configuration each arm names is read from the records
         # when the stage is emitted.
         "five": len(five_cells.ARMS) * folds,
+        "c10d10": len(five_cells.ARMS) * folds,
         "drop20": len(five_cells.ARMS) * folds,
         "c20": (len(five_cells.ARMS) - 1) * folds * 2,
     }
