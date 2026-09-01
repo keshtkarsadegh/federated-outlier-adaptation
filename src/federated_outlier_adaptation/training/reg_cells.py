@@ -73,7 +73,9 @@ The grids, and where the numbers come from
 ``kd+fisher``   deliberately **not** in the screen.  A blend of two penalties is
                 only worth pricing once each one's own strength is known, so its
                 three cells are emitted afterwards from the two winners by
-                ``tools/emit_stage7_hybrid.py``.
+                ``tools/study_emit.py reg-hybrid``, once per schedule: the two
+                families select different halves, so the blend is a different
+                penalty in each and gets its own cell ids and its own seeds.
 
 Where the Fisher comes from
 ---------------------------
@@ -334,7 +336,7 @@ SKIPPED_CELLS = {
     "kd+fisher": (
         "not screened - a blend is only worth pricing once each penalty's own "
         "strength is known; emitted from the kd and fisher winners by "
-        "tools/emit_stage7_hybrid.py"
+        "tools/study_emit.py reg-hybrid, once per schedule"
     ),
     "fisher_lam0": (
         "param_l2_mu0 - any space at lam <= 0 returns zero penalty, so every "

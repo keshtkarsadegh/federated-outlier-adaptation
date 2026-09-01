@@ -1,4 +1,16 @@
 """
+SUPERSEDED as an emitter - see tools/make_digits_p13.py.
+
+Its ``RESULTS`` constant is ``$FOA_RESULTS_DIR/main_v6``, a root from a study
+that has since been deleted, and ``tools/make_study_sbatch.py`` refuses any
+task file naming it. The regularisation screen this study ran is
+``jobs/s16_reg_screen3.txt``, emitted by ``tools/make_digits_p13.py
+--jobs-dir <dir>`` and reproducible from it byte for byte.
+
+``task_line`` and ``set_tokens`` here are still imported by the superseded
+selector and the superseded hybrid emitter, so the module is kept rather than
+deleted.
+
 Emit the stage-7 regularisation screening task file and its README.
 
     python tools/make_stage7_screen.py [--out PATH] [--readme PATH] [--folds 1 2 3 4 5]

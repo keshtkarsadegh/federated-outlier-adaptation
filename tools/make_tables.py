@@ -1,4 +1,21 @@
 """
+SUPERSEDED - see tools/report_tables.py.
+
+This assembles the PRIOR programme's two headline tables. Its rows are that
+programme's cells and folders: ``combo_trimmed_0p4_feature_l2_lam0p1``, the
+P18/P19/P20 rungs, and a scaling table pinned to fold 1 because those probes
+ran without cross-validation. None of those ids exists under Digits_study01,
+and every setting this study reports has five folds. Running it against the
+current study root reads nothing and reports nothing, which is the failure
+mode that made this banner necessary: it does not raise, it produces an empty
+table that looks like a finished one.
+
+The current tables are ``tools/report_tables.py --what all``, whose views are
+the eight this study reports, and whose rows are five-fold means with a
+spread. Nothing here is repointed, because the file's outputs were shipped
+with the prior programme and editing it would falsify a record rather than
+fix a tool. It is kept as that record.
+
 Regenerate the study's two headline tables from the run folders.
 
     python tools/make_tables.py master  --root "$FOA_STUDY_DIR" --out tables/master_table.md

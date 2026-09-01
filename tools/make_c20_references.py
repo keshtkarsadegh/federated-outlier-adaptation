@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
 """
+SUPERSEDED - see tools/make_size_references.py.
+
+The twenty-client reference file that ran, ``jobs/d01_c20_references.txt``, was
+emitted by ``tools/make_size_references.py``, and says so in its own header.
+Regenerating it with THIS tool does not reproduce it: 484 of its lines differ,
+because the isolated-train lines here carry no ``--seed``. That is the defect
+make_size_references was written to fix - a private arm whose seed is a pure
+function of the cohort's seed base, the client's position, the init and the
+fold, so it is stable across regenerations and distinct for every cell.
+
+    python tools/make_size_references.py --study-dir "$FOA_STUDY_DIR" \
+        --cohort cohort_worst20.json --book cohort20 --per-round 18 16 \
+        --tag c20 --seed-base 720000
+
+is the command that reproduces the shipped file byte for byte. Kept as the
+record of the first attempt at that stage.
+
 The reference rungs of the twenty-client point.
 
 The scaling table reports the transferred configurations at twenty clients and

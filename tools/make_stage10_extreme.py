@@ -1,4 +1,18 @@
 """
+SUPERSEDED - see tools/study_emit.py extreme.
+
+Its ``RESULTS`` constant is ``$FOA_RESULTS_DIR/main_v6``, a root from a study
+that has since been deleted, and ``tools/make_study_sbatch.py`` refuses any
+task file naming it. The extreme cases this study ran are
+``jobs/d01_extreme.txt``, emitted by
+
+    python tools/study_emit.py extreme --root "$FOA_STUDY_DIR" \
+        --out <path> --expect 15
+
+which also writes the three client listings the stage reads,
+``outliers/extreme_single.json``, ``extreme_double.json`` and
+``extreme_dual.json``. Kept as a record.
+
 Emit the stage-10 extreme-case client lists, task file and README.
 
     python tools/make_stage10_extreme.py --root $FOA_RESULTS_DIR/main_v6 \

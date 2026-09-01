@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 """
+SUPERSEDED - see docs/STOPPING.md and the tools it names.
+
+Its winner arm is ``d01_combo_trimmed_0p4_feature_l2_lam0p1_fold``, a cell of
+the PRIOR programme that no folder under Digits_study01 carries, so the
+fairness and cost halves resolve to nothing while the signals half still
+reads whatever runs happen to be in the tree.
+
+The three questions it asked are now answered separately and per stage:
+``foa signals`` correlates each of the eight signals with both definitions of
+forgetting, ``tools/stopping_table.py`` prices what a permitted signal would
+have delivered, and ``tools/check_signals.py --all`` establishes that the
+signals are present at all. ``docs/STOPPING.md`` reads all three. Kept as a
+record, not repointed.
+
 Signals, fairness and cost for Digits_study01, from the stored per-round series.
 
 Nothing here retrains anything: every quantity is already written by the runner

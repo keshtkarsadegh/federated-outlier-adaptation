@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 """
+SUPERSEDED - see tools/report_tables.py and tools/extreme_stopping.py.
+
+This is the PRIOR programme's asset builder. It reads the ``d01_fl`` prefix,
+which no folder under Digits_study01 carries, so the plain-FL rung it means to
+supply comes back empty and the assets it writes are quietly short a row.
+
+The current bundle is ``tools/report_tables.py --what all --csv <dir>`` for
+every table and ``tools/extreme_stopping.py --fig`` for the extreme-case
+figure; ``foa signals`` writes the Pareto plots. Kept as a record of what the
+prior programme emitted, not repointed.
+
 Every table and figure of the results sections, emitted from the stored runs.
 
 Nothing here is typed in and nothing is retrained: each asset is built by

@@ -1,4 +1,19 @@
 """
+SUPERSEDED - see tools/study_emit.py combos.
+
+Its ``RESULTS`` constant is ``$FOA_RESULTS_DIR/main_v6``, a root from a study
+that has since been deleted, and ``tools/make_study_sbatch.py`` refuses any
+task file naming it. The combination stage this study ran is
+``jobs/s20_combos4.txt``, emitted by
+
+    python tools/study_emit.py combos --root "$FOA_STUDY_DIR" \
+        --out <path> --expect 90
+
+and reproducible from it byte for byte. The seeding is the other reason not
+to reuse this file: the current stage seeds a pair on a hash of its identity,
+not on its position in a shortlist, so a shortlist can be re-ranked without
+moving a seed. Kept as a record.
+
 Emit the stage-8 combination task file and the README that decodes it.
 
     python tools/make_stage8_combos.py [--out PATH] [--readme PATH] [--folds 1 2 3 4 5]

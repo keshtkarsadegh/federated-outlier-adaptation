@@ -1,7 +1,19 @@
 """
+PARTLY SUPERSEDED, and the split matters.
+
+LIVE: ``collect`` and ``summarise`` here are the regularisation screen's
+readers, imported by ``tools/study_emit.py`` and by
+``tools/weight_sensitivity.py``. Every regularisation number this study
+reports passes through them.
+
+SUPERSEDED: ``emit_full`` writes the prior programme's ``stage7_full.txt``.
+The regularisation finals this study ran are ``jobs/s17_reg_full4.txt``,
+emitted by ``tools/study_emit.py reg-full`` and reproducible from it byte for
+byte. Do not emit finals from here.
+
 Rank the stage-7 regularisation cells per method per family, and emit the finals.
 
-    python tools/select_reg_screen.py --root $FOA_RESULTS_DIR/main_v6 \
+    python tools/select_reg_screen.py --root $FOA_STUDY_DIR \
         [--out stage7_full.txt] [--report stage7_selection.json]
 
 Reads JSON, writes text: a login-node job.

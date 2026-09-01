@@ -1,7 +1,18 @@
 """
+PARTLY SUPERSEDED, and the split matters.
+
+LIVE: ``collect`` and ``summarise`` here are the aggregation screen's readers,
+imported by ``tools/study_emit.py`` and by ``tools/weight_sensitivity.py``.
+Every aggregation number this study reports passes through them.
+
+SUPERSEDED: ``emit_full`` writes the prior programme's ``stage6_full.txt``
+from a ``coh6_agg_*`` tree. The aggregation finals this study ran are
+``jobs/s10_agg_full2.txt``, emitted by ``tools/study_emit.py agg-full`` and
+reproducible from it byte for byte. Do not emit finals from here.
+
 Rank the stage-6 screening cells and emit the full-horizon run.
 
-    python tools/select_agg_screen.py --root $FOA_RESULTS_DIR/main_v6 \
+    python tools/select_agg_screen.py --root $FOA_STUDY_DIR \
         --epsilon 0.005 [--out stage6_full.txt] [--report stage6_selection.json]
 
 Reads every ``coh6_agg_<cell>_fold<k>`` result under ``--root``, averages each

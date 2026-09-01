@@ -1,4 +1,18 @@
 """
+SUPERSEDED as an emitter - see tools/make_digits_p11.py.
+
+Its ``RESULTS`` constant is ``$FOA_RESULTS_DIR/main_v6``, a root from a study
+that has since been deleted, and ``tools/make_study_sbatch.py`` refuses any
+task file naming it. The aggregation screen this study ran is
+``jobs/s09_agg_screen2.txt``, emitted by ``tools/make_digits_p11.py
+--jobs-dir <dir>`` and reproducible from it byte for byte.
+
+``task_line`` and ``flag_tokens`` here are still imported - by this file's own
+selector and by the stage-8 emitter, both likewise superseded - so the module
+is kept rather than deleted. The config-driven replacement for the line
+builder is ``federated_outlier_adaptation.training.study_lines``, which says
+in its own header why it exists.
+
 Emit the stage-6 screening task file and the README that decodes its cell ids.
 
     python tools/make_stage6_screen.py [--out PATH] [--readme PATH] [--folds 1 2 3 4 5]

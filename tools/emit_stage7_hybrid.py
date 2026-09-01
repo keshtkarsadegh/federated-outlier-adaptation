@@ -1,4 +1,22 @@
 """
+SUPERSEDED - see tools/study_emit.py reg-hybrid.
+
+The blend this study ran was emitted per family by
+
+    python tools/study_emit.py reg-hybrid --root "$FOA_STUDY_DIR" \
+        --out <path> --expect 15 [--hybrid-family sequential]
+
+into ``jobs/s18_hybrid.txt`` and ``jobs/s19_hybrid_seq.txt``, both
+reproducible byte for byte, each writing its own construction record under
+``tables/``. That the blend is a per-family object is the substantive
+difference: this tool builds one blend from one pair of winners, and the two
+schedules select different halves - kd_T0p25_a0p9 with fisher_lam8 in the
+concurrent family, kd_T2_a0p99 with fisher_lam0p1 in the sequential one - so
+a single blend would price one schedule's penalty on both.
+
+``hybrid_cells`` here is still imported by the tests that pin the blend's
+arithmetic, so the module is kept rather than deleted.
+
 Emit the kd+fisher hybrid cells, once the kd and fisher winners are known.
 
     python tools/emit_stage7_hybrid.py --selection stage7_selection.json \
