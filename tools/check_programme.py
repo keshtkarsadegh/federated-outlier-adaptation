@@ -11,6 +11,18 @@ This walks the stages in order, collects what each one writes, and reports any
 path a stage reads that nothing before it produced. Paths outside the study
 root (the packed cache, the archive) are inputs of the programme and are
 reported separately rather than as errors.
+
+WHICH FILES ARE WALKED, AND WHY IT IS DECLARED. Stage order here is file order,
+so the walk cannot simply glob the jobs directory: the carry settings are named
+``d01_*`` and sort before every ``s*`` stage they depend on, which would report
+their inputs as unmet. So the ``s*`` stages are walked in name order - that
+prefix was assigned in programme order - and the carry settings follow in the
+order they ran, named in CARRY.
+
+Anything else in the directory is listed as NOT WALKED with its line count. A
+checker that silently examines a subset of a programme is worse than one that
+examines none, because its clean verdict is read as covering everything: seven
+live stages sat outside the ``s*`` glob and nothing said so.
 """
 
 from __future__ import annotations
@@ -51,6 +63,30 @@ SCRIPT_EFFECTS = {
 }
 
 
+#: What a stage's GENERATOR wrote, on the login node, before the stage ran.
+#:
+#: Most inputs are produced by a task line of an earlier stage, and those are
+#: what this tool follows. The extreme stage's three client listings are not:
+#: `study_emit.py extreme` cuts them from the same ranking every other cohort
+#: comes from and writes them at emit time, in the same command that writes the
+#: task file. Nothing in the task file could produce them, so without this the
+#: stage reports three unmet dependencies for inputs that are in fact built by
+#: the programme - a false alarm, and a checker nobody believes is worse than
+#: none.
+#:
+#: The entry is keyed by task file rather than by command because that is what
+#: the claim is about: THIS file's generator wrote these paths. The dependency
+#: is real and it is met on the login node, not in the array.
+GENERATOR_EFFECTS = {
+    "d01_extreme.txt": (
+        "tools/study_emit.py extreme",
+        ["outliers/extreme_single.json",
+         "outliers/extreme_double.json",
+         "outliers/extreme_dual.json"],
+    ),
+}
+
+
 def tokens(line):
     return line.split()
 
@@ -72,7 +108,18 @@ produced = set()
 external = set()
 problems = []
 
+#: The carry settings and the repair, in the order they ran. They are named
+#: d01_* rather than s*, so name order would place them before the stages that
+#: build their inputs; the order is stated here instead of inferred.
+CARRY = ("d01_c5_references.txt", "d01_c20_references.txt", "d01_five.txt",
+         "d01_c20.txt", "d01_extreme.txt", "d01_c10d10.txt",
+         "d01_size_evals_rerun.txt")
+
 stages = sorted(JOBS.glob("s*.txt"))
+stages += [JOBS / name for name in CARRY if (JOBS / name).is_file()]
+
+walked = {s.name for s in stages}
+skipped = sorted(p for p in JOBS.glob("*.txt") if p.name not in walked)
 print(f"stages: {len(stages)}\n")
 for stage in stages:
     reads, writes = set(), set()
@@ -136,13 +183,25 @@ for stage in stages:
         for value in flag_value(parts, "--parent"):
             writes.add(value)
 
+    generator, made = GENERATOR_EFFECTS.get(stage.name, (None, []))
+    writes.update(made)
+
     missing = sorted(r for r in reads if r not in produced and r not in writes)
     status = "OK " if not missing else "GAP"
     print(f"  {status} {stage.name:24s} reads {len(reads):3d}  writes {len(writes):3d}")
+    if generator:
+        print(f"        {len(made)} input(s) written at emit time by {generator}")
     for m in missing:
         print(f"        MISSING: {m}")
         problems.append((stage.name, m))
     produced |= writes
+
+if skipped:
+    print("\nNOT WALKED (in the jobs directory, outside the programme order):")
+    for path in skipped:
+        lines = sum(1 for line in path.read_text().splitlines()
+                    if line.strip() and not line.startswith("#"))
+        print(f"  {path.name:24s} {lines:4d} task lines")
 
 print(f"\nexternal inputs (must exist before the run): {sorted(external) or 'none'}")
 if problems:
