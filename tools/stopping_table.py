@@ -409,8 +409,11 @@ def show_one_rule(rows: Sequence[dict], rule: Optional[Tuple[str, float]]) -> No
     signal, delta = rule
     print(f"\nTHE ONE RULE, FIXED FOR THE WHOLE STUDY: stop when {signal} "
           f"has drifted more than {delta:g} from its round-1 value")
-    print("  it is chosen on the mean score it stops at, over every arm of every "
-          "stage, and it is the only column here a deployed system could run.")
+    print(f"  it is chosen on the mean score it stops at, over the {len(rows)} arms "
+          "reported here, and it is the only column a deployed system could run.")
+    print("  --stage narrows that pool: a rule chosen on one stage is a rule "
+          "chosen on what that stage happens to do, which is most of the way "
+          "back to choosing per arm.")
     print("  the mean is what the rule is chosen on; the worst arm is what it "
           "costs somebody, and it is printed beside the mean for that reason.")
     print(f"  {'stage':<12}{'arms':>6}{'final':>10}{'one rule':>11}"
@@ -444,7 +447,9 @@ def main() -> int:
     ap.add_argument("--study-tag", default="d01")
     ap.add_argument("--stage", action="append", default=None,
                     choices=[stem.strip("_") for stem, _ in STAGES],
-                    help="Stage to report; repeatable. Default: all eight.")
+                    help="Stage to report; repeatable. Default: all eight. "
+                         "Narrowing this also narrows the pool the one rule is "
+                         "chosen on, so the whole-study rule is the default one.")
     ap.add_argument("--deltas", type=float, nargs="*", default=None,
                     help="Budget grid the permitted rules are swept over "
                          "(default: the grid foa signals uses).")
