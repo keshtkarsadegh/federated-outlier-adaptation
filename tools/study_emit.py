@@ -316,12 +316,21 @@ def trade_score(row, a0: float, p0: float) -> float:
 
     THE WEIGHT IS A CHOICE, AND IT IS NOT FREE. An earlier version of this
     docstring claimed the same cell wins at one, two and three points. That is
-    false and was never checked: on the aggregation screen 5 of 17 methods
-    change winner between w=1 and w=3 - eta, fedadam, fedavgm, fedyogi and
-    seq_mix, all toward gentler settings - while anchor, trimmed, weight_q and
-    the sequential family do not. Four of the five are near break-even and flip
-    back at w=2; fedadam moves decisively, trading 4.76 points of adaptation
-    for 1.73 of preservation.
+    false and was never checked: on the aggregation screen 4 of 17 methods
+    change winner between w=1 and w=3 - fedadam, fedavgm, fedyogi and trimmed -
+    while anchor, eta, median, weight_q, both controls and six of the seven
+    sequential methods do not. Every move buys preservation with adaptation,
+    and at w=3 the largest is fedadam giving up 0.65 points of adaptation for
+    0.28 of preservation. The decisive moves are at w=5 and are the adaptive
+    server optimisers: fedyogi trades 4.87 points of adaptation for 1.82 of
+    preservation, fedadam 4.67 for 1.61.
+
+    These counts were re-measured on the corrected-rate screens the study
+    reports from. This docstring previously quoted 5 of 17 at w=3 and a
+    fedadam trade of 4.76 for 1.73; those came from the discarded 9-of-10
+    regularisation screen and its companion aggregation run and describe
+    nothing now on disk. Run tools/weight_sensitivity.py --grid both rather
+    than quoting any of these from memory.
 
     w=1 is the study's deliberate setting, applied to both grids so their
     tables can be read against each other. Report it as a choice with a

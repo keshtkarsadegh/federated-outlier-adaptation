@@ -460,12 +460,18 @@ the methods.
 `w` is a choice and it was made deliberately at 1, matching the aggregation
 grid. It is **not** true that the choice never matters - a claim to that effect
 sat in `trade_score`'s docstring and has been corrected. On the aggregation
-screen, **5 of 17 methods change winner between `w = 1` and `w = 3`**
-(`eta`, `fedadam`, `fedavgm`, `fedyogi`, `seq_mix`), all toward gentler
-settings; `anchor`, `trimmed`, `weight_q` and the whole sequential family do
-not. Four of the five that move are near break-even and flip back at `w = 2`;
-only `fedadam` moves decisively, trading 4.76 points of adaptation for 1.73 of
-preservation.
+screen, **4 of 17 methods change winner between `w = 1` and `w = 3`**
+(`fedadam`, `fedavgm`, `fedyogi`, `trimmed`); `anchor`, `eta`, `median`,
+`weight_q`, both controls and six of the seven sequential methods do not. Every
+move that happens buys preservation with adaptation, and at `w = 3` the largest
+such trade is `fedadam` giving up 0.65 points of adaptation for 0.28 of
+preservation - a rearrangement near break-even, not a different answer.
+
+The two decisive moves are further out, at `w = 5`, and they are the two
+adaptive server optimisers: `fedyogi` gives up 4.87 points of adaptation for
+1.82 of preservation, and `fedadam` 4.67 for 1.61. A reader who weights
+forgetting five times as heavily as adaptation is choosing a materially
+different server optimiser setting; a reader anywhere between 1 and 3 is not.
 
 The honest way to report this is a sensitivity row, not a defended constant.
 It is measured, not asserted:
@@ -474,11 +480,22 @@ It is measured, not asserted:
 python tools/weight_sensitivity.py --root "$FOA_STUDY_DIR" --grid both
 ```
 
-which reports, from the screens on disk: **1 of 17** aggregation winners differ
-from `w = 1` at `w = 2`, **5 of 17** at `w = 3`, **6 of 17** at `w = 5`; and
-**3 of 14** regularisation winners at `w = 2`, **4 of 14** at `w = 3`, **7 of
-14** at `w = 5`. Where a winner moves it moves to a gentler setting, and in
-every case but `fedadam` it gives up under a point of adaptation.
+which reports, from the screens on disk: **2 of 17** aggregation winners differ
+from `w = 1` at `w = 2`, **4 of 17** at `w = 3`, **7 of 17** at `w = 5`; and
+**4 of 14** regularisation winners at `w = 2`, **5 of 14** at `w = 3`, **8 of
+14** at `w = 5`. Where a winner moves it moves to the setting that updates the
+model less, and outside the two `w = 5` server-optimiser moves above every move
+gives up under 1.25 points of adaptation - on the regularisation grid the
+largest is concurrent `ntd` at `w = 5`, 1.20 points, and every other move there
+costs under a point.
+
+These counts were **re-measured on the corrected-rate screens** - the rate-8
+aggregation and regularisation screens that the study actually reports from.
+An earlier revision of this section quoted 1/5/6 of 17 and 3/4/7 of 14, which
+were measured on the discarded 9-of-10 regularisation screen and its companion
+aggregation run; those numbers do not describe anything now on disk and have
+been replaced throughout. Re-run the command above rather than quoting either
+set from memory.
 
 None of this changes what the study reports. `w = 1` is the setting both grids
 were selected and run under, and every winner in this document is the `w = 1`
