@@ -43,12 +43,33 @@ from federated_outlier_adaptation.runners.forgetting_signals import SIGNAL_KEYS 
 
 #: Prefixes checked by ``--all``, with the horizon each was run at.  A screen
 #: and a final differ in length, and a short series is as wrong as an empty one.
+#:
+#: EVERY STAGE THAT WROTE SIGNALS IS NAMED HERE, not only the stages a grid was
+#: searched over.  The check only reports a series SHORTER than the horizon it
+#: was given, so a stage missing from this map is not audited loosely - it is
+#: not audited at all, and ``--all`` still ends on the sentence that says every
+#: payload carries all eight.  The carry settings, the three extreme
+#: arrangements and the federated reference cells ran for months before anything
+#: counted their signals, because none of them had a line in this dictionary.
 DEFAULT_PREFIXES = {
     "d01_agg_": 25,
     "d01_aggfull_": 100,
     "d01_reg_": 25,
     "d01_regfull_": 100,
     "d01_combo_": 100,
+    # the carry settings: the selected arms moved onto other federations
+    "d01_five_": 100,
+    "d01_c10d10_": 100,
+    "d01_c20d10_": 100,
+    "d01_c20d20_": 100,
+    # the three extreme arrangements
+    "d01_extreme_": 100,
+    # the federated reference cells each cohort is read against
+    "d01_c5_m4_control_": 100,
+    "d01_c10_m8_control_": 100,
+    "d01_c10_m9_control_": 100,
+    "d01_c20_m16_control_": 100,
+    "d01_c20_m18_control_": 100,
 }
 
 
