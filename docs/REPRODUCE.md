@@ -71,7 +71,7 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | # | stage | generator | task file | tasks | rounds |
 |---|---|---|---|---|---|
 | 1 | dataset index | `tools/fetch_sd19.py` | - | - | - |
-| 2 | fold books | `d01_p02.txt` | `d01_p02.txt` | 4 | - |
+| 2 | writer counts, all-writer book | `s01a_book.txt` | `s01a_book.txt` | 2 | - |
 | 3 | g-init / detector | `s01b_detector.txt` | `s01b_detector.txt` | 2 | - |
 | 4 | g-0 + cohorts | `s02_selection.txt` | `s02_selection.txt` | 29 | - |
 | 5 | references | `s03_refs_c10.txt`, `s03b_refs_fl.txt` | | 155 | 100 |
@@ -81,18 +81,22 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | 9 | **regularisation finals** | `study_emit.py reg-full` | `s17_reg_full4.txt` | 70 | 100 |
 | 10 | **kd+fisher blend, concurrent** | `study_emit.py reg-hybrid` | `s18_hybrid.txt` | 15 | 100 |
 | 11 | **kd+fisher blend, sequential** | `study_emit.py reg-hybrid --hybrid-family sequential` | `s19_hybrid_seq.txt` | 15 | 100 |
-| 12 | **combinations** | `study_emit.py combos` | *emitted from both finals* | 90 | 100 |
+| 12 | **combinations** | `study_emit.py combos` | `s20_combos4.txt` | 90 | 100 |
 | 13 | five-client references | `tools/make_size_references.py` | `d01_c5_references.txt` | 75 | 100 |
-| 14 | twenty-client references | `tools/make_c20_references.py` | `d01_c20_references.txt` | 235 | 100 |
+| 14 | twenty-client references | `tools/make_size_references.py` | `d01_c20_references.txt` | 235 | 100 |
 | 15 | **five clients, one dropped** | `study_emit.py five` | `d01_five.txt` | 20 | 100 |
 | 16 | **twenty clients, both dropout levels** | `study_emit.py c20` | `d01_c20.txt` | 30 | 100 |
 | 17 | **the extreme cases** | `study_emit.py extreme` | `d01_extreme.txt` | 15 | 100 |
 | 18 | **ten clients, one dropped** | `study_emit.py c10d10` | `d01_c10d10.txt` | 20 | 100 |
 | 19 | size evaluations, re-scored | *the evaluate-book lines of 13 and 14* | `d01_size_evals_rerun.txt` | 10 | - |
 
-Stages 8-11 have run at the search rate and are reported in
-`REG_GRID_RANGES.md` under the 2026-08-31 heading; stage 12 has not been
-re-run against the shortlists those stages produced.
+Stages 8-12 have all run at the search rate and are reported in
+`REG_GRID_RANGES.md`. Stage 12 was re-emitted from the shortlists stages 9-11
+produced and re-run against them: `tables/p12_agg_top3.json` and
+`tables/p13_reg_top3.json` are the two lists it crosses, and every one of the
+eighteen combinations on disk is a pair drawn from them. Regenerating
+`s20_combos4.txt` reproduces the file that ran byte for byte, which is the
+check that the stage and its shortlists have not come apart.
 
 **Stages 13-18 are the carry settings and the extremes.** Nothing in them is
 searched: they take the arms the combination cross crowned and move the
@@ -108,6 +112,32 @@ wrote had been damaged by a race - see
 [§5](#the-accumulator-race-and-why-both-files-were-deleted). It only reads
 models, so it carries no sampler seed and changes nothing about the runs it
 scores.
+
+### What in `jobs/` is not a stage
+
+Two files in `jobs/` are not stages and are not in the table. `d01_p02.txt` is
+byte-identical to `s01_detector.txt`, and `s01_detector.txt` is stages 2 and 3
+concatenated before they were split into two array submissions; `d01_p05v2.txt`
+is `s02_selection.txt` with the header it was written under. Both are pre-rename
+copies, kept as a record. `tools/check_programme.py` names them under NOT WALKED
+rather than passing over them, because a checker that examines a subset of a
+directory has to say which subset.
+
+The two grid generators write a README beside their task file, and the
+current one is not always under the current name. `make_digits_p11.py` writes
+`d01_p11_README.md`, which is current and regenerates byte for byte;
+`make_digits_p13.py` writes the README saved as `s16_reg_screen3_README.md`,
+which is likewise current. Three older copies sit beside them -
+`d01_p11_ext_README.md`, `d01_p13_README.md` and `d01_p13_ext_README.md` - and
+they describe grids that no longer exist. `d01_p13_README.md` is the one to
+watch: it documents a 117-cell, 585-task screen, while the file it appears to
+accompany runs 140 cells and 700 tasks. Read the README the generator writes,
+not the one with the matching stem.
+
+`tools/make_c20_references.py` emitted an earlier attempt at stage 14 and does
+**not** reproduce the file that ran: 484 of its lines differ, because its
+`isolated-train` lines carry no `--seed`. It is bannered as superseded. Stage 14
+is `make_size_references.py`, the same generator as stages 5 and 13.
 
 Superseded task files live in `jobs/superseded/`. They are kept as a record and
 must not be re-run: their seeds and their cells belong to a previous programme.
@@ -131,6 +161,8 @@ python tools/make_digits_p11.py --jobs-dir /tmp/check     # aggregation screen
 python tools/make_digits_p13.py --jobs-dir /tmp/check     # regularisation screen
 diff /tmp/check/d01_p11.txt $FOA_STUDY_DIR/jobs/s09_agg_screen2.txt
 diff /tmp/check/d01_p13.txt $FOA_STUDY_DIR/jobs/s16_reg_screen3.txt
+diff /tmp/check/d01_p11_README.md $FOA_STUDY_DIR/jobs/d01_p11_README.md
+diff /tmp/check/d01_p13_README.md $FOA_STUDY_DIR/jobs/s16_reg_screen3_README.md
 
 python tools/study_emit.py agg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 85
 python tools/study_emit.py reg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 70
@@ -157,7 +189,34 @@ one's.
 `diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s10_agg_full2.txt` closes the loop on the
 aggregation finals the same way.
 
-The participation rate these stages emit at is **not** a flag - see
+### The reference stages, which do take arguments
+
+Stages 5, 13 and 14 are the exception to the no-flags rule above, and the
+exception is deliberate: one generator serves every federation size, so the
+size has to be named. The three invocations that reproduce the three shipped
+files byte for byte are:
+
+```bash
+python tools/make_size_references.py --study-dir "$FOA_STUDY_DIR" \
+    --cohort cohort_worst10.json --book cohort10 --per-round 9 8 \
+    --tag c10 --seed-base 740000 --out /tmp/check/s03_refs_c10.txt
+
+python tools/make_size_references.py --study-dir "$FOA_STUDY_DIR" \
+    --cohort cohort_worst5.json  --book cohort5  --per-round 4 \
+    --tag c5  --seed-base 750000 --out /tmp/check/d01_c5_references.txt
+
+python tools/make_size_references.py --study-dir "$FOA_STUDY_DIR" \
+    --cohort cohort_worst20.json --book cohort20 --per-round 18 16 \
+    --tag c20 --seed-base 720000 --out /tmp/check/d01_c20_references.txt
+```
+
+The seed base is the argument that must not be guessed. A reference stage seeds
+per client position and per init rather than per cell, so its seeds occupy a
+range of their own - 40000, 750000 and 720000 - and a base typed differently
+would produce a file that looks right and draws different clients. The bases are
+listed with every other seed block in [§5](#seeds).
+
+The participation rate the GRID stages emit at is **not** a flag - see
 [§5](#5-seeds-and-the-rate-a-grid-is-searched-at). It was one, and the two grids ended up searched at different
 rates because it was typed on one command line and not on the other.
 
@@ -314,6 +373,10 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | are the seeds sound? | `check_seeds.py jobs/*.txt` |
 | is the cohort the same cohort? | `freeze_selection.py verify $FOA_STUDY_DIR` |
 | does every stage read what an earlier stage wrote? | `check_programme.py $FOA_STUDY_DIR/jobs` |
+| how much data does each cohort writer hold, and does it hold every class? | `describe_cohort.py --all --csv $FOA_STUDY_DIR/tables/` |
+| the whole paper bundle, one command | `report_tables.py --what all --csv $FOA_STUDY_DIR/tables/paper/` |
+| what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
+| does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
 
 All take `--root $FOA_STUDY_DIR`; all accept `--csv <dir>`.
 `foa signals` writes to `$FOA_STUDY_DIR/signals/` - three CSVs, a summary JSON
