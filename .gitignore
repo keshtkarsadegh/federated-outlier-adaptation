@@ -49,3 +49,10 @@ results/
 *.log
 results_prior_study.tar.gz
 data/by_write/
+
+# --- figure renders ------------------------------------------------------------
+# tools/paper_figures/*.py render beside themselves unless FOA_PAPER_OUT says
+# otherwise, and a rendered PDF is an output of the views next to it, not a
+# source. The scripts and the views are tracked; what they draw is not.
+/tools/paper_figures/*.pdf
+/tools/paper_figures/*_caption.txt
