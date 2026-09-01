@@ -99,7 +99,10 @@ slurm/run_tasks.sh study/jobs/d01_p09.txt                 # then for real
 6. **[`docs/STOPPING.md`](docs/STOPPING.md)** — what the fixed hundred-round
    horizon cost every arm, and what a signal a deployed system is allowed to
    compute could have recovered instead.
-7. **[`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md)** and
+7. **[`docs/FAIRNESS_AND_COST.md`](docs/FAIRNESS_AND_COST.md)** — who the gain
+   reached, per client rather than pooled, and what the programme spent in
+   seconds and bytes.
+8. **[`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md)** and
    **[`docs/RESULTS_LAYOUT.md`](docs/RESULTS_LAYOUT.md)** — the earlier
    pipeline, kept because its code is still present. Both carry a superseded
    banner naming what replaced them; neither describes the live study.

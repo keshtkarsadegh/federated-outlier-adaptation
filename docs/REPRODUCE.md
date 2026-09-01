@@ -364,6 +364,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | combination scores | `report_tables.py --what combos` |
 | the carried arms at each federation setting | `report_tables.py --what sizes` |
 | the three extreme arrangements | `report_tables.py --what extremes` |
+| who the gain reached: the per-client spread of every headline stage | `fairness_cost.py --root $FOA_STUDY_DIR --what fairness` |
+| what the programme cost: seconds, rounds and bytes | `fairness_cost.py --root $FOA_STUDY_DIR --what cost` |
 | when the extreme cases should have stopped | `extreme_stopping.py --root $FOA_STUDY_DIR` |
 | the extreme-case figure | `extreme_stopping.py --root $FOA_STUDY_DIR --fig $FOA_STUDY_DIR/figures/extreme_stopping.png` |
 | what the fixed horizon cost every arm | `stopping_table.py --root $FOA_STUDY_DIR` |
@@ -390,6 +392,9 @@ argument, as written above.
 `foa signals` writes to `$FOA_STUDY_DIR/signals/` - three CSVs, a summary JSON
 and one Pareto plot per method - and `stopping_table.py --csv` writes one CSV per
 stage plus `stopping_all.csv`. `docs/STOPPING.md` reads all of it.
+`fairness_cost.py --csv` writes one CSV per stage plus a per-client detail CSV
+beside each, and `cost_stages.csv` and `cost_arms.csv`. `docs/FAIRNESS_AND_COST.md`
+reads all of it.
 
 **The two stopping tools are the exception to the test basis below**: both
 `extreme_stopping.py` and `stopping_table.py` read the **validation** columns,
@@ -405,6 +410,7 @@ cannot come apart: `stopping_table.py --stage extreme` reproduces
 
     SELECTION reads validation   pool_val_accuracies  +  source_val_accuracies
     REPORTING reads test         final_evaluation.clients.accuracy
+                                 final_evaluation.clients.per_client
                                  final_evaluation.old.mean
 
 A selection may only see the halves a selection is allowed to see; the reported
@@ -488,7 +494,14 @@ were removed for exactly this reason.
 | twenty-client pair | 30 | 100 | ~5 |
 | extremes | 15 | 100 | ~1 |
 
-One A100 per task, `grete:shared`.
+One A100 per task, `grete:shared`. Those are the hours that were **booked**;
+`fairness_cost.py --what cost` reports the hours the round loop actually spent
+inside them, read from the runner's own timer, and
+[`docs/FAIRNESS_AND_COST.md`](FAIRNESS_AND_COST.md#4-what-it-cost) reads the two
+against each other. The table above is the submission plan and the measured one
+is read off disk, so two rows differ: the regularisation finals are 100 folders
+rather than 70 once the two hybrid emissions are counted with them, and the 50
+size-reference tasks appear in neither row here.
 
 ---
 
