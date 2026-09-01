@@ -1,5 +1,5 @@
-> **Superseded.** This describes the PRIOR pipeline (see
-> `docs/PRIOR_PIPELINE.md`), not the live study `Digits_study01`.
+> **Superseded.** This describes the PRIOR pipeline, not the live study
+> `Digits_study01`.
 > For the live study use `docs/REPRODUCE.md` - which maps every claim to the
 > command that regenerates it - together with `docs/DATA.md`, `docs/RUNBOOK.md`
 > and `docs/VERIFY.md`. Kept because the code it documents is still present.

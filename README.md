@@ -26,7 +26,7 @@ two hundred retained writers, five-fold cross-validation throughout.
 | `study/jobs/` | every task file the published study ran, with per-stage READMEs |
 | `study/artifacts/` | the derived artefacts needed to *check* results, incl. both model checkpoints |
 | `study/UPSTREAM.sha256` | checksums of the source data, the packed cache, the models |
-| `docs/` | data path, runbook, verification, prior pipeline |
+| `docs/` | how to reproduce a claim, the study record, data path, runbook, verification, prior pipeline |
 
 `study/artifacts/` is the part that makes this checkable without re-running
 anything: the writer pools and their scores, the three cohorts, all four fold
@@ -76,20 +76,33 @@ slurm/run_tasks.sh study/jobs/d01_p09.txt                 # then for real
 
 ---
 
-## The four documents
+## The documents
 
-1. **[`docs/DATA.md`](docs/DATA.md)** — download SD19, verify it, build the
+1. **[`docs/REPRODUCE.md`](docs/REPRODUCE.md)** — given a number in the paper,
+   what to run to get it back. The stage graph with its exact task counts, the
+   command that regenerates each task file byte for byte, the seed scheme, and
+   a claim-to-command table covering every result the manuscript states. Start
+   here if you want to check something rather than re-run everything.
+2. **[`docs/STUDY_RECORD.md`](docs/STUDY_RECORD.md)** — what the study actually
+   ran, generated from the study root rather than written: stages, task counts,
+   the result folders each produced, and the selections that were made.
+3. **[`docs/DATA.md`](docs/DATA.md)** — download SD19, verify it, build the
    packed 28×28 cache, and confirm it byte-for-byte. The numbers that must
    match: **814,255 rows, 3,597 writers, 62 classes; 402,953 digit rows across
    3,580 writers.**
-2. **[`docs/RUNBOOK.md`](docs/RUNBOOK.md)** — every stage in order, with its
+4. **[`docs/RUNBOOK.md`](docs/RUNBOOK.md)** — every stage in order, with its
    task file, its task count, and its **measured** GPU-hours. The whole
    production chain is about **53 GPU-h**.
-3. **[`docs/VERIFY.md`](docs/VERIFY.md)** — four levels of checking, two of
+5. **[`docs/VERIFY.md`](docs/VERIFY.md)** — four levels of checking, two of
    which need neither a GPU nor the dataset, and the `evaluate-book` command
    that proves a released model still reproduces a published row.
-4. **[`docs/PRIOR_PIPELINE.md`](docs/PRIOR_PIPELINE.md)** — the earlier
-   pipeline, kept because its code is still present.
+6. **[`docs/STOPPING.md`](docs/STOPPING.md)** — what the fixed hundred-round
+   horizon cost every arm, and what a signal a deployed system is allowed to
+   compute could have recovered instead.
+7. **[`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md)** and
+   **[`docs/RESULTS_LAYOUT.md`](docs/RESULTS_LAYOUT.md)** — the earlier
+   pipeline, kept because its code is still present. Both carry a superseded
+   banner naming what replaced them; neither describes the live study.
 
 ---
 
