@@ -103,32 +103,39 @@ def _check_preservation_series(body) -> None:
 
 
 
+def cell_and_family(path: Path, prefix: str) -> tuple:
+    """
+    Which arm a stored summary belongs to, and under which schedule.
+
+    A run folder holds BOTH schedules - the concurrent (parallel) family and the
+    sequential (cyclic) one - so the schedule is part of the key. Reading only
+    one of them, or averaging across them, silently answers a different question
+    than the table asks.
+
+    A REGULARISATION RUN COMPUTES BOTH SCHEDULES, and the folder is named for
+    the one it was selected to serve. Reading the other half is reading a result
+    the selection never chose - the same penalty judged under a schedule it was
+    not picked for. The folder's own tag decides, and the cell comes back
+    ``None`` for the half that was not selected, which the caller drops.
+    """
+    folder = next(p for p in Path(path).parts if p.startswith(prefix))
+    cell = folder[len(prefix):].split("_fold")[0]
+    family = "parallel" if Path(path).parent.name == "concurrent_delta" else "cyclic"
+    for tag, schedule in (("concurrent_", "parallel"), ("sequential_", "cyclic")):
+        if cell.startswith(tag):
+            return (cell[len(tag):] if family == schedule else None), family
+    return cell, family
+
+
 def read_runs(root: Path, prefix: str) -> dict:
     """
     Final-round adaptation and preservation of every run under a prefix.
 
-    A run folder holds BOTH schedules - the concurrent (parallel) family and the
-    sequential (cyclic) one - so the schedule is part of the key. Reading only
-    one of them, or averaging across them, silently answers a different
-    question than the table asks.
+    The key is the arm and its schedule, decided by :func:`cell_and_family`.
     """
     out = defaultdict(lambda: {"a": [], "p": [], "signals": []})
     for path in sorted(glob.glob(f"{root}/{prefix}*/**/summary_0.json", recursive=True)):
-        folder = next(p for p in Path(path).parts if p.startswith(prefix))
-        cell = folder[len(prefix):].split("_fold")[0]
-        family = "parallel" if Path(path).parent.name == "concurrent_delta" else "cyclic"
-
-        # A REGULARISATION RUN COMPUTES BOTH SCHEDULES, and the folder is named
-        # for the one it was selected to serve. Reading the other half is
-        # reading a result the selection never chose - the same penalty judged
-        # under a schedule it was not picked for. The folder's own tag decides.
-        for tag, schedule in (("concurrent_", "parallel"), ("sequential_", "cyclic")):
-            if cell.startswith(tag):
-                if family != schedule:
-                    cell = None
-                else:
-                    cell = cell[len(tag):]
-                break
+        cell, family = cell_and_family(Path(path), prefix)
         if cell is None:
             continue
         body = next(iter(json.loads(Path(path).read_text()).values()))
