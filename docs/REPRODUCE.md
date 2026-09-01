@@ -54,6 +54,10 @@ python tools/fetch_mnist.py           # the proxy set; without it two of the
                                       # eight forgetting signals are silently empty
 ```
 
+You do not have to rerun anything to read the study's numbers: what it produced
+is published, and [§10](#10-the-published-records) says which part is in this
+repository and which part is a release asset.
+
 ---
 
 ## 3. The stage graph
@@ -367,6 +371,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | do the eight signals track forgetting? | `foa signals --root $FOA_STUDY_DIR` |
 | does a combination beat its halves? | `compare_arms.py --what combos` |
 | penalty vs server rule | `compare_arms.py --what composition` |
+| does a blend beat the two cells it was built from? | `compare_arms.py --what blends` |
 | do the winners depend on `w`? | `weight_sensitivity.py --grid both` |
 | are all eight signals present? | `check_signals.py --all` |
 | are the cohorts label-skewed? | `describe_cohort.py --all` |
@@ -435,6 +440,13 @@ one of eighteen is positive on every fold. The gains are smaller than the fold
 spread. Always read `compare_arms.py`, never a table of means, for a claim of the
 form "A beats B".
 
+**A kd+fisher blend that beats both of its parents on the means.** Six of six
+do. Paired by fold, five of six clear their KD parent on every fold and **none**
+clears its Fisher parent - the three concurrent blends each lose fold 1 to
+`fisher_lam8` by more than their whole mean gain. The blends do hold the best
+mean score and the best preservation in their table; that is the claim the folds
+support, and `compare_arms.py --what blends` is where it is checked.
+
 ---
 
 ## 8. Before re-running anything
@@ -474,3 +486,52 @@ were removed for exactly this reason.
 | extremes | 15 | 100 | ~1 |
 
 One A100 per task, `grete:shared`.
+
+---
+
+## 10. The published records
+
+**In git - `study/artifacts/Digits_study01/`, 5.1 MB.** The metadata core: the
+frozen cohort, the g-0 evaluation books both baselines are measured against, the
+fold books, the outlier and cohort records, every shipped table and CSV, every
+task file that was submitted, and the figures. That is enough to check any claim
+in the manuscript against a record, and small enough to diff. Its own `README.md`
+maps each artefact to the tool that reads it and names everything excluded, with
+the command that regenerates it. Absolute machine paths are rewritten to
+`$FOA_STUDY_DIR` and friends by `tools/sanitize_artifacts.py`; that this stayed
+true is asserted by `tests/test_release_artifacts.py`.
+
+**A release asset - `Digits_study01_records.tar.gz`, 68,303,506 bytes.** Every
+`accuracies_*.json` and `summary_0.json` under the 1,590 `d01_*` run folders plus
+the 380 reference-rung JSONs: 5,320 files, 522 MB unpacked. These are the numbers
+every table is computed from. They are an asset rather than a tracked directory
+because git is the wrong place for half a gigabyte of machine output nobody will
+diff, and they carry no machine paths either - the same sanitiser was run over a
+staged copy before packing.
+
+    sha256 405a72c6127b2bec95831d4e0f181967ad38a21d22fb1a9ab861cfbb166665a5
+
+published beside the archive as `Digits_study01_records.tar.gz.sha256`. Paths
+inside are relative to the study root, so
+
+    tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
+
+is all that stands between a clone and `report_tables.py`, `stopping_table.py` or
+`compare_arms.py` running against the real runs.
+
+**Not published: the weights.** `g0_model`, the five `g0_fold*/global_model` and
+`global_results/fisher_g0` - 51 MB of checkpoints, which answer no question the
+records do not. Every stage that consumes them is reproducible from §3 onwards.
+
+**`compare_arms.py --what blends` exists, and needs both halves of the above.**
+It differences each kd+fisher blend against each of the two cells it was built
+from, fold by fold. The parents come from `tables/p14_hybrid_construction.json`
+and `tables/p14_hybrid_construction_sequential.json`, which are in the tree; the
+scores come from the `d01_regfull_*` records, which are in the asset. Unpack the
+asset and
+
+    python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what blends
+
+reproduces the claim `docs/REG_GRID_RANGES.md` now makes: best mean score and
+best preservation, five of six blends clearing their KD parent on every fold, and
+none of the six clearing its Fisher parent.
