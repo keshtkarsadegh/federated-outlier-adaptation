@@ -1172,6 +1172,50 @@ def test_an_evaluation_file_holds_more_than_one_result(prepared, tmp_path):
     assert stored["cohort_fold1"]["accuracy"] == 0.4
 
 
+def test_concurrent_writers_all_survive_the_accumulator(tmp_path):
+    """
+    Every fold written at once is still in the file afterwards.
+
+    THE DEFECT THIS PINS. A reference stage points one `evaluate-book` task per
+    fold at a single accumulator and runs them as one array, so the merge is
+    performed by several processes at the same time. Read-modify-write without a
+    lock loses whichever folds were read before the last writer read: the tasks
+    all succeed, all print their number, and the file ends up short. That is
+    what emptied folds 2 and 4 out of the five-client evaluations while the
+    twenty-client file beside it kept all five by luck of the interleaving.
+
+    Processes rather than threads, because a thread lock inside one interpreter
+    would pass this while an array of tasks on separate nodes still raced, and
+    processes are what actually run.
+    """
+    import multiprocessing as mp
+
+    path = tmp_path / "evaluations.json"
+    tags = [f"fold{n}" for n in range(1, 13)]
+    context = mp.get_context("spawn")
+    barrier = context.Barrier(len(tags))
+    workers = [context.Process(target=_merge_one, args=(str(path), tag, barrier))
+               for tag in tags]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(120)
+    assert [w.exitcode for w in workers] == [0] * len(tags)
+
+    stored = json.loads(path.read_text())
+    assert sorted(stored) == sorted(tags)
+    assert all(stored[tag]["accuracy"] == float(tag[4:]) for tag in tags)
+
+
+def _merge_one(path: str, tag: str, barrier) -> None:
+    """One writer, released together with all the others."""
+    from federated_outlier_adaptation.training.evaluate import write_evaluation
+
+    barrier.wait(60)
+    for _ in range(5):
+        write_evaluation({"tag": tag, "accuracy": float(tag[4:])}, path)
+
+
 # --------------------------------------------------------------------------- #
 # the split rule: validation and test must be exchangeable
 # --------------------------------------------------------------------------- #

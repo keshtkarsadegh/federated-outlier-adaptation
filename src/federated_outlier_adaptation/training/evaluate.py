@@ -15,7 +15,10 @@ question never trained on, and both are reproducible from the files alone.
 
 from __future__ import annotations
 
+import fcntl
 import json
+import os
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
@@ -185,19 +188,55 @@ def evaluate_on_book(
 
 
 def write_evaluation(payload: Dict[str, Any], path) -> Path:
-    """Write an evaluation payload, merging into an existing file if there is one."""
+    """
+    Write an evaluation payload, merging into an existing file if there is one.
+
+    ONE FILE, MANY WRITERS. A reference stage scores every fold of a cohort with
+    its own `evaluate-book` task and points all of them at the same accumulator,
+    and those tasks are the elements of one array - so they run at the same time
+    on different nodes. The merge below is a read, a change and a write; without
+    a lock around all three, two elements read the same file, each adds its own
+    fold to what it read, and the second to write puts back a file that never
+    saw the first one's fold. Nothing fails. Both tasks report success, both
+    print their own accuracy, and the file quietly holds fewer folds than the
+    stage ran. That is how ``g0_c5_evaluations.json`` came to hold folds 1, 3
+    and 5: folds 2 and 4 were computed, printed and then overwritten. The
+    twenty-client file next to it held all five, which is worse - it looked like
+    proof the pattern was sound when it was only proof that five racing writers
+    can happen to interleave harmlessly.
+
+    So the whole read-modify-write happens under an exclusive lock, taken on a
+    sidecar rather than on the accumulator itself: the accumulator is replaced
+    by rename, and a lock on a file that gets replaced is a lock on an inode
+    nobody holds any more. The rename is what makes the swap atomic, so the
+    selection tools that read this file without taking the lock never see a
+    half-written one.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing: Dict[str, Any] = {}
-    if path.is_file():
+    lock_path = path.with_name(path.name + ".lock")
+    with open(lock_path, "a") as guard:
+        fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
         try:
-            with open(path) as handle:
-                existing = json.load(handle)
-        except (OSError, ValueError):  # pragma: no cover - unreadable artefact
-            existing = {}
-    if not isinstance(existing, dict):
-        existing = {}
-    existing[str(payload.get("tag") or payload.get("fold"))] = payload
-    with open(path, "w") as handle:
-        json.dump(existing, handle, indent=2)
+            existing: Dict[str, Any] = {}
+            if path.is_file():
+                try:
+                    with open(path) as handle:
+                        existing = json.load(handle)
+                except (OSError, ValueError):  # pragma: no cover - unreadable artefact
+                    existing = {}
+            if not isinstance(existing, dict):
+                existing = {}
+            existing[str(payload.get("tag") or payload.get("fold"))] = payload
+            # Unique per writer, not merely per pid: two nodes can hold the
+            # same pid, and the scratch name must not be the one thing that
+            # collides if the lock ever turns out not to.
+            scratch = path.with_name(f"{path.name}.{uuid.uuid4().hex}.partial")
+            with open(scratch, "w") as handle:
+                json.dump(existing, handle, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(scratch, path)
+        finally:
+            fcntl.flock(guard.fileno(), fcntl.LOCK_UN)
     return path
