@@ -20,17 +20,42 @@ import json
 from pathlib import Path
 
 #: Which result folders a stage's tasks land in, by the prefix they carry.
+#:
+#: These are the stages of the CURRENT programme. The map used to name
+#: s04-s07, the screens and finals of the prior one, which now live in
+#: jobs/superseded/ - so the record it generated listed stages nobody may
+#: re-run and left every live stage's folder count blank. A blank column reads
+#: as "this stage produced nothing", which is the opposite of what it meant.
+#:
+#: A stage may need more than one prefix, and the blends are why. All three
+#: regularisation-final stages write under d01_regfull_: s17 writes the seven
+#: penalties per schedule, s18 writes hybrid_mix* and s19 hybrid_seq_mix*. A
+#: bare "d01_regfull_" credits s17 with all hundred folders when seventy are
+#: its own, and "d01_regfull_hybrid_" credits s18 with s19's fifteen as well.
+#: So s17 is named by the two schedule prefixes it actually wrote, and each
+#: blend by its own full stem. The folder count is a check on the task count
+#: beside it, and a count that silently absorbs another stage's folders cannot
+#: perform that check.
 PREFIXES = {
-    "s04_agg_screen": "d01_agg_",
-    "s04b_agg_ext": "d01_agg_",
-    "s04c_agg_ext2": "d01_agg_",
-    "s05_agg_full": "d01_aggfull_",
-    "s06_reg_screen": "d01_reg_",
-    "s06b_reg_ext": "d01_reg_",
-    "s06c_reg_ext2": "d01_reg_",
-    "s06d_reg_ext3": "d01_reg_",
-    "s07_reg_full": "d01_regfull_",
+    "s09_agg_screen2": ("d01_agg_",),
+    "s10_agg_full2": ("d01_aggfull_",),
+    "s16_reg_screen3": ("d01_reg_",),
+    "s17_reg_full4": ("d01_regfull_concurrent_", "d01_regfull_sequential_"),
+    "s18_hybrid": ("d01_regfull_hybrid_mix",),
+    "s19_hybrid_seq": ("d01_regfull_hybrid_seq_mix",),
+    "s20_combos4": ("d01_combo_",),
+    "d01_five": ("d01_five_",),
+    "d01_c10d10": ("d01_c10d10_",),
+    "d01_c20": ("d01_c20d",),
+    "d01_extreme": ("d01_extreme_",),
 }
+
+#: The carry settings and the repair, in the order they ran. Their names sort
+#: before every s* stage that builds their inputs, so the order is stated
+#: rather than inferred - the same reason tools/check_programme.py declares it.
+CARRY = ("d01_c5_references.txt", "d01_c20_references.txt", "d01_five.txt",
+         "d01_c20.txt", "d01_extreme.txt", "d01_c10d10.txt",
+         "d01_size_evals_rerun.txt")
 
 
 def runnable(path: Path) -> int:
@@ -74,14 +99,24 @@ def main() -> int:
     print("\n## Stages\n")
     print("| stage | tasks | result folders |")
     print("|---|---|---|")
-    for path in sorted((root / "jobs").glob("s*.txt")):
+    stages = sorted((root / "jobs").glob("s*.txt"))
+    stages += [root / "jobs" / name for name in CARRY
+               if (root / "jobs" / name).is_file()]
+    for path in stages:
         stem = path.stem
         n = runnable(path)
-        prefix = PREFIXES.get(stem)
-        made = len(list(root.glob(f"{prefix}*"))) if prefix else ""
+        prefixes = PREFIXES.get(stem)
+        made = (sum(len(list(root.glob(f"{prefix}*"))) for prefix in prefixes)
+                if prefixes else "")
         print(f"| `{stem}` | {n} | {made} |")
-    for path in sorted((root / "jobs").glob("d01_*_references.txt")):
-        print(f"| `{path.stem}` | {runnable(path)} | |")
+
+    walked = {p.name for p in stages}
+    other = sorted(p for p in (root / "jobs").glob("*.txt") if p.name not in walked)
+    if other:
+        print("\nAlso in `jobs/`, outside the programme order: "
+              + ", ".join(f"`{p.stem}`" for p in other)
+              + ". Superseded files live in `jobs/superseded/` and are not "
+                "listed here at all.")
 
     # ----------------------------------------------------------- selections
     print("\n## Selections\n")
