@@ -151,7 +151,7 @@ def main() -> int:
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--data-dir", type=Path, default=None,
                         help="Where nist28_labels.npy lives; "
-                             "defaults to $FOA_NIST28_DIR or <root>/../../data/nist28.")
+                             "defaults to $FOA_NIST28_DIR or <root>/../../../data/nist28.")
     parser.add_argument("--cohort", action="append", default=None)
     parser.add_argument("--all", action="store_true",
                         help="Every fold book in the study.")
@@ -159,10 +159,19 @@ def main() -> int:
     args = parser.parse_args()
 
     import os
-    data_dir = (args.data_dir or Path(os.environ.get("FOA_NIST28_DIR", ""))
-                or args.root.parent.parent / "data" / "nist28")
-    if not Path(data_dir).is_dir():
-        raise SystemExit(f"FATAL: dataset directory {data_dir} does not exist.")
+    # Path("") is Path("."), which is truthy AND is a directory, so an unset
+    # FOA_NIST28_DIR used to resolve to the working directory and take the
+    # fallback out of reach. The failure was a missing-label message naming a
+    # bare relative path, which reads as a broken dataset rather than an unset
+    # variable. Each candidate is now tested for being a real directory.
+    candidates = [args.data_dir,
+                  Path(os.environ["FOA_NIST28_DIR"]) if os.environ.get("FOA_NIST28_DIR") else None,
+                  args.root.parent.parent.parent / "data" / "nist28"]
+    data_dir = next((c for c in candidates if c is not None and Path(c).is_dir()), None)
+    if data_dir is None:
+        raise SystemExit(
+            "FATAL: no dataset directory. Set FOA_NIST28_DIR or pass --data-dir; "
+            "tried " + ", ".join(str(c) for c in candidates if c is not None) + ".")
 
     if args.all:
         cohorts = sorted(p.name.replace(".foldbook.npz", "")

@@ -93,3 +93,36 @@ def test_genuine_skew_is_still_called_skew(tmp_path, capsys):
              "missing": [4, 5, 6, 7, 8, 9]} for i in range(10)]
     dc.show(rows, "c")
     assert "LABEL SKEW PRESENT" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------------------- #
+# Where the labels are looked for
+# --------------------------------------------------------------------------- #
+def test_an_unset_dataset_variable_names_what_was_tried(tmp_path, monkeypatch, capsys):
+    """
+    ``Path("")`` is ``Path(".")``, which is truthy and is a directory, so an
+    unset FOA_NIST28_DIR used to resolve to the working directory, put the
+    fallback out of reach, and fail with a missing-label message naming a bare
+    relative path. That reads as a broken dataset rather than an unset
+    variable, and it cost a run of this tool to work out which.
+    """
+    monkeypatch.delenv("FOA_NIST28_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    root = tmp_path / "results" / "studies" / "S"
+    (root / "fold_books").mkdir(parents=True)
+    monkeypatch.setattr(sys, "argv",
+                        ["describe_cohort.py", "--root", str(root), "--cohort", "cohortX"])
+    with pytest.raises(SystemExit) as caught:
+        dc.main()
+    message = str(caught.value)
+    assert "no dataset directory" in message
+    assert "FOA_NIST28_DIR" in message
+
+
+def test_the_environment_variable_is_used_when_it_names_a_real_directory(tmp_path, monkeypatch):
+    """The documented way in - REPRODUCE.md exports it - has to be the one taken."""
+    data = _study(tmp_path, {"w1": list(range(10))})
+    monkeypatch.setenv("FOA_NIST28_DIR", str(data))
+    monkeypatch.setattr(sys, "argv",
+                        ["describe_cohort.py", "--root", str(tmp_path), "--cohort", "cohortX"])
+    assert dc.main() == 0
