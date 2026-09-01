@@ -374,16 +374,19 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | does a blend beat the two cells it was built from? | `compare_arms.py --what blends` |
 | do the winners depend on `w`? | `weight_sensitivity.py --grid both` |
 | are all eight signals present? | `check_signals.py --all` |
-| are the cohorts label-skewed? | `describe_cohort.py --all` |
-| are the seeds sound? | `check_seeds.py jobs/*.txt` |
+| are the cohorts label-skewed? | `describe_cohort.py --all` (reads the dataset: needs `FOA_NIST28_DIR`) |
+| are the seeds sound? | `check_seeds.py $FOA_STUDY_DIR/jobs/*.txt` |
 | is the cohort the same cohort? | `freeze_selection.py verify $FOA_STUDY_DIR` |
 | does every stage read what an earlier stage wrote? | `check_programme.py $FOA_STUDY_DIR/jobs` |
-| how much data does each cohort writer hold, and does it hold every class? | `describe_cohort.py --all --csv $FOA_STUDY_DIR/tables/` |
+| how much data does each cohort writer hold, and does it hold every class? | `describe_cohort.py --all --csv $FOA_STUDY_DIR/tables/` (same) |
 | the whole paper bundle, one command | `report_tables.py --what all --csv $FOA_STUDY_DIR/tables/paper/` |
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
 
-All take `--root $FOA_STUDY_DIR`; all accept `--csv <dir>`.
+The reporting tools all take `--root $FOA_STUDY_DIR` and all accept
+`--csv <dir>`. `check_seeds.py`, `check_programme.py` and
+`freeze_selection.py` are the exception: each takes its path as a positional
+argument, as written above.
 `foa signals` writes to `$FOA_STUDY_DIR/signals/` - three CSVs, a summary JSON
 and one Pareto plot per method - and `stopping_table.py --csv` writes one CSV per
 stage plus `stopping_all.csv`. `docs/STOPPING.md` reads all of it.
@@ -512,12 +515,43 @@ staged copy before packing.
     sha256 405a72c6127b2bec95831d4e0f181967ad38a21d22fb1a9ab861cfbb166665a5
 
 published beside the archive as `Digits_study01_records.tar.gz.sha256`. Paths
-inside are relative to the study root, so
+inside are relative to the study root, so the asset unpacks straight over one -
+but the asset is only half of a study root. The other half is the metadata core
+above, which travels in the clone rather than in the archive. Neither half is a
+study root on its own, and nothing runs until the two are brought together.
 
-    tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
+### Assembling the reviewer tree
 
-is all that stands between a clone and `report_tables.py`, `stopping_table.py` or
-`compare_arms.py` running against the real runs.
+The asset carries the 1,590 `d01_*` run folders and the reference rungs and
+nothing else; the core carries the selection records, fold books, task files and
+tables that every tool reads alongside them. Both are laid out relative to the
+study root, so assembling one is two copies into an empty directory:
+
+```bash
+export FOA_STUDY_DIR=/path/to/Digits_study01        # any empty directory
+mkdir -p "$FOA_STUDY_DIR"
+
+sha256sum -c Digits_study01_records.tar.gz.sha256   # 68,303,506 bytes
+tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
+cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
+```
+
+The result is 5,433 files - the asset's 5,320 plus this directory's 113 - across
+1,610 top-level entries, and every row of
+[§6](#6-which-command-produces-which-claim) runs against it from the repository
+root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
+for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`
+and `weight_sensitivity.py --csv` for their own tables - which is the check that
+the two halves were assembled correctly.
+
+Two things behave differently on such a tree, and neither is a defect.
+`describe_cohort.py` reads the dataset rather than the records, so it needs
+`FOA_NIST28_DIR` and the `fetch_sd19.py` step in [§2](#2-environment-and-data);
+every other row of §6 runs without it. And `foa signals` recomputes the derived
+signal files over 2,470 runs where the machine that ran the study saw 2,471: the
+extra one is a single-task smoke run that predates the stage and was never part
+of it, so it is not in the asset. Every selected arm, oracle and gap comes out
+identical - only the `num_candidates` and `num_allowed` populations shift by one.
 
 **Not published: the weights.** `g0_model`, the five `g0_fold*/global_model` and
 `global_results/fisher_g0` - 51 MB of checkpoints, which answer no question the

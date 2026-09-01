@@ -86,8 +86,10 @@ wrong place for half a gigabyte of machine output that no one will diff.
     68,303,506 bytes
 
 Paths inside it are relative to the study root, so it unpacks over
-`$FOA_STUDY_DIR` and `report_tables.py`, `compare_arms.py` and `stopping_table.py`
-read the result directly. It was sanitised by the same
+`$FOA_STUDY_DIR` - but the asset is only half of a study root and this directory
+is the other half. The two have to be brought together before any tool will run,
+which is three commands: see **Assembling the reviewer tree** in
+`docs/REPRODUCE.md` section 10. The asset was sanitised by the same
 `tools/sanitize_artifacts.py` run over a staged copy before packing, so it
 carries no machine paths either.
 
