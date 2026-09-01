@@ -20,9 +20,10 @@ two hundred retained writers, five-fold cross-validation throughout.
 | Path | Contents |
 |---|---|
 | `src/federated_outlier_adaptation/` | the package and the `foa` CLI (28 subcommands) |
-| `tools/` | task-file generators, screen selectors, the SD19 fetcher, the table generator |
+| `tools/` | task-file generators, screen selectors, the SD19 fetcher, the table generator, the figure-view exporters |
+| `tools/paper_figures/` | the manuscript's seven figures: render only, from the CSV views beside them |
 | `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
-| `tests/` | 1,648 tests, no GPU and no dataset required |
+| `tests/` | 1,773 tests, no GPU and no dataset required |
 | `study/jobs/` | every task file the published study ran, with per-stage READMEs |
 | `study/artifacts/` | the derived artefacts needed to *check* results, incl. both model checkpoints |
 | `study/UPSTREAM.sha256` | checksums of the source data, the packed cache, the models |
@@ -30,8 +31,20 @@ two hundred retained writers, five-fold cross-validation throughout.
 
 `study/artifacts/` is the part that makes this checkable without re-running
 anything: the writer pools and their scores, the three cohorts, all four fold
-books, the g-init and g-0 selection records, the baseline evaluations, and every
-selection table each stage produced — with a `SHA256SUMS` beside them.
+books, the g-init and g-0 selection records, the baseline evaluations, every
+selection table each stage produced, and the ten CSV views the manuscript's
+figures are drawn on — so every figure redraws from a clone, with no dataset,
+no GPU and no release asset:
+
+```bash
+FOA_PAPER_OUT=/tmp/figures python tools/paper_figures/fig_problem.py
+```
+
+The views themselves are built from the published records by
+`tools/export_traces.py`, `tools/export_baseline_views.py` and
+`tools/export_combo_folds.py`, which is what makes the figures evidence rather
+than pictures; [`docs/REPRODUCE.md`](docs/REPRODUCE.md) §6 maps each figure to
+its views, its export command and its script.
 
 **No dataset is redistributed here.** NIST SD19 is downloaded from NIST; this
 repository ships the conversion code, the exact command, and the checksums that
@@ -46,7 +59,7 @@ git clone <this repository> && cd federated-outlier-adaptation
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
-pytest -q tests                              # 1,648 tests, ~1 minute, no GPU
+pytest -q tests                              # 1,773 tests, ~2 minutes, no GPU
 cd study/artifacts && sha256sum -c SHA256SUMS && cd ../..
 ```
 
@@ -80,8 +93,9 @@ slurm/run_tasks.sh study/jobs/d01_p09.txt                 # then for real
 
 1. **[`docs/REPRODUCE.md`](docs/REPRODUCE.md)** — given a number in the paper,
    what to run to get it back. The stage graph with its exact task counts, the
-   command that regenerates each task file byte for byte, the seed scheme, and
-   a claim-to-command table covering every result the manuscript states. Start
+   command that regenerates each task file byte for byte, the seed scheme, a
+   claim-to-command table covering every result the manuscript states, and the
+   figure-to-view-to-script table covering every figure it prints. Start
    here if you want to check something rather than re-run everything.
 2. **[`docs/STUDY_RECORD.md`](docs/STUDY_RECORD.md)** — what the study actually
    ran, generated from the study root rather than written: stages, task counts,

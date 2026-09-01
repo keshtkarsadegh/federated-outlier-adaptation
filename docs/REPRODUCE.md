@@ -382,6 +382,10 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | does every stage read what an earlier stage wrote? | `check_programme.py $FOA_STUDY_DIR/jobs` |
 | how much data does each cohort writer hold, and does it hold every class? | `describe_cohort.py --all --csv $FOA_STUDY_DIR/tables/` (same) |
 | the whole paper bundle, one command | `report_tables.py --what all --csv $FOA_STUDY_DIR/tables/paper/` |
+| the six per-round views, and the two rounds the extreme figure marks | `export_traces.py --root $FOA_STUDY_DIR --out <dir>` |
+| g-0's own training history, and the isolated clients | `export_baseline_views.py --root $FOA_STUDY_DIR --out <dir>` |
+| each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
+| every figure in the manuscript | [below](#and-which-command-produces-which-figure) - two commands per figure |
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
 
@@ -427,6 +431,58 @@ would select on test while claiming validation.
 `A0` and `P0` are the shipped model's own two accuracies, read from
 `g0_perfold_evaluations.json` and `g0_evaluations.json` at selection time, never
 written down. Both terms are therefore differences from doing nothing.
+
+### And which command produces which figure
+
+The figures were the last part of the manuscript still built by hand. They are
+now the same shape as the tables: a tool reads the records and writes a CSV
+*view*, and a script reads the view and renders. Nothing in
+`tools/paper_figures/` opens a run folder, computes an accuracy or knows where
+the study lives, so a figure cannot disagree with the records it is drawn from
+without the view between them disagreeing first.
+
+The ten views ship in `study/artifacts/Digits_study01/tables/paper_figures/`, so
+the second column runs against a clone with no study root assembled at all. The
+first column is what proves them: run against an assembled root ([§10](#10-the-published-records))
+each export reproduces its shipped views byte for byte.
+
+| figure | its views | regenerate the views | render |
+|---|---|---|---|
+| `fig_problem` | `traces_control.csv`, `references.csv` | `export_traces.py --what traces_control`, `report_tables.py --what references` | `python tools/paper_figures/fig_problem.py` |
+| `fig_aggs` | `traces_aggfull.csv` | `export_traces.py --what traces_aggfull` | `python tools/paper_figures/fig_aggs.py` |
+| `fig_regs` | `traces_regfull.csv` | `export_traces.py --what traces_regfull` | `python tools/paper_figures/fig_regs.py` |
+| `fig_blends` | `traces_blends.csv` | `export_traces.py --what traces_blends` | `python tools/paper_figures/fig_blends.py` |
+| `fig_combo` | `traces_combo.csv` | `export_traces.py --what traces_combo` | `python tools/paper_figures/fig_combo.py` |
+| `fig_extremes` | `traces_extreme.csv`, `extreme_stop_rounds.csv` | `export_traces.py --what traces_extreme`, `--what extreme_stop_rounds` | `python tools/paper_figures/fig_extremes.py` |
+| `fig_baselines` | `g0_training.csv`, `isolated_clients.csv`, `references.csv` | `export_baseline_views.py`, `report_tables.py --what references` | `python tools/paper_figures/fig_baselines.py` |
+
+`export_traces.py --what all` writes the first six plus `extreme_stop_rounds.csv`
+in one pass; every export takes `--root $FOA_STUDY_DIR --out <dir>` like the
+reporting tools take `--csv`.
+
+`FOA_PAPER_OUT` says where the PDF and its draft caption are written - without it
+they land beside the script, which is what the manuscript build wants and not
+what a source checkout does. `FOA_PAPER_DATA` says where the views are read from,
+one directory or several separated the way `PATH` is; unset, the scripts find the
+two shipped bundles on their own. `tools/paper_figures/README.md` is the longer
+version of this table.
+
+**WHICH ARMS A FIGURE DRAWS IS READ, NOT TYPED.** Every arm list comes out of the
+frozen selection records - `tables/p12_agg_top3.json` for the server rules,
+`p13_reg_method_winners.json` for one arm per penalty family,
+`p14_hybrid_construction*.json` for each blend and its two parents,
+`p15_stage_winner.json` for the crowned pair, which is split back into its two
+halves through the same two shortlists the cross was emitted from. Naming them in
+the exporter instead would let a figure outlive the selection that put the arm in
+it, which is the failure `compare_arms.py` documents at length for the blends.
+
+**THE FIGURES ARE ON THE VALIDATION BASIS**, `pool_val_accuracies` against
+`source_val_accuracies`, and round 0 of every trace view is the shipped model's
+own two accuracies so that all the arms of a figure begin at one shared point.
+They are therefore not the test-set numbers the tables of §6 report and the two
+must not be quoted against each other; every caption says so. `fig_baselines` is
+the exception and is on test throughout, because the isolation records store test
+evaluations only.
 
 ---
 
@@ -507,10 +563,11 @@ size-reference tasks appear in neither row here.
 
 ## 10. The published records
 
-**In git - `study/artifacts/Digits_study01/`, 5.1 MB.** The metadata core: the
+**In git - `study/artifacts/Digits_study01/`, 5.2 MB.** The metadata core: the
 frozen cohort, the g-0 evaluation books both baselines are measured against, the
-fold books, the outlier and cohort records, every shipped table and CSV, every
-task file that was submitted, and the figures. That is enough to check any claim
+fold books, the outlier and cohort records, every shipped table and CSV - the ten
+views the manuscript's figures are drawn on among them - every task file that was
+submitted, and the figures. That is enough to check any claim
 in the manuscript against a record, and small enough to diff. Its own `README.md`
 maps each artefact to the tool that reads it and names everything excluded, with
 the command that regenerates it. Absolute machine paths are rewritten to
@@ -549,13 +606,14 @@ tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
 cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
 ```
 
-The result is 5,433 files - the asset's 5,320 plus this directory's 113 - across
+The result is 5,448 files - the asset's 5,320 plus this directory's 128 - across
 1,610 top-level entries, and every row of
 [§6](#6-which-command-produces-which-claim) runs against it from the repository
 root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
-for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`
-and `weight_sensitivity.py --csv` for their own tables - which is the check that
-the two halves were assembled correctly.
+for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`,
+`weight_sensitivity.py --csv` and the three `export_*.py` of
+[§6](#and-which-command-produces-which-figure) for their own tables and views -
+which is the check that the two halves were assembled correctly.
 
 Two things behave differently on such a tree, and neither is a defect.
 `describe_cohort.py` reads the dataset rather than the records, so it needs

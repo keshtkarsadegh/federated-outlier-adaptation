@@ -3,7 +3,7 @@
 This directory is the study's **metadata core**: the records that say what was
 selected, what was run, against which rows, and what came out - everything a
 reader needs to check a claim in the manuscript against something other than the
-manuscript. It is 5.1 MB and 112 files besides this one, which is small enough
+manuscript. It is 5.2 MB and 127 files besides this one, which is small enough
 to live in git and be diffed like source.
 
 It is not the study. The study is 1,590 run folders and about 1.9 million files.
@@ -27,6 +27,7 @@ paths and were not touched; only these copies were rewritten.
 | `g0_perfold_evaluations.json` | the shipped model on the cohort's rows - `A0` | `compare_arms.py`, `report_tables.py`, `study_emit.py` |
 | `g0_c5_evaluations.json`, `g0_c10_evaluations.json`, `g0_c20_evaluations.json` | the same two baselines at each federation size | `report_tables.py --what sizes` |
 | `g0_selection.json` | which fold's g-0 was shipped, and why | `study_emit.py`, the trainers' Fisher export |
+| `g0_fold*/global_results/global_metrics.json` | g-0's own training history, per fold | `export_baseline_views.py` |
 | `fold_books/*.foldbook.npz` | the row-level splits every run was scored against | `federated_outlier_adaptation.data.fold_book` |
 | `outliers/*.json`, `outliers/*.csv` | writer scores, the pools, the cohorts, the extreme arrangements | `freeze_selection.py`, `describe_cohort.py`, `check_programme.py` |
 | `tables/p11_*.json`, `tables/p13_reg_method_winners.json` | each method's winner, per schedule | `study_emit.py`, `study_record.py` |
@@ -37,6 +38,9 @@ paths and were not touched; only these copies were rewritten.
 | `tables/cohort_table.*`, `tables/cohort_composition.csv` | who is in the cohort and what they hold | `describe_cohort.py` |
 | `tables/clients_acc_on_g0.json` | the shipped model per cohort client | `study_emit.py`, `analyse_signals_fairness_cost.py` |
 | `tables/paper/*.csv` | the manuscript bundle, one CSV per view | `report_tables.py --what all --csv` |
+| `tables/paper_figures/traces_*.csv`, `extreme_stop_rounds.csv` | the per-round views the figures are drawn on | `export_traces.py`, then `tools/paper_figures/fig_*.py` |
+| `tables/paper_figures/g0_training.csv`, `isolated_clients.csv` | the two baseline views | `export_baseline_views.py`, `fig_baselines.py` |
+| `tables/paper_figures/combos_folds.csv` | each combination against BOTH of its halves | `export_combo_folds.py` |
 | `tables/stopping/*.csv` | what the fixed horizon cost every arm | `stopping_table.py --csv` |
 | `tables/combos.csv`, `composition.csv`, `blends.csv` | the paired differences, folds expanded | `compare_arms.py --csv` |
 | `tables/weight_sensitivity_*.csv` | do the winners survive a different `w`? | `weight_sensitivity.py` |
@@ -55,7 +59,9 @@ with nothing to say which is current.
 ## What is not here, and how to get it
 
 **Checkpoints - 51 MB.** `g0_model`, the five `g0_fold*/global_model`, and
-`global_results/fisher_g0`. These are weights, not records: they cannot be
+`global_results/fisher_g0`. The five `g0_fold*/global_results/global_metrics.json`
+beside them are records rather than weights - the training history the shipped
+model's own figure is drawn from - and they are here. The weights are not: they cannot be
 diffed, they do not answer any question this directory exists to answer, and they
 would be most of the repository's size. `g0_model` is the one artefact that
 cannot be regenerated from what is here - it is the shipped model the whole study
