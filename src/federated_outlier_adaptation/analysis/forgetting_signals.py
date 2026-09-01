@@ -230,6 +230,23 @@ def _pad(series, length: int) -> list[Optional[float]]:
     return values + [None] * (length - len(values))
 
 
+def _run_name(path: Path, root: Path, name: str) -> str:
+    """
+    A run's identity: where its file sits under the scanned root, plus the job.
+
+    ``path.parent.name`` is the scenario folder - ``concurrent_delta`` or
+    ``sequential_weights`` - and it is the same string under every arm of every
+    stage.  A name built from it alone collapsed a whole study onto four labels:
+    the per-run correlation rows could not be told apart, and the configuration
+    the selection picked was reported as the name of a scenario folder.
+    """
+    try:
+        parent = path.parent.relative_to(root)
+    except ValueError:  # pragma: no cover - a file from outside the root
+        parent = Path(path.parent.name)
+    return f"{parent.as_posix()}/{name}"
+
+
 def _method_of(config: dict, name: str) -> str:
     """Grouping key of a run: trainer plus scenario/metadata when recorded."""
     trainer = (config or {}).get("trainer")
@@ -302,7 +319,7 @@ def collect_trajectories(root) -> list[RunTrajectory]:
                 accuracies = _job_accuracies(path, name)
                 if accuracies is not None:
                     block = {**block, "accuracies": accuracies}
-            run = _trajectory_from_block(f"{path.parent.name}/{name}", str(path), block)
+            run = _trajectory_from_block(_run_name(path, root, name), str(path), block)
             if run is not None:
                 runs.append(run)
 
@@ -323,7 +340,7 @@ def collect_trajectories(root) -> list[RunTrajectory]:
             merged["config"] = block
             if name in accuracies:
                 merged.setdefault("accuracies", accuracies[name])
-            run = _trajectory_from_block(f"{path.parent.name}/{name}", str(path), merged)
+            run = _trajectory_from_block(_run_name(path, root, name), str(path), merged)
             if run is not None:
                 runs.append(run)
 

@@ -329,6 +329,21 @@ def test_collect_reads_both_stored_shapes(results_root):
     assert all(run.forgetting(on="test")[-1] is not None for run in runs)
 
 
+def test_a_run_is_named_by_where_it_sits_under_the_root(results_root):
+    """
+    The scenario folder is the same string under every arm of every stage -
+    ``concurrent_delta`` or ``sequential_weights`` - so a name built from it
+    alone gives every run in a study one of four labels, and the per-run rows of
+    every table become unattributable. The path under the root is what tells two
+    runs apart.
+    """
+    names = {run.name for run in analysis.collect_trajectories(results_root)}
+    assert names == {
+        "unit_final_BaseTrainer_grid_search/concurrent_weights/base_agg_a",
+        "unit_grid_search/concurrent_weights/cfg_b",
+    }
+
+
 def test_a_summary_without_its_job_file_still_reads(results_root):
     """Only the source test target is lost; everything else survives."""
     job = results_root / "unit_final_BaseTrainer_grid_search" / "concurrent_weights"
