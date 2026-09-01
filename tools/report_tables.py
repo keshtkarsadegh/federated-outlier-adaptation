@@ -11,6 +11,8 @@ programme has already written.
     python tools/report_tables.py --root "$FOA_STUDY_DIR" --what references
     python tools/report_tables.py --root "$FOA_STUDY_DIR" --what agg-winners
     python tools/report_tables.py --root "$FOA_STUDY_DIR" --what reg-winners
+    python tools/report_tables.py --root "$FOA_STUDY_DIR" --what sizes
+    python tools/report_tables.py --root "$FOA_STUDY_DIR" --what extremes
     python tools/report_tables.py --root "$FOA_STUDY_DIR" --what all --csv out/
 
 THE RULE THE TABLES ARE ORDERED BY. A configuration is worth what it added on
@@ -59,6 +61,27 @@ def baselines(root: Path) -> tuple:
             "against them and they are not guessed."
         )
     return a0, p0
+
+
+#: The settings the selected arms were carried into, in the order they are
+#: read: the study's own federation first, then the two directions it was
+#: moved in. Each is a table of its own rather than four rows of one, because
+#: the arms mean the same thing in each and the settings do not - putting them
+#: in one table would invite a reader to rank across federations, which is the
+#: one comparison none of these runs supports.
+#: Named by the run-folder stem the stage writes under, so ``--study-tag``
+#: reaches these tables the way it reaches every other one.
+CARRY_SETTINGS = (
+    ("c10d10", "TEN CLIENTS, ONE DROPPED - nine of ten, the study's own setting"),
+    ("five", "FIVE CLIENTS, ONE DROPPED - four of five"),
+    ("c20d10", "TWENTY CLIENTS, TWO DROPPED - eighteen of twenty"),
+    ("c20d20", "TWENTY CLIENTS, FOUR DROPPED - sixteen of twenty"),
+)
+
+#: The three extreme arrangements. One prefix, three arms; double and dual hold
+#: precisely the same rows and differ only in whether the aggregation ever sees
+#: them separately.
+EXTREME_STEM = "extreme_"
 
 
 # ------------------------------------------------------------------ runs
@@ -224,7 +247,8 @@ def main() -> int:
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--what", default="all",
                     choices=("all", "references", "agg-screen", "agg-winners",
-                             "reg-screen", "reg-winners", "combos"))
+                             "reg-screen", "reg-winners", "combos",
+                             "sizes", "extremes"))
     ap.add_argument("--tag", default="c10", help="Reference cohort tag.")
     ap.add_argument("--study-tag", default="d01")
     ap.add_argument("--csv", type=Path, default=None, help="Also write CSVs here.")
@@ -234,9 +258,24 @@ def main() -> int:
     t = args.study_tag
     wanted = {"all": ("references", "agg-screen", "agg-winners",
                       "reg-screen", "reg-winners",
-                      "combos")}.get(args.what, (args.what,))
+                      "combos", "sizes", "extremes")}.get(args.what, (args.what,))
 
     for what in wanted:
+        # ONE TABLE PER SETTING. The arms are the same four everywhere, so a
+        # single table would read as a ranking across federations - and no run
+        # here supports that comparison: a five-client cohort and a
+        # twenty-client one are different populations of writers, not the same
+        # measurement at two sizes.
+        if what == "sizes":
+            for name, title in CARRY_SETTINGS:
+                rows = summarise(read_runs(args.root, f"{t}_{name}_"), a0, p0)
+                if not rows:
+                    print(f"\n{title}\n  nothing on disk yet")
+                    continue
+                show(rows, title, a0, p0)
+                if args.csv:
+                    write_csv(rows, args.csv / f"sizes_{name}.csv")
+            continue
         if what == "references":
             rows = references(args.root, a0, p0, args.tag)
             title = "THE REFERENCE RUNGS"
@@ -247,6 +286,9 @@ def main() -> int:
                 "reg-screen":  (f"{t}_reg_",     "REGULARISATION SCREEN (short horizon)"),
                 "reg-winners": (f"{t}_regfull_", "REGULARISATION WINNERS (full horizon)"),
                 "combos":      (f"{t}_combo_",   "COMBINATIONS: server rule x client penalty (full horizon)"),
+                "extremes":    (f"{t}_{EXTREME_STEM}",
+                                                 "THE EXTREME CASES (full participation): "
+                                                 "one writer, two writers, and the two merged into one client"),
             }[what]
             rows = summarise(read_runs(args.root, prefix), a0, p0)
         if not rows:
