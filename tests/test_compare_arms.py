@@ -204,6 +204,129 @@ def test_the_family_prefix_stays_authoritative(tmp_path):
     assert found["R"][1] == pytest.approx(ca.score(0.90, 0.99, 0.8225, 0.9986))
 
 
+# --------------------------------------------------------------------------- #
+# the blend, against both of the cells it was built from
+# --------------------------------------------------------------------------- #
+def _hybrid_record(root: Path, family: str, kd: str, fisher: str,
+                   mixes=(0.5,)) -> None:
+    """One family's construction record, under the literal name it is read by."""
+    name = ("p14_hybrid_construction_sequential.json" if family == "sequential"
+            else "p14_hybrid_construction.json")
+    (root / "tables").mkdir(exist_ok=True)
+    (root / "tables" / name).write_text(json.dumps({
+        "kd_winner": kd, "fisher_winner": fisher, "family": family,
+        "mixes": list(mixes), "lam": 0.1, "T": 2.0,
+    }))
+
+
+def test_a_blend_is_differenced_against_each_parent_not_the_better_one(tmp_path):
+    """
+    Both directions in one study: cleared on every fold, and lost on every fold.
+
+    A blend is offered as a line between two named methods, so the interesting
+    claim is about both ends at once. Differencing against the better parent
+    only - the way a combination is read - would report this blend as a clean
+    win and never mention that its Fisher parent beats it by three points on
+    every fold.
+    """
+    _hybrid_record(tmp_path, "concurrent", "K", "F")
+    (tmp_path / "g0_perfold_evaluations.json").write_text(
+        json.dumps([{"accuracy": 0.8225}]))
+    (tmp_path / "g0_evaluations.json").write_text(json.dumps([{"accuracy": 0.9986}]))
+
+    for fold, (blend, kd, fisher) in enumerate(
+            [(0.90, 0.88, 0.93), (0.91, 0.89, 0.94), (0.92, 0.90, 0.95)], start=1):
+        # the blend ran both schedules in one task and is named without a family
+        _both_schedules(tmp_path, "d01_regfull_", "hybrid_mix0p5", fold,
+                        concurrent=blend, sequential=0.5, preservation=0.99)
+        _run(tmp_path, "d01_regfull_concurrent_", "K", fold, "concurrent", kd, 0.99)
+        _run(tmp_path, "d01_regfull_concurrent_", "F", fold, "concurrent", fisher, 0.99)
+
+    rows = ca.blends(tmp_path, 0.8225, 0.9986)
+    assert [(r["left"], r["right"]) for r in rows] == [
+        ("hybrid_mix0p5", "K"), ("hybrid_mix0p5", "F")]
+    assert not any(r["missing"] for r in rows)
+
+    against_kd, against_fisher = rows
+    assert against_kd["diffs"] == pytest.approx([2.0, 2.0, 2.0])
+    assert against_kd["all_positive"] is True
+    assert against_fisher["diffs"] == pytest.approx([-3.0, -3.0, -3.0])
+    assert against_fisher["all_positive"] is False
+    assert against_fisher["consistent"] is True
+
+
+def test_each_schedule_is_priced_against_its_own_two_winners(tmp_path):
+    """
+    The blend is a per-family object, and the two schedules blended different
+    cells. A view that read one record for both would difference the sequential
+    blend against the concurrent selection's halves - parents it never had.
+    """
+    _hybrid_record(tmp_path, "concurrent", "CK", "CF")
+    _hybrid_record(tmp_path, "sequential", "SK", "SF")
+    (tmp_path / "g0_perfold_evaluations.json").write_text(
+        json.dumps([{"accuracy": 0.8225}]))
+    (tmp_path / "g0_evaluations.json").write_text(json.dumps([{"accuracy": 0.9986}]))
+
+    for fold in (1, 2, 3):
+        _both_schedules(tmp_path, "d01_regfull_", "hybrid_mix0p5", fold,
+                        concurrent=0.90, sequential=0.70, preservation=0.99)
+        _both_schedules(tmp_path, "d01_regfull_", "hybrid_seq_mix0p5", fold,
+                        concurrent=0.70, sequential=0.90, preservation=0.99)
+        for cell, value in (("CK", 0.88), ("CF", 0.89)):
+            _run(tmp_path, "d01_regfull_concurrent_", cell, fold, "concurrent",
+                 value, 0.99)
+        for cell, value in (("SK", 0.86), ("SF", 0.87)):
+            _run(tmp_path, "d01_regfull_sequential_", cell, fold, "sequential",
+                 value, 0.99)
+
+    rows = ca.blends(tmp_path, 0.8225, 0.9986)
+    # the sequential blend carries the seq_ tag its emitter gave it, and each
+    # family's rows name that family's two winners and no others
+    assert [(r["family"], r["left"], r["right"]) for r in rows] == [
+        ("concurrent", "hybrid_mix0p5", "CK"),
+        ("concurrent", "hybrid_mix0p5", "CF"),
+        ("sequential", "hybrid_seq_mix0p5", "SK"),
+        ("sequential", "hybrid_seq_mix0p5", "SF"),
+    ]
+    assert not any(r["missing"] for r in rows)
+    # each blend is scored on its own schedule's payload, not the one beside it
+    assert rows[0]["diffs"] == pytest.approx([2.0, 2.0, 2.0])
+    assert rows[2]["diffs"] == pytest.approx([4.0, 4.0, 4.0])
+
+
+def test_a_blend_with_no_finals_says_so_rather_than_being_dropped(tmp_path):
+    """NO PAIRED RESULT is a statement; a silently missing row is not."""
+    _hybrid_record(tmp_path, "concurrent", "K", "F", mixes=(0.25, 0.5))
+    (tmp_path / "g0_perfold_evaluations.json").write_text(
+        json.dumps([{"accuracy": 0.8225}]))
+    (tmp_path / "g0_evaluations.json").write_text(json.dumps([{"accuracy": 0.9986}]))
+    for fold in (1, 2):
+        _both_schedules(tmp_path, "d01_regfull_", "hybrid_mix0p5", fold,
+                        concurrent=0.90, sequential=0.5, preservation=0.99)
+        _run(tmp_path, "d01_regfull_concurrent_", "K", fold, "concurrent", 0.88, 0.99)
+        _run(tmp_path, "d01_regfull_concurrent_", "F", fold, "concurrent", 0.89, 0.99)
+
+    rows = ca.blends(tmp_path, 0.8225, 0.9986)
+    assert [(r["left"], r["right"], r["missing"]) for r in rows] == [
+        ("hybrid_mix0p25", "K", True),
+        ("hybrid_mix0p25", "F", True),
+        ("hybrid_mix0p5", "K", False),
+        ("hybrid_mix0p5", "F", False),
+    ]
+
+
+def test_the_parents_are_never_inferred_from_the_folder_names(tmp_path):
+    """
+    Without a construction record there is no saying which two cells a blend was
+    built from, and guessing would compare it against parents it never had.
+    """
+    (tmp_path / "g0_perfold_evaluations.json").write_text(
+        json.dumps([{"accuracy": 0.8225}]))
+    (tmp_path / "g0_evaluations.json").write_text(json.dumps([{"accuracy": 0.9986}]))
+    with pytest.raises(SystemExit, match="construction record"):
+        ca.blends(tmp_path, 0.8225, 0.9986)
+
+
 def test_both_layouts_pair_in_the_cross_and_in_the_composition(tmp_path):
     """Neither view may report a missing half for a run that exists."""
     _study(tmp_path, ["R", "B"])

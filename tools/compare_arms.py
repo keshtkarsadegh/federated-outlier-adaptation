@@ -28,11 +28,19 @@ cannot be.
 
     python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what combos
     python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what composition
+    python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what blends
     python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what all --csv out/
 
 ``combos``       each combination minus its better half.
 ``composition``  each client penalty minus each server rule - the comparison
                  that asks which half of the update the preservation comes from.
+``blends``       each kd+fisher blend minus EACH of the two cells it was built
+                 from, rather than the better of them.  A blend is offered as a
+                 line between two named methods, so the claim it invites is
+                 about both ends at once, and reading its means the way the
+                 combination stage was first read says all six points beat both
+                 parents.  Paired, four of the six clear their KD parent on
+                 every fold and none clears its Fisher parent.
 
 WHERE THE HALVES ARE READ FROM.  A standalone penalty is looked for under the
 schedule it was selected on and, failing that, under the bare prefix the blends
@@ -277,6 +285,76 @@ def composition(root: Path, a0: float, p0: float) -> List[dict]:
     return rows
 
 
+def blends(root: Path, a0: float, p0: float) -> List[dict]:
+    """
+    Each kd+fisher blend minus EACH of the two cells it was built from.
+
+    WHY BOTH PARENTS AND NOT THE BETTER ONE.  :func:`combos` differences against
+    the better half because a combination is offered as an improvement on what
+    you already had, and what you already had is the better half.  A blend is
+    offered as something else - a line between two named methods, whose whole
+    interest is that it is meant to dominate both ends of it - so differencing
+    against the better parent only would answer the easier question and leave
+    the claim the blend actually makes untested.  Both parents get their own
+    row, and a blend that clears one and not the other says so on its face.
+
+    WHERE THE PARENTS COME FROM.  The construction records name them, one record
+    per schedule: the blend is a per-family object and the two schedules blended
+    different winners, so reading the parents from anywhere else would price one
+    schedule's blend against the other schedule's halves.
+
+    AN ASYMMETRY THAT HAS TO TRAVEL WITH THESE ROWS.  ``mix = 1`` reproduces the
+    KD parent exactly; ``mix = 0`` does NOT reproduce the Fisher parent, because
+    the blend inherits the KD parent's coefficient and not the Fisher parent's.
+    So a KD row compares the line against a real endpoint of itself, and a
+    Fisher row compares it against a cell the line never reaches.  Both are
+    worth having, they are not the same statement, and that is why the two are
+    never collapsed into one.
+    """
+    # study_emit is what names a blend's cells and reads its two parents, and
+    # naming them a second time here is how the folders on disk stop being
+    # findable.  Imported inside the view rather than at the top so the other
+    # two keep running in a clone where that module's package is not installed.
+    from study_emit import _hybrid_records, hybrid_id
+
+    records = [(family, path) for family, path in _hybrid_records(root)
+               if path.is_file()]
+    if not records:
+        raise SystemExit(
+            f"FATAL: no blend construction record under {root / 'tables'} "
+            "(p14_hybrid_construction.json, "
+            "p14_hybrid_construction_sequential.json). Which cells a blend "
+            "mixed, and which two cells it was built from, are written there "
+            "and nowhere else; inferring them from folder names would compare "
+            "a blend against parents it never had."
+        )
+
+    rows: List[dict] = []
+    for family, record_path in records:
+        record = json.loads(record_path.read_text())
+        mixes = record.get("mixes")
+        if not mixes:
+            raise SystemExit(
+                f"FATAL: {record_path} names no mixes, so which blend cells it "
+                "produced cannot be known."
+            )
+        reg_alone = penalties(root, family, a0, p0)
+        parents = [record["kd_winner"], record["fisher_winner"]]
+        for mix in mixes:
+            cell = hybrid_id(family, mix)
+            for parent in parents:
+                result = paired(reg_alone.get(cell, {}), reg_alone.get(parent, {}))
+                if result is None:
+                    rows.append({"family": family, "left": cell,
+                                 "right": parent, "missing": True})
+                    continue
+                result.update({"family": family, "left": cell, "right": parent,
+                               "left_mean": st.mean(reg_alone[cell].values()),
+                               "missing": False})
+                rows.append(result)
+    return rows
+
+
 def show(rows: List[dict], title: str) -> None:
     """One table per family, ordered by the mean difference."""
     for family in FAMILIES:
@@ -330,7 +408,8 @@ def write_csv(rows: List[dict], path: Path) -> None:
 
 
 WHAT = {"combos": (combos, "COMBINATION minus its better half"),
-        "composition": (composition, "PENALTY minus SERVER RULE, each alone")}
+        "composition": (composition, "PENALTY minus SERVER RULE, each alone"),
+        "blends": (blends, "BLEND minus each of its two parents")}
 
 
 def main() -> int:

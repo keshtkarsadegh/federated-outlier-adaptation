@@ -799,7 +799,7 @@ where the concurrent selection chose 8, and 0.0101 where the sequential one chos
 interpolation between two measured methods**, and a reading that treats `mix` as
 a dial from one winner to the other is wrong.
 
-### Both families beat both of their parents
+### Best mean score, best preservation - and it clears only one parent
 
 Each blend against the two cells it was built from, on its own schedule:
 
@@ -808,10 +808,35 @@ Each blend against the two cells it was built from, on its own schedule:
 | concurrent (parallel) | 9.21 | 9.41 | **9.62** | 7.98 | 9.13 |
 | sequential (cyclic) | 9.62 | 10.31 | **10.69** | 8.64 | 9.40 |
 
-Six of six blend points beat both parents, and the score rises monotonically with
-`mix` in both families. Given the caveat above, that monotonicity is the honest
-statement of the effect: adding the KD winner's own term to a Fisher penalty
-*held at the KD winner's coefficient* helps, all the way up.
+Six of six blend points have a higher **mean** score than both of their parents,
+and the mean rises monotonically with `mix` in both families. This section used
+to stop there and say the blends beat both parents. That is the same reading
+that made eleven of eighteen combinations "beat both halves", and it does not
+survive being paired by fold:
+
+    python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what blends
+
+| the blend against | positive on EVERY fold | the six means |
+|---|---|---|
+| its **KD** parent | **5 of 6** | +0.98 to +2.05 points |
+| its **Fisher** parent | **0 of 6** | +0.08 to +1.28 points |
+
+So the honest statement is narrower than the old one and in three parts. The
+blends hold the best mean score in both families and the nine best preservation
+figures in the table (below). Against the KD parent the advantage is on every
+fold in five of the six points, the exception being `hybrid_seq_mix0.25`, which
+loses fold 1 by 1.2. Against the Fisher parent nothing is shown at all: **not
+one** of the six is ahead on all five folds, all three concurrent blends lose
+fold 1 to `fisher_lam8` by 2.6 to 3.3 points - larger than any of their mean
+gains - and `hybrid_seq_mix0.25` loses two folds to `fisher_lam0.1`.
+
+The asymmetry is expected from the caveat above and is worth reading with it.
+`mix = 1` reproduces the KD parent, so the KD rows compare the line against a
+real endpoint of itself; `mix = 0` does not reproduce the Fisher parent, so the
+Fisher rows compare it against a cell the line never reaches. What the paired
+numbers support is the monotonicity - adding the KD winner's own term to a
+Fisher penalty *held at the KD winner's coefficient* helps, all the way up - and
+not a claim that the blend is better than Fisher regularisation as selected.
 
 ### What the blends are actually good at is preservation
 
