@@ -81,10 +81,12 @@ def main():
         is measured against --- the plain federated-averaging control, the
         black dashed curve, and the shipped model's own accuracy, the dotted
         line every arm starts from --- and the three rules are split across
-        the two rows so no two of them overlap in one panel.  The anchor (top
-        row, blue) is the one rule that pulls clear of the control on
-        preservation; the damped server step (top, green) and uniform
-        weighting (bottom, purple) ride the control on both axes.  Validation
+        the two rows so no two of them overlap in one panel.  To read it: a rule helps only where
+        its curve rises above the black dashed control --- the anchor (top
+        row, blue) is the one rule that does so on preservation, from about
+        round 30, while the damped server step (top, green) and uniform
+        weighting (bottom, purple) stay on the control on both axes, and on
+        adaptation every rule ends where the control ends.  Validation
         basis, so the endpoints are not the test-set figures the tables
         report.
         """)
