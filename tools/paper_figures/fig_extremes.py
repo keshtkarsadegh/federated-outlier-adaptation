@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""The three smallest federations, and when they should have stopped.
+"""The two smallest federations, and when they should have stopped.
 
-At one or two clients there is nothing left to average, and the fixed
-hundred-round budget stops being a schedule and becomes a hazard: every
-arrangement reaches its best trade in the first tens of rounds and then spends
+At one or two clients there is next to nothing left to average, and the fixed
+hundred-round budget stops being a schedule and becomes a hazard: both
+arrangements reach their best trade in the first tens of rounds and then spend
 the rest of the horizon taking the source model apart.  Two rounds are marked
 on every curve.  The filled marker is the ORACLE stop --- the round that
 maximises the study's own selection score along the validation trace, which
@@ -25,7 +25,6 @@ from matplotlib.lines import Line2D
 
 
 ARMS = [
-    ("single", fs.VERMILION, "-"),
     ("dual", fs.BLUE, (0, (4, 1.6))),
     ("double", fs.GREEN, (0, (1, 1.4))),
 ]
@@ -69,24 +68,24 @@ def main():
 
     fs.save(figure, "fig_extremes")
     fs.caption("fig_extremes", """
-        The three smallest arrangements --- one client holding the cohort's
-        worst writer, two clients holding its worst two, and those same two
-        writers' rows merged into a single client --- over the full
-        hundred-round budget: accuracy on the source population (left,
-        preservation) and on the outlier cohort (right, adaptation), fold-mean
-        over the five folds on the validation halves, with round 0 the shipped
-        model itself.  Note the wider vertical scale: these curves leave the
-        range the earlier figures are drawn on.  A filled marker gives each
-        arm's oracle stop, the round maximising the study's selection score
-        along the trace, and an open marker the round the one permitted
-        stopping rule fires, a fall of more than five points in the stored
-        proxy-set accuracy.  The reader should see that adaptation is
-        essentially finished by the filled marker in every arm, so everything
-        the source curve loses to the right of it was spent for nothing, and
-        that the rule always fires well after the oracle --- late enough that
-        most of the damage is already done, which is the honest limit of what
-        the stored signals support.  Validation basis, so the endpoints are not
-        the test-set figures the tables report.
+        The two smallest arrangements --- the cohort's worst two writers as
+        two clients, and those same two writers' rows merged into a single
+        client --- over the full hundred-round budget: accuracy on the source
+        population (left, preservation) and on the outlier cohort (right,
+        adaptation), fold-mean over the five folds on the validation halves,
+        with round 0 the shipped model itself.  The two hold identical rows and
+        differ only in whether the aggregation ever sees a client boundary.
+        Note the wider vertical scale: these curves leave the range the earlier
+        figures are drawn on.  A filled marker gives each arm's oracle stop,
+        the round maximising the study's selection score along the trace, and
+        an open marker the round the one permitted stopping rule fires, a fall
+        of more than five points in the stored proxy-set accuracy.  The reader
+        should see that adaptation is essentially finished by the filled marker
+        in both arms, so everything the source curve loses to the right of it
+        was spent for nothing, and that the rule always fires well after the
+        oracle --- late enough that most of the damage is already done, which
+        is the honest limit of what the stored signals support.  Validation
+        basis, so the endpoints are not the test-set figures the tables report.
         """)
 
 

@@ -705,13 +705,12 @@ def t_extreme(extr, stopx):
 
     return block(
         "tab:extremes",
-        "The three smallest federations, all running the crowned "
+        "The two smallest federations, both running the crowned "
         "configuration unchanged at full participation. \\emph{"
-        + EXTREME["single"] + "} federates the worst writer alone; \\emph{"
         + EXTREME["double"] + "} gives the two worst writers a client each; "
         "\\emph{" + EXTREME["dual"] + "} merges the same rows into one client, "
-        "so the last two hold byte-identical data and differ only in whether "
-        "the aggregation ever sees a client boundary.",
+        "so the two hold byte-identical data and differ only in whether the "
+        "aggregation ever sees a client boundary.",
         "lrrrrcr",
         "Case & Adapt. & Pres. & Score & Final score & $r^{\\star}$ & "
         "Oracle score \\\\\n"

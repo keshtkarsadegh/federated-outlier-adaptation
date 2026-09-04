@@ -188,7 +188,6 @@ def _rules():
     rule(r"balanced", "FedAvg + KD/EWC blend", "Balanced")
     rule(r"sequential", "Cyclic + FedNTD", "Cyclic arm")
     rule(r"control", "FedAvg (control)", "Control")
-    rule(r"single", "Single writer", "Single writer")
     rule(r"double", "Two writers", "Two writers")
     rule(r"dual", "Merged pair", "Merged pair")
     return R
@@ -402,7 +401,7 @@ SIGNAL_SHORT = {
 #: The carried arms and the extreme federations, as label()/short() give them.
 ARM = {k: label(k) for k in ("winner", "balanced", "sequential", "control")}
 ARM_SHORT = {k: short(k) for k in ("winner", "balanced", "sequential", "control")}
-EXTREME = {k: label(k) for k in ("single", "double", "dual")}
+EXTREME = {k: label(k) for k in ("double", "dual")}
 
 #: The runner's word for a round shape, and the manuscript's.
 SCHEDULE = {"concurrent": "parallel", "sequential": "cyclic"}
