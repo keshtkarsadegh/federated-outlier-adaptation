@@ -66,8 +66,6 @@ def main():
     right.annotate(fs.label(ARM), (62, cohort[62]), textcoords="offset points",
                    xytext=(0, -5), ha="center", va="top", fontsize=7,
                    color=fs.VERMILION)
-    fs.mark_start(left, shipped_src, text=None)
-    fs.mark_start(right, shipped_cohort, text=None)
 
     fs.save(figure, "fig_problem")
     fs.caption("fig_problem", """

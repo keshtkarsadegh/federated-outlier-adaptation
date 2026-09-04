@@ -61,7 +61,6 @@ def main():
             for arm, colour, style, width, z in arms + [CONTROL]:
                 fs.draw(axis, rounds, series[arm][key], colour, style,
                         width, z=z)
-            fs.mark_start(axis, start, text=None)
     for axis in axes[1]:
         axis.set_xlabel("Round")
 

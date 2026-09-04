@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""The two smallest federations, and when they should have stopped.
+"""The three smallest federations, and when they should have stopped.
 
-At one or two clients there is next to nothing left to average, and the fixed
-hundred-round budget stops being a schedule and becomes a hazard: both
-arrangements reach their best trade in the first tens of rounds and then spend
+At one or two clients there is nothing left to average, and the fixed
+hundred-round budget stops being a schedule and becomes a hazard: every
+arrangement reaches its best trade in the first tens of rounds and then spends
 the rest of the horizon taking the source model apart.  Two rounds are marked
 on every curve.  The filled marker is the ORACLE stop --- the round that
 maximises the study's own selection score along the validation trace, which
@@ -25,8 +25,8 @@ from matplotlib.lines import Line2D
 
 
 ARMS = [
-    ("dual", fs.BLUE, (0, (4, 1.6))),
-    ("double", fs.GREEN, (0, (1, 1.4))),
+    ("dual", fs.BLUE, "-"),
+    ("double", fs.GREEN, (0, (4, 1.6))),
 ]
 
 
@@ -52,40 +52,29 @@ def main():
             axis.plot([rule], [values[rule]], marker="s", markersize=4.6,
                       markerfacecolor="white", markeredgecolor=colour,
                       markeredgewidth=0.5, linestyle="none", zorder=9)
-    fs.mark_start(left, series[ARMS[0][0]]["src"][0], text=None)
-    fs.mark_start(right, series[ARMS[0][0]]["cohort"][0], text=None)
-
-    left.legend(handles=fs.handles([(fs.label(a), c, s) for a, c, s in ARMS]),
-                loc="lower left", bbox_to_anchor=(-0.01, -0.02))
-    markers = [
+    handles = fs.handles([(fs.label(a), c, s) for a, c, s in ARMS]) + [
         Line2D([], [], marker="o", markersize=4.2, color=fs.GREY,
-               linestyle="none", label="oracle stop"),
+               linestyle="none", label="best round"),
         Line2D([], [], marker="s", markersize=4.6, markerfacecolor="white",
                markeredgecolor=fs.GREY, markeredgewidth=0.5, linestyle="none",
-               label="rule fires"),
+               label="early stop fires"),
     ]
-    right.legend(handles=markers, loc="lower right", bbox_to_anchor=(1.01, -0.02))
+    figure.legend(handles=handles, loc="lower center", ncol=4,
+                  columnspacing=1.4, bbox_to_anchor=(0.5, 0.0))
 
-    fs.save(figure, "fig_extremes")
+    fs.save(figure, "fig_extremes", rect=(0, 0.10, 1, 1))
     fs.caption("fig_extremes", """
-        The two smallest arrangements --- the cohort's worst two writers as
-        two clients, and those same two writers' rows merged into a single
-        client --- over the full hundred-round budget: accuracy on the source
-        population (left, preservation) and on the outlier cohort (right,
-        adaptation), fold-mean over the five folds on the validation halves,
-        with round 0 the shipped model itself.  The two hold identical rows and
-        differ only in whether the aggregation ever sees a client boundary.
-        Note the wider vertical scale: these curves leave the range the earlier
-        figures are drawn on.  A filled marker gives each arm's oracle stop,
-        the round maximising the study's selection score along the trace, and
-        an open marker the round the one permitted stopping rule fires, a fall
-        of more than five points in the stored proxy-set accuracy.  The reader
-        should see that adaptation is essentially finished by the filled marker
-        in both arms, so everything the source curve loses to the right of it
-        was spent for nothing, and that the rule always fires well after the
-        oracle --- late enough that most of the damage is already done, which
-        is the honest limit of what the stored signals support.  Validation
-        basis, so the endpoints are not the test-set figures the tables report.
+        The two extreme arrangements under the fixed hundred-round budget,
+        both running the crowned configuration at full participation: the two
+        worst-served writers held as two clients, and the same writers' rows
+        merged into one client, so the two hold identical data and differ
+        only in whether the aggregation ever sees a client boundary.
+        Accuracy on the source population (left) and on the two writers' own
+        rows (right), fold-mean on the validation halves.  Filled markers
+        give each arrangement's best round by the selection score; open
+        markers the round the early-stopping rule fires.  Adaptation is
+        complete at the filled marker while preservation is still near the
+        shipped model; every round after only destroys.
         """)
 
 

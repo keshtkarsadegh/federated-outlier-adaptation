@@ -59,8 +59,6 @@ def main():
                     z=z)
             fs.draw(right, rounds, series[arm]["cohort"], colour, style,
                     width, z=z)
-        fs.mark_start(left, series[arms[0][0]]["src"][0], text=None)
-        fs.mark_start(right, series[arms[0][0]]["cohort"][0], text=None)
     for axis in axes[1]:
         axis.set_xlabel("Round")
 

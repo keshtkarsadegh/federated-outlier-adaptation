@@ -68,7 +68,7 @@ hand-maintained on purpose and the generator never touches them:
 | `\nBadFraction`, `\nGoodPoolSize`, `\nDigitRows`, `\nDigitWriters`, `\nSamplesPerClassPerWriter`, `\nMacsPerImage`, `\nOldSize`, `\nOldMinSamples`, `\nLocalEpochs`, `\nBatchSize` | 10 | protocol constants — configuration the study was *given*, not a measurement it produced, so no view carries them |
 | `\nProxySamples`, `\nProxyAccStart`, `\nProxyAccEnd` | 3 | measurements of the public proxy set whose source has not been extracted into a view yet |
 
-Everything else — 179 macros — is generated, and each one carries a trailing
+Everything else — 182 macros — is generated, and each one carries a trailing
 comment naming the CSV file, the row and the column it was read from, so any
 number in the paper is traceable to a file without leaving the manuscript.
 
@@ -178,5 +178,5 @@ differed.
 | `figstyle.py` | the shared canvas, palette, limits and CSV readers |
 | `paper_names.py` | run-record identifier to published method name, the one translation |
 | `fig_*.py` | one figure each: render only, no arithmetic |
-| `make_numbers.py` | the generated block of `numbers.tex`: 179 macros, each with its cell |
+| `make_numbers.py` | the generated block of `numbers.tex`: 182 macros, each with its cell |
 | `make_paper_tables.py` | twelve `tables/*.tex`, every printed cell checked against its CSV |

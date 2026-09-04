@@ -379,8 +379,30 @@ def build():
                                        for view in (agg, regu, combo) for r in view)),
         "max col score over agg-winners.csv, reg-winners.csv, combos.csv, in points")
     esr = rows("extreme_stop_rounds.csv")
-    put("nDualOracleScore", pts(100 * f(pick(esr, arm="dual"), "oracle_score")),
+    dual = pick(esr, arm="dual")
+    doub = pick(esr, arm="double")
+    put("nDualOracleScore", pts(100 * f(dual, "oracle_score")),
         "extreme_stop_rounds.csv, row dual (the merged pair), col oracle_score, in points")
+    put("nDoubleOracleScore", pts(100 * f(doub, "oracle_score")),
+        "extreme_stop_rounds.csv, row double (two writers), col oracle_score, in points")
+    put("nDualOracleAdapt", acc(f(dual, "oracle_cohort")),
+        "extreme_stop_rounds.csv, row dual, col oracle_cohort")
+    put("nDualOraclePres", acc(f(dual, "oracle_src")),
+        "extreme_stop_rounds.csv, row dual, col oracle_src")
+    put("nDoubleSatRound", "%d" % int(f(doub, "oracle_round")),
+        "extreme_stop_rounds.csv, row double, col oracle_round")
+    put("nDualRuleRound", "%d" % int(f(dual, "rule_round")),
+        "extreme_stop_rounds.csv, row dual, col rule_round")
+    put("nDoubleRuleRound", "%d" % int(f(doub, "rule_round")),
+        "extreme_stop_rounds.csv, row double, col rule_round")
+    put("nDualRuleScore", pts(100 * f(dual, "rule_score")),
+        "extreme_stop_rounds.csv, row dual, col rule_score, in points")
+    put("nDoubleRuleScore", pts(100 * f(doub, "rule_score")),
+        "extreme_stop_rounds.csv, row double, col rule_score, in points")
+    put("nDualFinalScore", pts(100 * f(dual, "final_score")),
+        "extreme_stop_rounds.csv, row dual, col final_score (round-100 trace), in points")
+    put("nDoubleFinalScore", pts(100 * f(doub, "final_score")),
+        "extreme_stop_rounds.csv, row double, col final_score (round-100 trace), in points")
     put("nLTwoRuleScore", pts(100 * float(next(r for r in sigs
                                                if r["signal"] == "dist_l2_to_global")["mean_stopped_score"])),
         "signals_summary_extract.csv, row dist_l2_to_global, col mean_stopped_score, in points")
@@ -853,31 +875,14 @@ def build():
     # TEST table the section's own Table~\ref{tab:extremes} prints, so the
     # prose and the table agree.  stopping_extreme.csv carries the same
     # horizon on the per-round VALIDATION trace (cols final_*), which differs:
-    # dual 0.8408 / -0.59, double 0.9373.  Both appear side by side in that
+    # single 0.7375 / -10.66, double 0.9373.  Both appear side by side in that
     # table, and the trace pair is what Section 7 argues from.
-    put("nDualFinalPres", acc(f(ex["dual"], "preservation")),
-        "extremes.csv, row dual, col preservation (test axis, as"
-        " Table tab:extremes; the trace value is stopping_extreme.csv"
-        " row dual col final_preservation = %s)"
-        % acc(f(sx["dual"], "final_preservation")))
-    put("nDualFinalScore", signed(f(ex["dual"], "score")),
-        "extremes.csv, row dual, col score, in points (test axis; the trace"
-        " value is stopping_extreme.csv row dual col final_score = %s)"
-        % pts(100 * f(sx["dual"], "final_score")))
     put("nDoubleFinalPres", acc(f(ex["double"], "preservation")),
         "extremes.csv, row double, col preservation (test axis; the trace"
         " value is stopping_extreme.csv row double col final_preservation"
         " = %s)" % acc(f(sx["double"], "final_preservation")))
     put("nDualSatRound", "%d" % int(f(sx["dual"], "oracle_round")),
         "stopping_extreme.csv, row dual, col oracle_round")
-    put("nDoubleSatRound", "%d" % int(f(sx["double"], "oracle_round")),
-        "stopping_extreme.csv, row double, col oracle_round")
-    put("nDualOracleAdapt", acc(f(sx["dual"], "oracle_adaptation")),
-        "stopping_extreme.csv, row dual, col oracle_adaptation")
-    put("nDualOraclePres", acc(f(sx["dual"], "oracle_preservation")),
-        "stopping_extreme.csv, row dual, col oracle_preservation")
-    put("nDualOracleScore", dpts(f(sx["dual"], "oracle_score")),
-        "stopping_extreme.csv, row dual, col oracle_score, in points")
 
     # ---- Section 7, stopping and the permitted signals -------------------
     # Two files carry this section.  stopping_all.csv is one row per
@@ -942,12 +947,6 @@ def build():
         "derived: minus stopping_all.csv col one_vs_final of that row, in"
         " points (the sentence reads it as a cost)")
 
-    put("nDualRuleScore", dpts(f(sx["dual"], "one_score")),
-        "stopping_extreme.csv, row dual, col one_score, in points")
-    put("nDualTraceFinalScore", signed(f(sx["dual"], "final_score")),
-        "stopping_extreme.csv, row dual, col final_score, in points --- the"
-        " per-round VALIDATION trace, which is the basis nDualRuleScore is"
-        " on; the test-axis value of Table tab:extremes is nDualFinalScore")
 
     put("nKlRuleScore", dpts(f(SIG["kl_global_to_current"],
                                "mean_stopped_score")),
@@ -969,8 +968,8 @@ def build():
 
     put("nRetentionMaxDev", acc(float(sigx["retention_max_dev_extreme"])),
         "signals_extras_extract.csv, key retention_max_dev_extreme --- the"
-        " largest departure of retention_known from 1.0 over the extreme"
-        " arms")
+        " largest departure of retention_known from 1.0 over the three"
+        " extreme arms")
     put("nRetentionSourceFall", dpts(float(sigx["source_max_fall_extreme"])),
         "signals_extras_extract.csv, key source_max_fall_extreme, in points")
 

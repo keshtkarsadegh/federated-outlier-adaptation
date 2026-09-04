@@ -43,8 +43,6 @@ def main():
     for arm, colour, style, width, z in ARMS:
         fs.draw(left, rounds, series[arm]["src"], colour, style, width, z=z)
         fs.draw(right, rounds, series[arm]["cohort"], colour, style, width, z=z)
-    fs.mark_start(left, series[ARMS[0][0]]["src"][0], text=None)
-    fs.mark_start(right, series[ARMS[0][0]]["cohort"][0], text=None)
 
     names = {
         "control_fedavg": fs.label("control_fedavg"),
@@ -53,10 +51,12 @@ def main():
         "anchor_h2_ntd_b0p01_t0p5": fs.label("anchor_h2_ntd_b0p01_t0p5")
                                     + " (crowned)",
     }
-    left.legend(handles=fs.handles([(names[a], c, s) for a, c, s, _, _ in ARMS]),
-                loc="lower left", bbox_to_anchor=(-0.01, -0.02))
+    figure.legend(handles=fs.handles([(names[a], c, s)
+                                      for a, c, s, _, _ in ARMS]),
+                  loc="lower center", ncol=2, columnspacing=1.6,
+                  bbox_to_anchor=(0.5, 0.0))
 
-    fs.save(figure, "fig_combo")
+    fs.save(figure, "fig_combo", rect=(0, 0.16, 1, 1))
     fs.caption("fig_combo", """
         The crowned combination against each of its two halves and against the
         unprotected control, over the full hundred-round budget on the study's

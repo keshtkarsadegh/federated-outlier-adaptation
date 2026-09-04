@@ -46,8 +46,6 @@ def main():
     for arm, colour, style, width, z in ARMS:
         fs.draw(left, rounds, series[arm]["src"], colour, style, width, z=z)
         fs.draw(right, rounds, series[arm]["cohort"], colour, style, width, z=z)
-    fs.mark_start(left, series[ARMS[0][0]]["src"][0], text=None)
-    fs.mark_start(right, series[ARMS[0][0]]["cohort"][0], text=None)
 
     figure.legend(handles=fs.handles([(fs.label(a), c, s) for a, c, s, _, _ in ARMS]),
                   loc="lower center", ncol=2, columnspacing=1.6,
