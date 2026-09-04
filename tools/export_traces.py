@@ -32,7 +32,7 @@ records under `tables/`:
     traces_regfull        `p13_reg_method_winners.json`  one arm per penalty family
     traces_blends         `p14_hybrid_construction*.json`  each blend and its two parents
     traces_combo          `p15_stage_winner.json`  the crowned pair, split back into halves
-    traces_extreme        `extreme_stopping.CASES`  the three arrangements
+    traces_extreme        `extreme_stopping.CASES`  the two arrangements
     extreme_stop_rounds   `stopping_table`, whole-study rule
 
 Naming them here instead would let a figure outlive the selection that put the
@@ -66,7 +66,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(REPO / "src"))
 
 from extreme_stopping import CASES, fold_mean  # noqa: E402
-from report_tables import baselines, cell_and_family  # noqa: E402
+from report_tables import baselines, cell_and_family, in_study  # noqa: E402
 
 #: The two series every curve is drawn from. Both are validation halves.
 SERIES = ("pool_val_accuracies", "source_val_accuracies")
@@ -106,7 +106,7 @@ class Records:
         pattern = f"{self.root}/{prefix}*/**/summary_0.json"
         for path in sorted(glob.glob(pattern, recursive=True)):
             cell, family = cell_and_family(Path(path), prefix)
-            if cell is None:
+            if cell is None or not in_study(str(Path(path))):
                 continue
             body = next(iter(json.loads(Path(path).read_text()).values()))
             for name in SERIES:
@@ -260,7 +260,7 @@ def stop_rounds(root: Path, tag: str, a0: float, p0: float) -> List[dict]:
     the trace, and the rule round is the round the ONE permitted rule fires -
     the single `(signal, budget)` chosen over every arm of every hundred-round
     stage. Choosing it on the extremes alone would be choosing a rule on the
-    three runs it is about to be reported on, so the whole pool is read.
+    two arms it is about to be reported on, so the whole pool is read.
     """
     import stopping_table as stopping
 

@@ -115,6 +115,13 @@ def correlations(root: Path) -> Tuple[Dict[str, dict], int]:
                 pooled[row["signal"]] = rho
                 pooled_pearson[row["signal"]] = float(row["pearson"])
                 continue
+            # The correlation file is a record of every run the signals module
+            # saw, which includes an extreme arrangement the stage no longer
+            # defines. Its folders cannot be un-run; its rows are not this
+            # study's, and a median taken over them is a median of something
+            # else.
+            if not ST.in_study(row["run"].split("/", 1)[0]):
+                continue
             runs.add(row["run"])
             per_run[row["signal"]].append(rho)
 

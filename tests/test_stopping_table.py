@@ -54,7 +54,7 @@ def test_the_stopping_semantics_are_the_analysis_modules_own():
 
 def test_the_oracle_and_the_fold_mean_are_the_extreme_tools_own():
     """
-    Run this with --stage extreme and the three rows must reproduce
+    Run this with --stage extreme and the two rows must reproduce
     extreme_stopping.py round for round. They do because it is the same code.
     """
     assert stop.oracle_round is es.oracle_round

@@ -228,6 +228,12 @@ def payloads(root: Path, prefixes) -> list:
                 continue
             cell, family = report_tables.cell_and_family(Path(path), prefix)
             folder = next(p for p in Path(path).parts if p.startswith(prefix))
+            # A RUN FOLDER IS NOT A MEMBERSHIP CLAIM. An arrangement the stage
+            # no longer defines still has its folders on the disk that ran the
+            # study, and counting them would put its seconds into the cost
+            # table and its writers into the fairness one.
+            if not report_tables.in_study(folder):
+                continue
             out.append({"path": Path(path), "folder": folder, "cell": cell,
                         "family": family, "body": body})
     return out

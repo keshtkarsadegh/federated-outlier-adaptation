@@ -17,7 +17,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from report_tables import in_study  # noqa: E402  - one definition of membership
 
 #: Which result folders a stage's tasks land in, by the prefix they carry.
 #:
@@ -106,7 +110,13 @@ def main() -> int:
         stem = path.stem
         n = runnable(path)
         prefixes = PREFIXES.get(stem)
-        made = (sum(len(list(root.glob(f"{prefix}*"))) for prefix in prefixes)
+        # COUNTED AGAINST THE CELL LIST, not against the glob. A stage that
+        # dropped an arrangement leaves its folders behind, and a record that
+        # counted them would report more folders than tasks and read as a
+        # missing task file rather than as a retired arm.
+        made = (sum(1 for prefix in prefixes
+                    for folder in root.glob(f"{prefix}*")
+                    if in_study(folder.name))
                 if prefixes else "")
         print(f"| `{stem}` | {n} | {made} |")
 

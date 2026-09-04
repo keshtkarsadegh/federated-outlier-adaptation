@@ -149,6 +149,20 @@ def test_the_baselines_come_from_the_study_rather_than_from_this_file(tmp_path):
 
 
 def test_a_root_with_no_extreme_runs_reads_as_empty(tmp_path):
-    """Nothing on disk is not three cases of zeros."""
+    """Nothing on disk is not a table of zeros."""
     assert es.read_cases(tmp_path, "d01_extreme_") == {}
-    assert es.traces({}, "single") is None
+    assert es.traces({}, "dual") is None
+
+
+def test_the_reported_cases_are_the_ones_the_stage_defines():
+    """
+    Order is this tool's; membership is the cell list's.
+
+    A case reported here that no stage defines would put an arm nothing ran
+    into the table, and a case defined there and missing here would drop one
+    silently.
+    """
+    from federated_outlier_adaptation.training.extreme_cells import CASES
+
+    assert set(es.CASES) == set(CASES) == {"double", "dual"}
+    assert set(es.WHAT) == set(es.CASES)

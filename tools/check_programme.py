@@ -31,6 +31,14 @@ import re
 import sys
 from pathlib import Path
 
+REPO = Path(__file__).resolve().parents[1]
+if str(REPO / "src") not in sys.path:
+    sys.path.insert(0, str(REPO / "src"))
+
+from federated_outlier_adaptation.training.extreme_cells import (  # noqa: E402
+    CASES as EXTREME_CASES,
+)
+
 JOBS = Path(sys.argv[1])
 EXTERNAL_OK = ("$FOA_NIST28_DIR", "$FOA_DATA_DIR", "$FOA_CACHE_DIR")
 
@@ -56,9 +64,7 @@ SIDE_EFFECTS = {
 #: Producers that are not `foa` commands, and what they write.
 SCRIPT_EFFECTS = {
     "make_extreme_cohorts.py": [
-        "outliers/extreme_single.json",
-        "outliers/extreme_double.json",
-        "outliers/extreme_dual.json",
+        f"outliers/extreme_{case}.json" for case in EXTREME_CASES
     ],
 }
 
@@ -66,11 +72,11 @@ SCRIPT_EFFECTS = {
 #: What a stage's GENERATOR wrote, on the login node, before the stage ran.
 #:
 #: Most inputs are produced by a task line of an earlier stage, and those are
-#: what this tool follows. The extreme stage's three client listings are not:
+#: what this tool follows. The extreme stage's client listings are not:
 #: `study_emit.py extreme` cuts them from the same ranking every other cohort
 #: comes from and writes them at emit time, in the same command that writes the
 #: task file. Nothing in the task file could produce them, so without this the
-#: stage reports three unmet dependencies for inputs that are in fact built by
+#: stage reports an unmet dependency for every input that is in fact built by
 #: the programme - a false alarm, and a checker nobody believes is worse than
 #: none.
 #:
@@ -80,9 +86,7 @@ SCRIPT_EFFECTS = {
 GENERATOR_EFFECTS = {
     "d01_extreme.txt": (
         "tools/study_emit.py extreme",
-        ["outliers/extreme_single.json",
-         "outliers/extreme_double.json",
-         "outliers/extreme_dual.json"],
+        [f"outliers/extreme_{case}.json" for case in EXTREME_CASES],
     ),
 }
 
@@ -177,7 +181,7 @@ for stage in stages:
         # the extreme cohorts are written by the study_emit generator, which
         # runs as its own stage; declare them where that stage sits.
         if cmd == "extreme" or "--case" in parts:
-            for case in ("single", "double", "dual"):
+            for case in EXTREME_CASES:
                 writes.add(f"outliers/extreme_{case}.json")
         # a run writes its own parent folder
         for value in flag_value(parts, "--parent"):

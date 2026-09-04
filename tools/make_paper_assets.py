@@ -295,7 +295,7 @@ def main() -> int:
              r"separately.}", r"\label{tab:extreme}", r"\small",
              r"\begin{tabular}{@{}lrr@{}}", r"\toprule",
              r"Configuration & Adaptation & Preservation \\", r"\midrule"]
-    for name in ("single", "double", "dual"):
+    for name in ("double", "dual"):
         runs = ext.get(name, {})
         if not runs:
             lines.append(f"{name} & --- & --- \\\\")
@@ -460,10 +460,10 @@ def main() -> int:
     plt.close(fig)
     print("  curves_adaptation.pdf")
 
-    # 3. THE SMALLEST FEDERATIONS. single and dual share a forgetting slope;
-    #    double, which holds the same rows behind a client boundary, resists.
+    # 3. THE SMALLEST FEDERATIONS. dual forgets on a slope of its own; double,
+    #    which holds the same rows behind a client boundary, resists.
     fig, ax = plt.subplots(figsize=(5.2, 3.4))
-    for name, colour in (("single", "#7f7f7f"), ("dual", "#d62728"), ("double", "#1f77b4")):
+    for name, colour in (("dual", "#d62728"), ("double", "#1f77b4")):
         runs = ext.get(name, {})
         curves = [v[4] for v in runs.values() if v[4]]
         if not curves:

@@ -2,14 +2,14 @@
 """
 When the extreme cases should have stopped, and what the horizon cost them.
 
-The three extreme arrangements are the only runs in this study where the
-federation has nothing left to average: `single` is one client, `dual` is one
-client holding two writers' rows merged, and `double` is the only one of the
-three with a second update to average against. What the server does at one
-client is not aggregation - it is fine-tuning on the outlier writer with a name
-borrowed from federated learning - and the round series say so plainly. Every
-case reaches its best trade in the first tens of rounds and then spends the rest
-of the fixed hundred-round horizon taking the source model apart.
+The two extreme arrangements are the smallest federations in this study: `dual`
+is one client holding two writers' rows merged, and `double` is the same rows
+with a client boundary between them, which makes it the only one of the pair
+with a second update to average. What the server does at one client is not
+aggregation - it is fine-tuning on the merged writer with a name borrowed from
+federated learning - and the round series say so plainly. Both cases reach
+their best trade in the first tens of rounds and then spend the rest of the
+fixed hundred-round horizon taking the source model apart.
 
     python tools/extreme_stopping.py --root "$FOA_STUDY_DIR"
     python tools/extreme_stopping.py --root "$FOA_STUDY_DIR" \\
@@ -29,8 +29,8 @@ horizon. A0 and P0 come from the study's own shipped-model evaluations through
 the same two numbers rather than against two statements of them.
 
 WHY RETENTION IS REPORTED BESIDE THE DROP. Every run carries a `retention_known`
-signal, and on these three cases it stays pinned at one while the source
-population falls by up to twenty-six points. A signal that reads 1.0 through a
+signal, and on these cases it stays pinned at one while the source population
+falls by up to seventeen points. A signal that reads 1.0 through a
 collapse it is meant to detect is worth reporting as a finding, not as a
 diagnostic: whatever `retention_known` measures on these runs, it is not what
 the preservation column measures, and a reader who trusted it would have seen
@@ -51,17 +51,29 @@ from typing import Dict, List, Optional, Sequence, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from report_tables import baselines  # noqa: E402  - one definition of A0 and P0
 
+from federated_outlier_adaptation.training.extreme_cells import (  # noqa: E402
+    CASES as DEFINED_CASES,
+)
+
 #: In the order they are reported: worst trade first. `double` last because it
-#: is the only arrangement with a second update to average, and reading it after
-#: the two that have none is what makes the mechanism visible.
-CASES = ("single", "dual", "double")
+#: is the arrangement with a second update to average, and reading it after the
+#: one that has none is what makes the mechanism visible.
+#:
+#: MEMBERSHIP IS THE CELL LIST'S, order is this file's. A reporting order is a
+#: presentation choice and belongs here; which arrangements exist is a fact
+#: about the stage and belongs where the stage is defined, so the two cannot
+#: drift into naming different studies.
+CASES = ("dual", "double")
 
 #: What each arrangement is, for the table and the figure.
 WHAT = {
-    "single": "one client: the cohort's worst writer",
     "dual": "one client holding both writers' rows merged",
     "double": "two clients: the cohort's worst two",
 }
+
+#: Reporting order and cell list must name the same study, or a case would be
+#: reported that no stage defines - or one that does would be silently dropped.
+assert set(CASES) == set(DEFINED_CASES), (CASES, DEFINED_CASES)
 
 #: The round series every case stores. The two validation columns are what the
 #: stopping rule reads; the other two are reported beside them.
@@ -213,7 +225,7 @@ def report(case: str, mean: Dict[str, List[float]], folds: int,
 
 def figure(cases: Dict[str, Dict[str, List[float]]],
            stops: Dict[str, int], path: Path, a0: float, p0: float) -> None:
-    """Three panels: adaptation and preservation per case, with the oracle stop."""
+    """One panel per case: adaptation and preservation, with the oracle stop."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -259,9 +271,9 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", required=True, type=Path)
     ap.add_argument("--prefix", default="d01_extreme_",
-                    help="Run-folder prefix the three cases were written under.")
+                    help="Run-folder prefix the cases were written under.")
     ap.add_argument("--fig", type=Path, default=None,
-                    help="Also write the three-panel figure here.")
+                    help="Also write the per-case figure here.")
     args = ap.parse_args()
 
     a0, p0 = baselines(args.root)

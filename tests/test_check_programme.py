@@ -82,17 +82,17 @@ def test_a_file_outside_the_programme_order_is_named_not_dropped(tmp_path):
 
 def test_the_extreme_listings_are_credited_to_the_generator_that_wrote_them(tmp_path):
     """
-    The three extreme client listings are cut by ``study_emit.py extreme`` at
-    emit time, in the same command that writes the task file. No task line can
-    produce them, so a checker that follows only task lines reports three unmet
-    dependencies for inputs the programme does build. The dependency is real
+    The extreme client listings are cut by ``study_emit.py extreme`` at emit
+    time, in the same command that writes the task file. No task line can
+    produce them, so a checker that follows only task lines reports an unmet
+    dependency for every input the programme does build. The dependency is real
     and it is declared, with the generator named.
     """
     import check_programme  # the module reads sys.argv at import; only the map
     jobs = tmp_path / "jobs"
     _write(jobs, "d01_extreme.txt",
-           "foa final --results-dir $FOA_STUDY_DIR --parent d01_extreme_single_fold1 "
-           "--outliers-file $FOA_STUDY_DIR/outliers/extreme_single.json")
+           "foa final --results-dir $FOA_STUDY_DIR --parent d01_extreme_dual_fold1 "
+           "--outliers-file $FOA_STUDY_DIR/outliers/extreme_dual.json")
     result = _run(jobs)
     assert result.returncode == 0, result.stdout
     assert "written at emit time by tools/study_emit.py extreme" in result.stdout

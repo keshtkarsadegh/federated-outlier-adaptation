@@ -41,6 +41,9 @@ sys.path.insert(0, str(REPO / "src"))
 
 from federated_outlier_adaptation.runners.forgetting_signals import SIGNAL_KEYS  # noqa: E402
 
+sys.path.insert(0, str(REPO / "tools"))
+from report_tables import in_study  # noqa: E402  - one definition of membership
+
 #: Prefixes checked by ``--all``, with the horizon each was run at.  A screen
 #: and a final differ in length, and a short series is as wrong as an empty one.
 #:
@@ -48,9 +51,9 @@ from federated_outlier_adaptation.runners.forgetting_signals import SIGNAL_KEYS 
 #: searched over.  The check only reports a series SHORTER than the horizon it
 #: was given, so a stage missing from this map is not audited loosely - it is
 #: not audited at all, and ``--all`` still ends on the sentence that says every
-#: payload carries all eight.  The carry settings, the three extreme
-#: arrangements and the federated reference cells ran for months before anything
-#: counted their signals, because none of them had a line in this dictionary.
+#: payload carries all eight.  The carry settings, the extreme arrangements and
+#: the federated reference cells ran for months before anything counted their
+#: signals, because none of them had a line in this dictionary.
 DEFAULT_PREFIXES = {
     "d01_agg_": 25,
     "d01_aggfull_": 100,
@@ -62,7 +65,7 @@ DEFAULT_PREFIXES = {
     "d01_c10d10_": 100,
     "d01_c20d10_": 100,
     "d01_c20d20_": 100,
-    # the three extreme arrangements
+    # the extreme arrangements
     "d01_extreme_": 100,
     # the federated reference cells each cohort is read against
     "d01_c5_m4_control_": 100,
@@ -76,6 +79,11 @@ DEFAULT_PREFIXES = {
 def payloads(root: Path, prefix: str):
     """Every ``accuracies_*.json`` under a prefix, with the folder it came from."""
     for run_dir in sorted(root.glob(prefix + "*")):
+        # A folder of an arrangement the study no longer defines is not one of
+        # its payloads, and counting it would make this audit disagree with
+        # every table that reads the same runs.
+        if not in_study(run_dir.name):
+            continue
         for path in sorted(run_dir.rglob("accuracies_*.json")):
             try:
                 yield run_dir.name, path, json.loads(path.read_text())

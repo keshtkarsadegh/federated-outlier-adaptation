@@ -3,7 +3,7 @@
 What the fixed horizon cost every arm, and how much of it a signal could save.
 
 Every stage in this study runs to a fixed hundred-round horizon and reports the
-last round. `extreme_stopping.py` showed what that costs on the three extreme
+last round. `extreme_stopping.py` showed what that costs on the two extreme
 arrangements - up to twenty-seven points of score spent after the best trade had
 already been reached. This tool asks the same question of every arm of every
 hundred-round stage, and adds the column the extreme tool does not have: what a
@@ -50,7 +50,7 @@ numbering `extreme_stopping.py` prints, and the reason a permitted rule can
 never stop before round 2. The fold mean, the oracle round and the drift-stop
 semantics are all imported rather than restated, from `extreme_stopping` and
 from `analysis.forgetting_signals`, so the three tools cannot drift apart: run
-this with `--stage extreme` and the three rows reproduce `extreme_stopping.py`
+this with `--stage extreme` and the two rows reproduce `extreme_stopping.py`
 round for round.
 """
 
@@ -72,7 +72,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(REPO / "src"))
 
 from extreme_stopping import fold_mean, oracle_round, scores  # noqa: E402
-from report_tables import baselines, cell_and_family  # noqa: E402
+from report_tables import baselines, cell_and_family, in_study  # noqa: E402
 
 from federated_outlier_adaptation.analysis.forgetting_signals import (  # noqa: E402
     DEFAULT_DELTAS,
@@ -126,7 +126,7 @@ def read_arms(root: Path, prefix: str) -> Dict[Tuple[str, str], Dict[str, List[L
         lambda: defaultdict(list))
     for path in sorted(glob.glob(f"{root}/{prefix}*/**/summary_0.json", recursive=True)):
         cell, family = cell_and_family(Path(path), prefix)
-        if cell is None:
+        if cell is None or not in_study(str(Path(path))):
             continue
         body = next(iter(json.loads(Path(path).read_text()).values()))
         for name in tuple(SERIES) + tuple(SIGNAL_KEYS):
@@ -245,7 +245,7 @@ def one_rule(verdicts: Sequence[Verdict]) -> Optional[Tuple[str, float]]:
     rule that stops earlier on average. Only rules that are defined on every arm
     are eligible, because a rule that is silent on a stage has not been priced on
     it. The mean is taken over arms rather than over runs so that a stage with
-    twenty arms does not outvote a stage with three by weight of arithmetic
+    twenty arms does not outvote a stage with two by weight of arithmetic
     alone; A0 and P0 shift every arm's score by the same constant, so which rule
     wins does not depend on them at all.
     """

@@ -32,8 +32,17 @@ import csv
 import glob
 import json
 import statistics as st
+import sys
 from collections import defaultdict
 from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+if str(REPO / "src") not in sys.path:
+    sys.path.insert(0, str(REPO / "src"))
+
+from federated_outlier_adaptation.training.extreme_cells import (  # noqa: E402
+    CASES as EXTREME_CASES,
+)
 
 SIGNALS = ["dist_l2_to_global", "dist_fisher_to_global", "dist_fisher_norm_to_global",
            "agreement_with_global", "kl_global_to_current", "retention_known",
@@ -78,10 +87,32 @@ CARRY_SETTINGS = (
     ("c20d20", "TWENTY CLIENTS, FOUR DROPPED - sixteen of twenty"),
 )
 
-#: The three extreme arrangements. One prefix, three arms; double and dual hold
-#: precisely the same rows and differ only in whether the aggregation ever sees
-#: them separately.
+#: The extreme arrangements. One prefix, two arms; they hold precisely the same
+#: rows and differ only in whether the aggregation ever sees them separately.
 EXTREME_STEM = "extreme_"
+
+
+def in_study(folder: str) -> bool:
+    """
+    Whether a run folder belongs to an arrangement this study still defines.
+
+    A GLOB IS NOT A CELL LIST. The extreme stage once ran a third arrangement -
+    the cohort's worst writer alone - and its run folders are still on the disk
+    that produced this study, because a run that happened cannot be un-run. A
+    reader that globbed the stage prefix would put it back into every table,
+    every stage total and every all-arms mean, and would do it silently: the
+    folders look exactly like the ones that belong. So the case is checked
+    against :data:`~federated_outlier_adaptation.training.extreme_cells.CASES`,
+    which is where the stage is defined, and a folder naming a case that is not
+    there is not part of this study's record.
+
+    Every other stage's folders pass through: only the extreme prefix carries a
+    case name this can be checked against.
+    """
+    if EXTREME_STEM not in folder:
+        return True
+    case = folder.split(EXTREME_STEM, 1)[1].split("_fold")[0]
+    return case in EXTREME_CASES
 
 
 # ------------------------------------------------------------------ runs
@@ -136,7 +167,7 @@ def read_runs(root: Path, prefix: str) -> dict:
     out = defaultdict(lambda: {"a": [], "p": [], "signals": []})
     for path in sorted(glob.glob(f"{root}/{prefix}*/**/summary_0.json", recursive=True)):
         cell, family = cell_and_family(Path(path), prefix)
-        if cell is None:
+        if cell is None or not in_study(str(Path(path))):
             continue
         body = next(iter(json.loads(Path(path).read_text()).values()))
 
@@ -295,7 +326,7 @@ def main() -> int:
                 "combos":      (f"{t}_combo_",   "COMBINATIONS: server rule x client penalty (full horizon)"),
                 "extremes":    (f"{t}_{EXTREME_STEM}",
                                                  "THE EXTREME CASES (full participation): "
-                                                 "one writer, two writers, and the two merged into one client"),
+                                                 "two writers, and the same two merged into one client"),
             }[what]
             rows = summarise(read_runs(args.root, prefix), a0, p0)
         if not rows:
