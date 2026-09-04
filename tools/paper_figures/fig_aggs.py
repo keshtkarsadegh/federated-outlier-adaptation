@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""What the server rule alone can do.
+"""What the selected server rules do, each readable against the control.
 
-The three selected aggregation rules of the frozen record, at the full
-hundred-round horizon, against the plain federated-averaging control they were
-selected over.  No client-side penalty is present in any of these four arms, so
-whatever separates the curves is the aggregation rule and nothing else.
+Four panels: preservation on the left, adaptation on the right.  Every panel
+carries the two references everything is measured against --- the plain
+federated-averaging control as a black dashed curve, drawn on top so it is
+never hidden, and the shipped model's own accuracy as the dotted horizontal
+line every arm starts from.  The three selected rules are split across the two
+rows so that no two of them overlap in the same panel.
 
     python fig_aggs.py           # regenerates fig_aggs.pdf from ../data
 
@@ -13,57 +15,78 @@ Reads data/traces_aggfull.csv.  Renders only.
 
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
+
 import figstyle as fs
 
-
-# Drawn in the order they are argued: the control first, so it sits under the
-# three rules that were chosen over it.
-ARMS = [
-    ("control_fedavg", fs.VERMILION, (0, (5, 2)), 6),
-    ("anchor_h2", fs.BLUE, "-", 5),
-    ("eta_0p95", fs.GREEN, "-", 4),
-    ("weight_q0", fs.PURPLE, (0, (4, 1, 1, 1)), 4),
+CONTROL = ("control_fedavg", fs.BLACK, (0, (5, 2)), 1.3, 9)
+ROWS = [
+    [("anchor_h2", fs.BLUE, "-", 1.3, 6),
+     ("eta_0p95", fs.GREEN, "-", 1.1, 5)],
+    [("weight_q0", fs.PURPLE, (0, (4, 1, 1, 1)), 1.2, 5)],
 ]
 
 
 def main():
     fs.setup()
     rounds, series = fs.read_traces("traces_aggfull.csv")
-
-    for arm, _, _, _ in ARMS:
+    for arm, _, _, _, _ in [CONTROL] + ROWS[0] + ROWS[1]:
         if arm not in series:
             raise SystemExit("traces_aggfull.csv carries no arm %r" % arm)
-        print("  %-18s source %.4f -> %.4f   cohort %.4f -> %.4f"
-              % (arm, series[arm]["src"][0], series[arm]["src"][-1],
-                 series[arm]["cohort"][0], series[arm]["cohort"][-1]))
+    start_src = series[CONTROL[0]]["src"][0]
+    start_cohort = series[CONTROL[0]]["cohort"][0]
 
-    figure, left, right = fs.panels(height=2.6)
-    for arm, colour, style, z in ARMS:
-        fs.draw(left, rounds, series[arm]["src"], colour, style, z=z)
-        fs.draw(right, rounds, series[arm]["cohort"], colour, style, z=z)
-    fs.mark_start(left, series[ARMS[0][0]]["src"][0], text=None)
-    fs.mark_start(right, series[ARMS[0][0]]["cohort"][0], text=None)
+    figure, axes = plt.subplots(2, 2, figsize=(fs.WIDTH, 4.1), sharex=True)
+    for arms, (left, right) in zip(ROWS, axes):
+        for axis, key, title, ylim, start in (
+                (left, "src", fs.SRC_TITLE, fs.SRC_YLIM, start_src),
+                (right, "cohort", fs.COHORT_TITLE, fs.COHORT_YLIM,
+                 start_cohort)):
+            axis.grid(True, color="0.90", linewidth=0.4, zorder=0)
+            axis.set_axisbelow(True)
+            for side in ("top", "right"):
+                axis.spines[side].set_visible(False)
+            axis.set_xlim(-2, 102)
+            axis.set_xticks([0, 25, 50, 75, 100])
+            axis.set_ylim(*ylim)
+            axis.set_ylabel("Source accuracy" if key == "src"
+                            else "Cohort accuracy")
+            axis.set_title(title, pad=4, loc="left")
+            axis.axhline(start, color=fs.GREY, linestyle=(0, (1, 2)),
+                         linewidth=0.8, zorder=1)
+            axis.annotate("shipped model", (100, start),
+                          textcoords="offset points", xytext=(-2, 3),
+                          ha="right", va="bottom", fontsize=6.4,
+                          color=fs.GREY)
+            for arm, colour, style, width, z in arms + [CONTROL]:
+                fs.draw(axis, rounds, series[arm][key], colour, style,
+                        width, z=z)
+            fs.mark_start(axis, start, text=None)
+    for axis in axes[1]:
+        axis.set_xlabel("Round")
 
-    left.legend(handles=fs.handles([(fs.label(a), c, s) for a, c, s, _ in ARMS]),
-                loc="lower left", bbox_to_anchor=(-0.01, -0.02))
-    fs.save(figure, "fig_aggs")
+    figure.legend(handles=fs.handles(
+        [(fs.label(a), c, s) for a, c, s, _, _ in
+         [CONTROL] + ROWS[0] + ROWS[1]]),
+        loc="lower center", ncol=2, columnspacing=1.6,
+        bbox_to_anchor=(0.5, 0.0))
+    fs.save(figure, "fig_aggs", rect=(0, 0.105, 1, 1))
     fs.caption("fig_aggs", """
-        The three selected server rules of the frozen record against the plain
-        federated-averaging control, over the full hundred-round budget, on the
-        study's ten-client cohort: accuracy on the source population (left,
-        preservation) and on the outlier cohort (right, adaptation), fold-mean
-        over the five folds on the validation halves.  All four arms run the
-        same parallel schedule with no client-side penalty, and round 0 is the
-        shipped model itself, so the four curves begin at one point and every
-        later difference is the aggregation rule alone.  The reader should see
-        that the four are all but indistinguishable on the right --- adaptation
-        is the same to within half a point --- and that only one of them
-        separates on the left: the server anchor pulls clear of the control
-        from roughly the thirtieth round on and stays there, while the damped
-        step and the uniform weighting end where the control ends.  Every arm,
-        the anchor included, is still falling when the budget runs out, so the
-        server rule slows the loss without stopping it.  Validation basis, so the endpoints are not the test-set
-        figures the tables report.
+        The three selected server rules, over the full hundred-round budget on
+        the study's ten-client cohort: accuracy on the source population
+        (left, preservation) and on the outlier cohort (right, adaptation),
+        fold-mean over the five folds on the validation halves.  All arms run
+        the parallel schedule with no client-side penalty, so every difference
+        is the rule alone.  Every panel repeats the two references everything
+        is measured against --- the plain federated-averaging control, the
+        black dashed curve, and the shipped model's own accuracy, the dotted
+        line every arm starts from --- and the three rules are split across
+        the two rows so no two of them overlap in one panel.  The anchor (top
+        row, blue) is the one rule that pulls clear of the control on
+        preservation; the damped server step (top, green) and uniform
+        weighting (bottom, purple) ride the control on both axes.  Validation
+        basis, so the endpoints are not the test-set figures the tables
+        report.
         """)
 
 

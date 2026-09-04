@@ -18,10 +18,13 @@ import figstyle as fs
 
 
 ARMS = [
-    ("control_fedavg", fs.VERMILION, (0, (5, 2)), 4),
-    ("anchor_h2", fs.BLUE, (0, (1, 1.4)), 5),
-    ("ntd_b0p01_t0p5", fs.GREEN, (0, (4, 1, 1, 1)), 5),
-    ("anchor_h2_ntd_b0p01_t0p5", fs.BLACK, "-", 7),
+    # The claim is a pair: the crowned combination (thick black) rides on its
+    # penalty half (red dashed) --- those two carry the argument; the server
+    # rule alone and the control are context, thin and light.
+    ("control_fedavg", fs.LIGHT, (0, (5, 2)), 1.0, 3),
+    ("anchor_h2", fs.SKY, (0, (1, 1.2)), 1.0, 4),
+    ("ntd_b0p01_t0p5", fs.VERMILION, (0, (5, 2)), 1.5, 7),
+    ("anchor_h2_ntd_b0p01_t0p5", fs.BLACK, "-", 1.7, 8),
 ]
 
 
@@ -29,7 +32,7 @@ def main():
     fs.setup()
     rounds, series = fs.read_traces("traces_combo.csv")
 
-    for arm, _, _, _ in ARMS:
+    for arm, _, _, _, _ in ARMS:
         if arm not in series:
             raise SystemExit("traces_combo.csv carries no arm %r" % arm)
         print("  %-26s source %.4f -> %.4f   cohort %.4f -> %.4f"
@@ -37,10 +40,9 @@ def main():
                  series[arm]["cohort"][0], series[arm]["cohort"][-1]))
 
     figure, left, right = fs.panels(height=2.75)
-    for arm, colour, style, z in ARMS:
-        width = 1.35 if arm == ARMS[-1][0] else 1.0
-        fs.draw(left, rounds, series[arm]["src"], colour, style, width=width, z=z)
-        fs.draw(right, rounds, series[arm]["cohort"], colour, style, width=width, z=z)
+    for arm, colour, style, width, z in ARMS:
+        fs.draw(left, rounds, series[arm]["src"], colour, style, width, z=z)
+        fs.draw(right, rounds, series[arm]["cohort"], colour, style, width, z=z)
     fs.mark_start(left, series[ARMS[0][0]]["src"][0], text=None)
     fs.mark_start(right, series[ARMS[0][0]]["cohort"][0], text=None)
 
@@ -51,7 +53,7 @@ def main():
         "anchor_h2_ntd_b0p01_t0p5": fs.label("anchor_h2_ntd_b0p01_t0p5")
                                     + " (crowned)",
     }
-    left.legend(handles=fs.handles([(names[a], c, s) for a, c, s, _ in ARMS]),
+    left.legend(handles=fs.handles([(names[a], c, s) for a, c, s, _, _ in ARMS]),
                 loc="lower left", bbox_to_anchor=(-0.01, -0.02))
 
     fs.save(figure, "fig_combo")

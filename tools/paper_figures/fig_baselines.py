@@ -49,12 +49,7 @@ def isolation():
 
 def main():
     st.setup()
-    plt.rcParams.update({
-        "font.size": 7, "axes.labelsize": 7, "axes.titlesize": 7.5,
-        "xtick.labelsize": 6.3, "ytick.labelsize": 6.3,
-        "legend.fontsize": 6.3, "lines.linewidth": 1.0,
-    })
-    fig = plt.figure(figsize=(4.35, 2.88), constrained_layout=True)
+    fig = plt.figure(figsize=(st.WIDTH, 3.35), constrained_layout=True)
     grid = fig.add_gridspec(2, 2, height_ratios=[0.85, 1.0],
                             width_ratios=[1.0, 0.55])
     ax1 = fig.add_subplot(grid[0, :])

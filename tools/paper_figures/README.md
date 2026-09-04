@@ -162,8 +162,9 @@ and the curves show only what adaptation then spends and buys. `figstyle` refuse
 a view whose arms do not agree at round 0.
 
 **`fig_baselines` is on the test basis**, because the isolation records store
-test evaluations only. It is the one figure here that is, and it is drawn on a
-different canvas for that reason.
+test evaluations only. It is the one figure here that is, and the one that reads no
+trace view and writes no draft caption; the canvas is the shared text-width one the
+other six are drawn on.
 
 **Nothing is rasterised and nothing is dated.** The PDFs are vector throughout
 and are written with no creation timestamp, so two runs over the same views
