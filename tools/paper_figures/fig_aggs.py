@@ -21,7 +21,7 @@ import figstyle as fs
 
 CONTROL = ("control_fedavg", fs.BLACK, (0, (5, 2)), 1.3, 9)
 ROWS = [
-    [("anchor_h2", fs.BLUE, "-", 0.94, 6),
+    [("anchor_h2", fs.BLUE, "-", 0.5, 6),
      ("eta_0p95", fs.GREEN, "-", 1.1, 5)],
     [("weight_q0", fs.PURPLE, (0, (4, 1, 1, 1)), 1.2, 5)],
 ]
@@ -42,7 +42,7 @@ def main():
                 (left, "src", fs.SRC_TITLE, fs.SRC_YLIM, start_src),
                 (right, "cohort", fs.COHORT_TITLE, fs.COHORT_YLIM,
                  start_cohort)):
-            axis.grid(True, color="0.90", linewidth=0.6, zorder=0)
+            axis.grid(True, color="0.90", linewidth=0.5, zorder=0)
             axis.set_axisbelow(True)
             for side in ("top", "right"):
                 axis.spines[side].set_visible(False)
@@ -53,7 +53,7 @@ def main():
                             else "Cohort accuracy")
             axis.set_title(title, pad=4, loc="left")
             axis.axhline(start, color=fs.GREY, linestyle=(0, (1, 2)),
-                         linewidth=0.6, zorder=1)
+                         linewidth=0.5, zorder=1)
             axis.annotate("shipped model", (100, start),
                           textcoords="offset points", xytext=(-2, 3),
                           ha="right", va="bottom", fontsize=6.4,
