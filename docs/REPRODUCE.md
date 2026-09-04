@@ -386,6 +386,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | g-0's own training history, and the isolated clients | `export_baseline_views.py --root $FOA_STUDY_DIR --out <dir>` |
 | each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
 | every figure in the manuscript | [below](#and-which-command-produces-which-figure) - two commands per figure |
+| every number the manuscript sets | `paper_figures/make_numbers.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
+| every table the manuscript sets | `paper_figures/make_paper_tables.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
 
@@ -483,6 +485,75 @@ They are therefore not the test-set numbers the tables of §6 report and the two
 must not be quoted against each other; every caption says so. `fig_baselines` is
 the exception and is on test throughout, because the isolation records store test
 evaluations only.
+
+### And which command produces the numbers and the tables
+
+One step further along the same shape. `numbers.tex` - the file every
+quantitative sentence of the manuscript reads its value from - and the twelve
+`tables/*.tex` it sets are written from the views too, by two generators that sit
+beside the figure scripts and compute nothing:
+
+```bash
+cp /path/to/manuscript/numbers.tex /tmp/paper/     # rewritten in place: see below
+FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_numbers.py
+FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_paper_tables.py
+```
+
+`numbers.tex` is written into `$FOA_PAPER_OUT` and the tables into
+`$FOA_PAPER_OUT/tables/`. `--check` on either writes nothing and exits non-zero
+when what is on disk disagrees with the views, which is the form the manuscript
+build runs and the reason a stale table cannot reach a PDF. Neither generator
+will write into a source checkout: with no `FOA_PAPER_OUT` set they say so and
+stop, rather than drop LaTeX into the tracked tree. `FOA_PAPER_DATA` overrides
+where the views are read from, exactly as it does for the figures.
+
+Thirty views feed the two of them and all thirty ship here, spread over four
+directories because four different tools write them:
+
+| where | what is in it | written by |
+|---|---|---|
+| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the three frozen extracts | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv` |
+| `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
+| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest | `stopping_table.py --csv` |
+| `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
+
+**THE PAPER BUNDLE IS SEARCHED FIRST, AND THAT MATTERS.** `tables/combos.csv` is
+the raw grid dump the combination stage left behind and `tables/paper/combos.csv`
+is the view the manuscript quotes. They carry one name and different rows, so the
+order the four directories are tried in is part of the contract, not a detail;
+`_data_dirs()` in both generators says so at the point where it fixes the order.
+
+**`numbers.tex` IS REWRITTEN IN PLACE, NOT WRITTEN FROM NOTHING.** The file
+carries `% BEGIN GENERATED` and `% END GENERATED` and only the block between them
+is touched: the macro *names* are read out of that block and each is filled from
+the registry the script builds from the views. So a copy of the manuscript's own
+`numbers.tex` has to be in `$FOA_PAPER_OUT` before the command is run. Every
+definition it writes carries a trailing comment naming the CSV file, the row and
+the column the value came from, and a name with no registry entry is written back
+as `\TBD{unmapped}`, reported on stdout, and exits non-zero - so an unsourced
+number is loud rather than silent.
+
+**FIFTY-NINE DEFINITIONS SIT ABOVE THE MARKER AND ARE NOT GENERATED.** They are
+hand-maintained on purpose, they are outside the block the generator rewrites,
+and `numbers.tex` says which is which in a comment of its own:
+
+| what | how many | why it is not generated |
+|---|---|---|
+| `\pub...` | 46 | facts of the earlier published single-seed runs, not of this study |
+| `\nBadFraction`, `\nGoodPoolSize`, `\nDigitRows`, `\nDigitWriters`, `\nSamplesPerClassPerWriter`, `\nMacsPerImage`, `\nOldSize`, `\nOldMinSamples`, `\nLocalEpochs`, `\nBatchSize` | 10 | protocol constants: configuration the study was **given**, not a measurement it produced, so no view carries them |
+| `\nProxySamples`, `\nProxyAccStart`, `\nProxyAccEnd` | 3 | measurements of the public proxy set whose source has not been extracted into a view yet |
+
+The other 182 macros are generated. `tables/sensitivity_agg.tex` and
+`tables/sensitivity_reg.tex` are the two table files `make_paper_tables.py` does
+not write: a third generator in the manuscript checkout does, from the two
+`weight_sensitivity_*.csv` that ship here.
+
+**THREE VIEWS TRAVEL AS FROZEN EXTRACTS.** `signals_summary_extract.csv` and
+`signals_extras_extract.csv` condense what `foa signals` writes into
+`$FOA_STUDY_DIR/signals/`, and `decouple_example.csv` is the five-writer rank
+comparison the cohort-selection section quotes. They are shipped so that
+`make_numbers.py` runs against a clone with no study root; rebuilding them from
+the records is not yet one of the commands above.
 
 ---
 

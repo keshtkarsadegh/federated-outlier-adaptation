@@ -21,9 +21,9 @@ two hundred retained writers, five-fold cross-validation throughout.
 |---|---|
 | `src/federated_outlier_adaptation/` | the package and the `foa` CLI (28 subcommands) |
 | `tools/` | task-file generators, screen selectors, the SD19 fetcher, the table generator, the figure-view exporters |
-| `tools/paper_figures/` | the manuscript's seven figures: render only, from the CSV views beside them |
+| `tools/paper_figures/` | the manuscript's seven figures, its `numbers.tex` and its twelve tables: render only, from the shipped CSV views |
 | `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
-| `tests/` | 1,773 tests, no GPU and no dataset required |
+| `tests/` | 1,777 tests, no GPU and no dataset required |
 | `study/jobs/` | the submission chains, one TOML per wave, with a `SHA256SUMS` |
 | `study/artifacts/` | the derived artefacts needed to *check* results, every task file the study ran among them, with a `SHA256SUMS` |
 | `study/UPSTREAM.sha256` | checksums of the source data and the packed cache |
@@ -33,19 +33,21 @@ two hundred retained writers, five-fold cross-validation throughout.
 anything: the writer pools and their scores, the three cohorts, all four fold
 books, the g-init and g-0 selection records, the baseline evaluations, every
 selection table each stage produced, every task file that was submitted, and
-the ten CSV views the manuscript's
-figures are drawn on — so every figure redraws from a clone, with no dataset,
-no GPU and no release asset:
+the thirty-seven CSV views the manuscript's figures, numbers and tables are
+built from — so every figure redraws, and every number and every table
+regenerates, from a clone, with no dataset, no GPU and no release asset:
 
 ```bash
 FOA_PAPER_OUT=/tmp/figures python tools/paper_figures/fig_problem.py
+FOA_PAPER_OUT=/tmp/paper   python tools/paper_figures/make_paper_tables.py
 ```
 
 The views themselves are built from the published records by
-`tools/export_traces.py`, `tools/export_baseline_views.py` and
-`tools/export_combo_folds.py`, which is what makes the figures evidence rather
-than pictures; [`docs/REPRODUCE.md`](docs/REPRODUCE.md) §6 maps each figure to
-its views, its export command and its script.
+`tools/export_traces.py`, `tools/export_baseline_views.py`,
+`tools/export_combo_folds.py` and the reporting tools, which is what makes the
+figures evidence rather than pictures; [`docs/REPRODUCE.md`](docs/REPRODUCE.md)
+§6 maps each figure to its views, its export command and its script, and does
+the same for `numbers.tex` and the tables.
 
 **No dataset is redistributed here.** NIST SD19 is downloaded from NIST; this
 repository ships the conversion code, the exact command, and the checksums that
@@ -60,7 +62,7 @@ git clone <this repository> && cd federated-outlier-adaptation
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
-pytest -q tests                              # 1,773 tests, ~2 minutes, no GPU
+pytest -q tests                              # 1,777 tests, ~2 minutes, no GPU
 cd study/artifacts && sha256sum -c SHA256SUMS && cd ../..
 ```
 

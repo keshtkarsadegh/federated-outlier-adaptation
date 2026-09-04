@@ -1,20 +1,24 @@
-# The manuscript's figures, from the published records
+# The manuscript's figures, numbers and tables, from the published records
 
-Seven scripts, one style module, and the name table they all print through.
-Each script reads CSV *views* and renders; not one of them computes an accuracy,
-opens a run folder or knows where the study lives. That separation is the point:
-the views are built by a tool that reads the records, so a figure in the paper is
-reachable from the published data by two commands rather than by a script
-somebody ran once at a terminal.
+Seven figure scripts, one style module, the name table they all print through,
+and the two generators that write every number and every table the manuscript
+sets. Each of them reads CSV *views* and renders; not one of them computes an
+accuracy, opens a run folder or knows where the study lives. That separation is
+the point: the views are built by tools that read the records, so a figure in the
+paper — or a number in a sentence — is reachable from the published data by two
+commands rather than by a script somebody ran once at a terminal.
 
-    records  --(tools/export_*.py)-->  CSV views  --(fig_*.py)-->  PDF
+    records  --(the export and report tools)-->  CSV views  --+->  fig_*.py             ->  PDF
+                                                              +->  make_numbers.py      ->  numbers.tex
+                                                              +->  make_paper_tables.py ->  tables/*.tex
 
 ## Running them
 
-The ten views these scripts need already travel in this repository, under
-`study/artifacts/Digits_study01/tables/` — `paper_figures/` for the per-round
-views and `paper/references.csv` for the four reference rungs. So with nothing
-downloaded and no study root assembled:
+Every view these scripts need already travels in this repository, under
+`study/artifacts/Digits_study01/tables/`: `paper_figures/` for the ten per-round
+and per-fold views, `paper/` for the twenty-one views of the paper bundle,
+`stopping/` for the stopping tables and `tables/` itself for what the stage tools
+left there. So with nothing downloaded and no study root assembled:
 
 ```bash
 cd tools/paper_figures
@@ -26,6 +30,52 @@ FOA_PAPER_OUT=/tmp/figures python fig_baselines.py      # and the other five
 they land beside the script, which is what the manuscript build wants and not
 what a source checkout does. `FOA_PAPER_DATA` overrides where the views are read
 from — one directory, or several separated the way `PATH` is.
+
+## The numbers and the tables
+
+`make_numbers.py` writes `numbers.tex`, the file every quantitative sentence of
+the manuscript reads its value from; `make_paper_tables.py` writes the twelve
+`tables/*.tex` the body and the appendices set. Both read the same shipped views
+and neither derives anything the CSVs do not already say:
+
+```bash
+cp /path/to/manuscript/numbers.tex /tmp/paper/          # see the caveat below
+FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_numbers.py
+FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_paper_tables.py
+```
+
+`numbers.tex` lands in `$FOA_PAPER_OUT` and the tables in `$FOA_PAPER_OUT/tables/`.
+`--check` on either writes nothing and exits non-zero if what is on disk is not
+what the views say, which is the form the manuscript build uses. Without
+`FOA_PAPER_OUT` both refuse to run from a source checkout rather than write LaTeX
+into the tracked tree; in the manuscript checkout, where they sit beside `data/`
+and `numbers.tex`, beside the script is the right answer and they use it.
+
+**`numbers.tex` IS REWRITTEN IN PLACE, NOT WRITTEN FROM NOTHING.** The file
+carries `% BEGIN GENERATED` and `% END GENERATED`, and only the block between
+them is rewritten: the macro *names* are read from the block, and each is filled
+from the registry the script builds out of the views. So a copy of the
+manuscript's own `numbers.tex` has to be in `$FOA_PAPER_OUT` first — there is
+nothing to fill in otherwise — and a name with no entry in the registry is
+written back as `\TBD{unmapped}` and reported, with a non-zero exit.
+
+**FIFTY-NINE DEFINITIONS SIT ABOVE THE MARKER AND ARE NOT GENERATED.** They are
+hand-maintained on purpose and the generator never touches them:
+
+| what | how many | why it is not generated |
+|---|---|---|
+| `\pub…` | 46 | facts of the earlier published single-seed runs, not of this study |
+| `\nBadFraction`, `\nGoodPoolSize`, `\nDigitRows`, `\nDigitWriters`, `\nSamplesPerClassPerWriter`, `\nMacsPerImage`, `\nOldSize`, `\nOldMinSamples`, `\nLocalEpochs`, `\nBatchSize` | 10 | protocol constants — configuration the study was *given*, not a measurement it produced, so no view carries them |
+| `\nProxySamples`, `\nProxyAccStart`, `\nProxyAccEnd` | 3 | measurements of the public proxy set whose source has not been extracted into a view yet |
+
+Everything else — 182 macros — is generated, and each one carries a trailing
+comment naming the CSV file, the row and the column it was read from, so any
+number in the paper is traceable to a file without leaving the manuscript.
+
+Two further table files, `tables/sensitivity_agg.tex` and
+`tables/sensitivity_reg.tex`, are written by a third generator that lives in the
+manuscript checkout; the views they read, `weight_sensitivity_agg.csv` and
+`weight_sensitivity_reg.csv`, ship here like the rest.
 
 ## Rebuilding the views from the records
 
@@ -45,6 +95,33 @@ FOA_PAPER_DATA=$PWD/views python tools/paper_figures/fig_problem.py
 The first three reproduce the ten views in `tables/paper_figures/` byte for byte;
 the fourth supplies `references.csv`, which `fig_problem` and `fig_baselines`
 read for the centralized ceiling and for `g-0`'s own source accuracy.
+
+The numbers and the tables read wider than the figures do — thirty views between
+them — so rebuilding *their* inputs takes five more commands into the same
+directory:
+
+```bash
+python tools/fairness_cost.py      --root "$FOA_STUDY_DIR" --what all  --csv views/
+python tools/stopping_table.py     --root "$FOA_STUDY_DIR"             --csv views/
+python tools/compare_arms.py       --root "$FOA_STUDY_DIR" --what all  --csv views/
+python tools/weight_sensitivity.py --root "$FOA_STUDY_DIR" --grid both --csv views/
+python tools/describe_cohort.py    --root "$FOA_STUDY_DIR" --all       --csv views/
+FOA_PAPER_DATA=$PWD/views FOA_PAPER_OUT=/tmp/paper \
+    python tools/paper_figures/make_numbers.py
+```
+
+That is `fairness_*.csv` and `cost_*.csv` from the first, `stopping_all.csv` and
+`stopping_extreme.csv` from the second, `blends.csv` and `composition.csv` from
+the third, the two `weight_sensitivity_*.csv` from the fourth and
+`cohort_composition.csv` from the fifth. `cohort_table.csv` is a stage artefact
+rather than a report, written when the cohort was drawn.
+
+**THREE VIEWS HAVE NO GENERATOR HERE** and travel as frozen extracts:
+`signals_summary_extract.csv` and `signals_extras_extract.csv`, condensed from
+what `foa signals` writes into `$FOA_STUDY_DIR/signals/`, and
+`decouple_example.csv`, the five-writer rank comparison the cohort-selection
+section quotes. They are shipped so that `make_numbers.py` runs from a clone;
+regenerating them from the records is not yet a command in this repository.
 
 ## Which figure reads what
 
@@ -90,3 +167,5 @@ differed.
 | `figstyle.py` | the shared canvas, palette, limits and CSV readers |
 | `paper_names.py` | run-record identifier to published method name, the one translation |
 | `fig_*.py` | one figure each: render only, no arithmetic |
+| `make_numbers.py` | the generated block of `numbers.tex`: 182 macros, each with its cell |
+| `make_paper_tables.py` | twelve `tables/*.tex`, every printed cell checked against its CSV |
