@@ -1,12 +1,12 @@
 """
-Stage 10: the extreme cases, and the merged client the third one needs.
+Stage 10: the extreme cases, and the merged client the second one needs.
 
-``single`` and ``double`` are federations the pipeline already knows how to
-build.  ``dual`` is not: it is one client whose data is two writers' data, and
-the study had no word for that object.  Most of this file is about that word -
-that a merged client's partitions are exact unions of its members', that nothing
-leaks between partitions, and that everything downstream counts it as one
-participant rather than two.
+``double`` is a federation the pipeline already knows how to build.  ``dual`` is
+not: it is one client whose data is two writers' data, and the study had no word
+for that object.  Most of this file is about that word - that a merged client's
+partitions are exact unions of its members', that nothing leaks between
+partitions, and that everything downstream counts it as one participant rather
+than two.
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ from federated_outlier_adaptation.data.merged_clients import (
 from federated_outlier_adaptation.training.extreme_cells import (
     CASES,
     FULL_ROUNDS,
+    SEED_SLOTS,
     accuracy_map,
     case_clients,
     case_writers,
@@ -268,11 +269,36 @@ def test_double_and_dual_take_the_same_writers():
     """The controlled pair: same rows, different boundaries."""
     ranked = ["w1", "w2", "w3"]
     assert case_writers(ranked, "double") == case_writers(ranked, "dual") == ["w1", "w2"]
-    assert case_writers(ranked, "single") == ["w1"]
 
     assert case_clients(ranked, "double") == ["w1", "w2"]
     assert case_clients(ranked, "dual") == ["w1+w2"]
-    assert case_clients(ranked, "single") == ["w1"]
+
+
+def test_the_one_client_arrangement_is_not_a_case():
+    """
+    The worst writer alone left the study, and nothing may quietly rebuild it.
+
+    A case that is gone from the ladder but still answered by the cell functions
+    would come back through any caller that names it - an emitter, a reader, a
+    table - and it would come back looking like a defined arm.
+    """
+    assert "single" not in CASES
+    with pytest.raises(ValueError, match="Unknown extreme case"):
+        case_writers(["w1", "w2"], "single")
+    with pytest.raises(ValueError, match="Unknown extreme case"):
+        case_clients(["w1", "w2"], "single")
+
+
+def test_a_seed_slot_belongs_to_a_case_and_not_to_a_position():
+    """
+    The slots are what keeps a shipped task file reproducing the runs on disk.
+
+    An index-based seed is a function of where a case sits in the ladder, so
+    retiring one renumbers the rest: the file would still emit, and it would
+    name seeds none of the stored runs used.
+    """
+    assert set(SEED_SLOTS) == set(CASES)
+    assert SEED_SLOTS["double"] == 1 and SEED_SLOTS["dual"] == 2
 
 
 def test_the_cases_differ_only_in_how_the_rows_are_held():

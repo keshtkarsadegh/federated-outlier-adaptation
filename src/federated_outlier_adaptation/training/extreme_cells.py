@@ -14,23 +14,24 @@ A winner restated in source is correct only until the crowning is re-run, and
 when it stops being correct the stage still emits, still trains, and reports a
 method the current cross never chose.
 
-Three arrangements of the same two writers
-------------------------------------------
-``single``
-    a federation of one client: the cohort's worst writer by g-0 accuracy.  The
-    degenerate case - there is nothing to aggregate, so whatever the server rule
-    does, it does to one update.
+Two arrangements of the same two writers
+----------------------------------------
 ``double``
     a federation of two clients: the two worst distinct writers.
 ``dual``
     a federation of **one** client whose data is both of those writers' rows
     merged - the same images as ``double``, held by one participant.
 
-``double`` and ``dual`` are the controlled pair.  They hold precisely the same
-rows; they differ only in whether the aggregation ever sees them separately.
-Any gap between them is what client *boundaries* cost, with the data held
-constant - which is a question the twenty-client stages cannot ask, because
-there the boundaries and the data always move together.
+That is the whole stage, and the pair is the reason it exists.  They hold
+precisely the same rows; they differ only in whether the aggregation ever sees
+them separately.  Any gap between them is what client *boundaries* cost, with
+the data held constant - which is a question the twenty-client stages cannot
+ask, because there the boundaries and the data always move together.
+
+A one-client arrangement is deliberately not here.  Federating a lone writer
+answers a question about fine-tuning rather than about aggregation, and it has
+no partner to be held constant against; the pair above is the controlled
+comparison this stage was built to make.
 
 Full participation
 ------------------
@@ -86,8 +87,20 @@ def winning_combo_id(root) -> str:
         raise SystemExit(f"FATAL: {path} names no winner.")
     return str(winner)
 
-#: The three arrangements, and how many of the ranked writers each one takes.
-CASES = ("single", "double", "dual")
+#: The two arrangements.  Both take the same two writers.
+CASES = ("double", "dual")
+
+#: Each case's slot in the stage's sampler-seed block, fixed BY CASE and not by
+#: position in :data:`CASES`.
+#:
+#: An index-based seed makes a run's sampling sequence a function of where its
+#: case sits in a list, so a case leaving the ladder renumbers the ones that
+#: stay: the emitted file would still look like the file that produced the runs
+#: on disk while quietly naming different seeds.  The combination stage learned
+#: this the expensive way and hashes its identity instead; here the ladder is
+#: short enough that a table of slots says it plainly.  A slot is retired with
+#: its case and never reused.
+SEED_SLOTS = {"double": 1, "dual": 2}
 
 
 def case_writers(ranked: List[str], case: str) -> List[str]:
@@ -99,15 +112,13 @@ def case_writers(ranked: List[str], case: str) -> List[str]:
         case: One of :data:`CASES`.
 
     Returns:
-        ``single`` takes one writer; ``double`` and ``dual`` take the same two.
-        That ``double`` and ``dual`` share this line is the point of the pair.
+        The two worst writers, for either case.  That ``double`` and ``dual``
+        share this line is the point of the pair: they are the same rows, and
+        only the client boundary between them differs.
     """
     if case not in CASES:
         raise ValueError(f"Unknown extreme case {case!r}; expected one of {CASES}")
-    if case == "single":
-        need = 1
-    else:
-        need = 2
+    need = 2
     if len(ranked) < need:
         raise ValueError(
             f"The {case!r} case needs {need} writer(s); the ranking has "
@@ -135,7 +146,6 @@ def case_clients(ranked: List[str], case: str) -> List[str]:
 def extreme_cells(ranked: List[str]) -> List[Dict[str, Any]]:
     """One cell per case, in ladder order."""
     notes = {
-        "single": "a federation of one client: the cohort's worst writer",
         "double": "a federation of two clients: the two worst distinct writers",
         "dual": (
             "a federation of one client holding both of those writers' rows "

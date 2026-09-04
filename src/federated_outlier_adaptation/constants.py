@@ -48,7 +48,11 @@ BEST_ANCHOR_MIX = 0.5
 # "body": the feature extractor plus the first fully connected layer.
 FREEZE_SCOPE = "body"
 
-# --- extreme-case configurations reported in the paper -----------------------
+# --- extreme-case configurations of the PRIOR published pipeline -------------
+# These are the earlier study's minimal-client cases, with its writers and its
+# hyperparameters, and they are kept so those runs stay reproducible. They are
+# NOT the extreme cases of Digits_study01, which are `double` and `dual` only
+# and are defined in training/extreme_cells.py from the cohort's own ranking.
 # Reproduce with e.g.  foa extreme --case single --set T=50 alpha=0.98
 EXTREME_CASE_HYPERPARAMETERS = {
     "single": {"T": 50.0, "alpha": 0.98},

@@ -7,21 +7,20 @@ task file naming it. The extreme cases this study ran are
 ``jobs/d01_extreme.txt``, emitted by
 
     python tools/study_emit.py extreme --root "$FOA_STUDY_DIR" \
-        --out <path> --expect 15
+        --out <path> --expect 10
 
-which also writes the three client listings the stage reads,
-``outliers/extreme_single.json``, ``extreme_double.json`` and
-``extreme_dual.json``. Kept as a record.
+which also writes the two client listings the stage reads,
+``outliers/extreme_double.json`` and ``extreme_dual.json``. Kept as a record.
 
 Emit the stage-10 extreme-case client lists, task file and README.
 
     python tools/make_stage10_extreme.py --root $FOA_RESULTS_DIR/main_v6 \
         [--out stage10_extreme.txt] [--readme stage10_extreme_README.md]
 
-Reads two JSON files and writes three tiny JSON files plus two text files: a
+Reads two JSON files and writes the tiny client lists plus two text files: a
 login-node job, no data touched.
 
-The three client lists are written rather than hand-maintained because the
+The client lists are written rather than hand-maintained because the
 writers they name are a *ranking*, and a ranking that is retyped is a ranking
 that can silently go stale. They are read back by ``--outliers-file``, so the
 run's own provenance records exactly which writers it federated.
@@ -138,7 +137,7 @@ def task_seconds(cell: dict, rounds: int) -> float:
 
 
 def write_client_lists(root: Path, cells, out_dir: Path) -> dict:
-    """The three tiny client lists the runs read their populations from."""
+    """The tiny client lists the runs read their populations from."""
     written = {}
     out_dir.mkdir(parents=True, exist_ok=True)
     for cell in cells:
@@ -164,15 +163,14 @@ def header(cells, combo, folds, rounds) -> list[str]:
         "# proofreading. Exactly four things change: the parent, the client list,",
         "# full participation, and the seed.",
         "#",
-        "# THREE ARRANGEMENTS OF THE SAME TWO WRITERS.",
+        "# TWO ARRANGEMENTS OF THE SAME TWO WRITERS.",
         "#",
-        "#   single  one client: the cohort's worst writer by g-0 accuracy",
         "#   double  two clients: the two worst distinct writers",
         "#   dual    ONE client holding both of those writers' rows merged",
         "#",
-        "# double and dual are the controlled pair: they hold precisely the same",
-        "# rows and differ only in whether the aggregation ever sees them",
-        "# separately. Any gap between them is what client BOUNDARIES cost with",
+        "# They are the controlled pair: they hold precisely the same rows and",
+        "# differ only in whether the aggregation ever sees them separately.",
+        "# Any gap between them is what client BOUNDARIES cost with",
         "# the data held constant - a question the twenty-client stages cannot",
         "# ask, because there the boundaries and the data always move together.",
         "#",
@@ -189,7 +187,7 @@ def header(cells, combo, folds, rounds) -> list[str]:
         "# THE CLIENT LISTS ARE GENERATED, NOT TYPED. The writers are a ranking -",
         "# the cohort by accuracy under the frozen g-0, lowest first, ties by",
         "# writer id - and a retyped ranking is one that can silently go stale.",
-        "# This generator writes outliers/extreme_{single,double,dual}.json and",
+        "# This generator writes outliers/extreme_{double,dual}.json and",
         "# the runs read their populations from them, so each run's provenance",
         "# records exactly which writers it federated:",
         "#",

@@ -50,8 +50,8 @@ def participants(n_clients: int, dropout: float = DROPOUT_RATE) -> int:
     -----------------------------------------
     At one or two clients this rule floors to zero or one, and dropping a client
     from a two-client federation is not a participation study - it is a coin
-    flip on whether the round happens at all.  So the ``single``/``double``/
-    ``dual`` cases do not use this function: they run at **full participation**,
+    flip on whether the round happens at all.  So the ``double`` and ``dual``
+    cases do not use this function: they run at **full participation**,
     ``--policy all --participation 1.0``, which is what
     :func:`~.study_lines.extreme_line` already emits and says in so many words.
     This function refuses those sizes rather than returning a number that would

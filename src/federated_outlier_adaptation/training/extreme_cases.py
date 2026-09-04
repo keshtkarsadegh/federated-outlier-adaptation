@@ -1,5 +1,9 @@
 """
-extreme_cases.py - final runs for the minimal-client (extreme) scenarios.
+extreme_cases.py - final runs for the PRIOR pipeline's minimal-client scenarios.
+
+This is the earlier published study's extreme stage, kept so its runs stay
+reproducible.  The live study's extreme cases are ``double`` and ``dual`` only,
+are cut from its own cohort ranking, and live in ``training/extreme_cells.py``.
 
 Purpose:
     Runs the best-performing trainer (knowledge distillation) with the client

@@ -1398,15 +1398,16 @@ def _split_combo(combo_id: str, agg_top, reg_top, family: str) -> tuple:
 
 def extreme(cfg, root: Path, out: Path, expect: int) -> int:
     """
-    The winning combination on one- and two-client federations.
+    The winning combination on the two smallest federations.
 
-    ``double`` and ``dual`` hold precisely the same rows and differ only in
+    The two arrangements hold precisely the same rows and differ only in
     whether the aggregation ever sees them separately, so any gap between them
     is what client boundaries cost with the data held constant - which the
     ten-client stages cannot measure, because there the boundaries and the data
     always move together.
     """
     from federated_outlier_adaptation.training.extreme_cells import (
+        SEED_SLOTS,
         extreme_cells,
         rank_cohort,
     )
@@ -1457,15 +1458,20 @@ def extreme(cfg, root: Path, out: Path, expect: int) -> int:
 
     cells = extreme_cells(rank_cohort(accuracies, cohort))
     lines = []
-    for index, cell in enumerate(cells):
+    for cell in cells:
         listing = root / "outliers" / f"extreme_{cell['case']}.json"
         listing.write_text(json.dumps(cell["clients"], indent=2) + "\n")
         print(f"  {cell['case']}: {cell['clients']} -> {listing}")
         clients_file = f"{SL.POOLS}/extreme_{cell['case']}.json"
+        # THE SLOT IS THE CASE'S, not its position in the ladder. An arrangement
+        # that leaves the stage would otherwise renumber the ones that stay, and
+        # this file would go on looking like the file that emitted the runs on
+        # disk while naming seeds none of them used.
+        slot = SEED_SLOTS[cell["case"]]
         for fold in SL.folds_of(cfg):
             lines.append(SL.extreme_line(
                 cfg, cell["case"], clients_file, agg, reg, fold,
-                cfg.seed_base + 18000 + index * 10 + fold,
+                cfg.seed_base + 18000 + slot * 10 + fold,
             ))
     return emit(lines, out, expect, "p16/extreme", [
         "# GENERATED, AND NOT AUTHORISED TO RUN.",
@@ -1473,17 +1479,16 @@ def extreme(cfg, root: Path, out: Path, expect: int) -> int:
         f"# The winning combination only: {winner['aggregation']} x {winner['regulariser']}",
         f"# ({winner['family']}), crowned on validation adaptation.",
         "#",
-        "# Three arrangements of the same two writers - the cohort's worst two",
+        "# Two arrangements of the same two writers - the cohort's worst two",
         "# under THIS study's g-0, not the coarse detector's scores:",
-        "#   single  one client: the worst writer",
         "#   double  two clients: the two worst",
         "#   dual    ONE client holding both of their rows merged",
         "#",
-        "# double and dual hold precisely the same rows and differ only in",
-        "# whether the aggregation ever sees them separately. Any gap between",
-        "# them is what client BOUNDARIES cost with the data held constant - a",
-        "# question the ten-client stages cannot ask, because there the",
-        "# boundaries and the data always move together.",
+        "# They hold precisely the same rows and differ only in whether the",
+        "# aggregation ever sees them separately. Any gap between them is what",
+        "# client BOUNDARIES cost with the data held constant - a question the",
+        "# ten-client stages cannot ask, because there the boundaries and the",
+        "# data always move together.",
         "#",
         "# FULL PARTICIPATION. Dropping a client from a two-client federation is",
         "# not a participation study, it is a coin flip on whether the round",

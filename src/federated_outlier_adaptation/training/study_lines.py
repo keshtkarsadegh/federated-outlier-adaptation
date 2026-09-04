@@ -31,7 +31,12 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Dict, List, Optional
 
-from federated_outlier_adaptation.training import agg_cells, five_cells, reg_cells
+from federated_outlier_adaptation.training import (
+    agg_cells,
+    extreme_cells,
+    five_cells,
+    reg_cells,
+)
 
 #: Every path in a task line goes through this, which the sbatch sets per study.
 #: A study therefore cannot name another study's folder even by accident, and
@@ -357,7 +362,7 @@ def combo_line(cfg, agg: Dict[str, Any], reg: Dict[str, Any], fold: int,
 def extreme_line(cfg, case: str, clients_file: str, agg: Dict[str, Any],
                  reg: Dict[str, Any], fold: int, seed: int) -> str:
     """
-    The winning combination on a one- or two-client federation.
+    The winning combination on one of the two smallest federations.
 
     Full participation: dropping a client from a two-client federation is not a
     participation study, it is a coin flip on whether the round happens.
@@ -479,7 +484,7 @@ def counts(cfg) -> Dict[str, int]:
         "reg_screen": len(reg_cells.screen_cells()) * folds,
         "reg_full": len(REG_METHODS) * len(FAMILIES) * folds,
         "combos": COMBO_TOP_K * COMBO_TOP_K * len(FAMILIES) * folds,
-        "extreme": 3 * folds,
+        "extreme": len(extreme_cells.CASES) * folds,
         # The ARMS, not the cells they resolve to: how many arms a size
         # stage runs is this stage's own shape and is known without a study,
         # while which configuration each arm names is read from the records

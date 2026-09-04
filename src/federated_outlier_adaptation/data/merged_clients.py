@@ -1,14 +1,14 @@
 """
 One client holding two writers' data.
 
-The extreme cases ask three questions about a federation that has almost no
-clients left, and the third one needs an object the rest of the pipeline has no
-word for.  ``single`` is a federation of one writer and ``double`` a federation
-of two; ``dual`` is a federation of **one client whose data is both writers'
-data**.  The three differ in how the same images are distributed, not in which
-images they are, which is what makes them a controlled comparison: ``double``
-and ``dual`` hold exactly the same rows and differ only in whether the
-aggregation ever sees them separately.
+The extreme cases ask what a federation with almost no clients left is worth,
+and the second of the two needs an object the rest of the pipeline has no word
+for.  ``double`` is a federation of the two worst writers, one client each;
+``dual`` is a federation of **one client whose data is both writers' data**.
+The two differ in how the same images are distributed, not in which images they
+are, which is what makes them a controlled comparison: they hold exactly the
+same rows and differ only in whether the aggregation ever sees them
+separately.
 
 The id is the definition
 ------------------------

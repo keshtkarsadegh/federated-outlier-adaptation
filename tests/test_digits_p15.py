@@ -558,14 +558,13 @@ def test_the_extreme_cases_use_the_winner_and_this_studys_g0(emit, tmp_path, par
     _winner(tmp_path, "median", "kd_T4_a0p9")
     clients = _cohort_and_scores(tmp_path)
     out = tmp_path / "p16.txt"
-    assert emit.extreme(CFG, tmp_path, out, 15) == 0
+    assert emit.extreme(CFG, tmp_path, out, 10) == 0
 
     lines = [l for l in out.read_text().splitlines() if l and not l.startswith("#")]
-    assert len(lines) == SL.counts(CFG)["extreme"] == 15
+    assert len(lines) == SL.counts(CFG)["extreme"] == 10
 
     worst, second = clients[-1], clients[-2]
-    assert json.loads(
-        (tmp_path / "outliers" / "extreme_single.json").read_text()) == [worst]
+    assert not (tmp_path / "outliers" / "extreme_single.json").exists()
     assert json.loads(
         (tmp_path / "outliers" / "extreme_double.json").read_text()) == [worst, second]
     assert json.loads(
@@ -582,7 +581,7 @@ def test_the_extreme_cases_use_the_winner_and_this_studys_g0(emit, tmp_path, par
         assert args.clients_per_round is None
         assert args.rounds == 100 and args.classes == "digits"
         assert args.outliers_file.endswith(
-            ("extreme_single.json", "extreme_double.json", "extreme_dual.json")
+            ("extreme_double.json", "extreme_dual.json")
         )
 
 
@@ -590,14 +589,14 @@ def test_the_extreme_file_is_stamped_and_counted(emit, tmp_path):
     _winner(tmp_path, "median", "kd_T4_a0p9")
     _cohort_and_scores(tmp_path)
     out = tmp_path / "p16.txt"
-    emit.extreme(CFG, tmp_path, out, 15)
+    emit.extreme(CFG, tmp_path, out, 10)
     assert "NOT AUTHORISED" in out.read_text()
     assert emit.extreme(CFG, tmp_path, tmp_path / "b.txt", 90) == 1
 
 
 def test_the_extreme_stage_refuses_without_a_winner(emit, tmp_path):
     _cohort_and_scores(tmp_path)
-    assert emit.extreme(CFG, tmp_path, tmp_path / "p16.txt", 15) == 1
+    assert emit.extreme(CFG, tmp_path, tmp_path / "p16.txt", 10) == 1
 
 
 def test_the_extreme_stage_refuses_an_unscored_cohort_writer(emit, tmp_path):
@@ -606,14 +605,14 @@ def test_the_extreme_stage_refuses_an_unscored_cohort_writer(emit, tmp_path):
     (tmp_path / "g0_perfold_evaluations.json").write_text(json.dumps(
         {"cohort_fold1": {"per_writer": {"w00": 0.5}}}
     ))
-    assert emit.extreme(CFG, tmp_path, tmp_path / "p16.txt", 15) == 1
+    assert emit.extreme(CFG, tmp_path, tmp_path / "p16.txt", 10) == 1
 
 
 def test_double_and_dual_hold_the_same_writers(emit, tmp_path):
     """The controlled pair: same rows, different boundaries."""
     _winner(tmp_path, "median", "kd_T4_a0p9")
     _cohort_and_scores(tmp_path)
-    emit.extreme(CFG, tmp_path, tmp_path / "p16.txt", 15)
+    emit.extreme(CFG, tmp_path, tmp_path / "p16.txt", 10)
 
     from federated_outlier_adaptation.data.merged_clients import members
 
@@ -621,6 +620,33 @@ def test_double_and_dual_hold_the_same_writers(emit, tmp_path):
     dual = json.loads((tmp_path / "outliers" / "extreme_dual.json").read_text())
     assert members(dual[0]) == double
     assert len(dual) == 1 and len(double) == 2
+
+
+def test_a_case_keeps_its_seed_slot_when_another_case_leaves(emit, tmp_path, parser):
+    """
+    The shipped file must go on reproducing the runs that are on disk.
+
+    Seeds used to be a function of a case's position in the ladder, so retiring
+    one would have renumbered the rest: the emitter would still write ten
+    perfectly well-formed lines, and none of them would name the seed its run
+    actually drew.
+    """
+    _winner(tmp_path, "median", "kd_T4_a0p9")
+    _cohort_and_scores(tmp_path)
+    out = tmp_path / "p16.txt"
+    emit.extreme(CFG, tmp_path, out, 10)
+
+    seeds = {}
+    for line in out.read_text().splitlines():
+        if not line or line.startswith("#"):
+            continue
+        args = parser.parse_args(shlex.split(line)[1:])
+        case = args.parent.split("_extreme_")[1].split("_fold")[0]
+        seeds.setdefault(case, []).append(args.sampler_seed)
+
+    base = CFG.seed_base + 18000
+    assert seeds["double"] == [base + 10 + fold for fold in range(1, 6)]
+    assert seeds["dual"] == [base + 20 + fold for fold in range(1, 6)]
 
 
 # --------------------------------------------------------------------------- #

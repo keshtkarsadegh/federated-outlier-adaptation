@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-The three extreme cohorts, cut from the same ranking as every other cohort.
+The extreme cohorts, cut from the same ranking as every other cohort.
 
 The extreme points ask what federating is worth when there is almost nothing to
-federate: one badly served writer alone, the two worst as two clients, and the
-same two merged into one client. The three share their writers by construction,
-which is what makes the comparison controlled - double and dual hold exactly the
-same rows and differ only in whether a client boundary runs between them.
+federate: the two worst writers as two clients, and the same two merged into
+one client. They share their writers by construction, which is what makes the
+comparison controlled - they hold exactly the same rows and differ only in
+whether a client boundary runs between them.
 
 These files existed in the first programme but nothing produced them: they had
 been written by hand, and a rebuild from an empty root reached the extreme stage
@@ -43,10 +43,6 @@ def main() -> int:
     accuracies = payload.get("accuracies", {}) if isinstance(payload, dict) else {}
 
     cohorts = {
-        "extreme_single": {
-            "clients": [worst],
-            "rule": "the worst writer of the ranking, alone",
-        },
         "extreme_double": {
             "clients": [worst, second],
             "rule": "the two worst writers, one client each",
@@ -70,7 +66,7 @@ def main() -> int:
         path = outliers / f"{name}.json"
         path.write_text(json.dumps(body, indent=2) + "\n")
         print(f"  {name:16s} {body['clients']}")
-    print(f"wrote 3 cohorts to {outliers}")
+    print(f"wrote {len(cohorts)} cohorts to {outliers}")
     return 0
 
 
