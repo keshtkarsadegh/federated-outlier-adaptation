@@ -79,8 +79,8 @@ foa prepare-data --dataset nist --zip "$FOA_DATA_DIR/nist/by_write.zip" \
     --out "$FOA_NIST28_DIR" --resolution 28 --classes all
 ```
 
-With a GPU and the cache built, the cheapest real rung is **the extremes**: 15
-tasks and about one GPU-hour, the smallest stage of the programme and the one
+With a GPU and the cache built, the cheapest real rung is **the extremes**: 10
+tasks and under an hour of GPU, the smallest stage of the programme and the one
 whose finding - that a fixed horizon at one client is a hazard - needs the least
 compute to see. Every task file the study ran ships in the metadata core.
 

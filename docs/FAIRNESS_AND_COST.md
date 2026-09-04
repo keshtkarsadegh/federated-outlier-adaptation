@@ -1,6 +1,6 @@
 # Who the gain reaches, and what it cost
 
-*Read 2026-09-01, against `Digits_study01`: 2,470 stored payloads, 1,590 jobs.*
+*Read 2026-09-01, against `Digits_study01`: 2,465 stored payloads, 1,585 jobs.*
 
 Every score in this study is a cohort mean. A mean can rise while the writer the
 cohort was assembled around does not move, and a method chosen on a mean has no
@@ -16,7 +16,7 @@ python tools/fairness_cost.py --root "$FOA_STUDY_DIR" --what all --csv "$FOA_STU
 Nothing is retrained and nothing is recomputed from weights. Both halves read
 keys the runner already wrote: `final_evaluation.clients.per_client` for the
 distribution, and `round_seconds`, `comm_bytes_per_round` and `param_count` for
-the cost. All 2,470 payloads carry all five.
+the cost. All 2,465 payloads carry all five.
 
 ---
 
@@ -126,8 +126,9 @@ at two settings of the four, and where they part they part by points rather than
 by decimals.
 
 The extremes are the one place the two readings agree, because there is almost
-no cohort left to be unequal: `double` lifts both of its writers, the worse of
-them by 22.10p; `single` lifts its one writer by 19.22p.
+no cohort left to be unequal: `double` lifts both of its writers, the
+worse-served of them by 22.10p, and `dual` holds one merged client, whose
+spread is zero by construction and whose reference no book carries.
 
 ## 4. What it cost
 
@@ -142,9 +143,9 @@ them by 22.10p; `single` lifts its one writer by 19.22p.
 | five clients, one dropped | 20 | 100 | 0.30 |
 | twenty, two dropped | 15 | 100 | 0.65 |
 | twenty, four dropped | 15 | 100 | 0.57 |
-| extremes | 15 | 100 | 0.09 |
+| extremes | 10 | 100 | 0.06 |
 | size references | 50 | 100 | 2.40 |
-| **whole programme** | **1,590** | | **32.21** |
+| **whole programme** | **1,585** | | **32.18** |
 
 **These are round-loop hours, not booked hours.** `round_seconds` is measured by
 the runner from the top of a round to the end of aggregation, so it covers local
@@ -159,7 +160,7 @@ is the 70 of `s17_reg_full4` plus the two hybrid emissions that §9 lists
 nowhere, and the size references are 50 tasks that §9 omits entirely.
 
 The screens dominate. The two twenty-five round screens are **15.87 h of the
-32.21** - every hundred-round stage in the programme put together is 16.35 h.
+32.18** - every hundred-round stage in the programme put together is 16.32 h.
 That is the intended shape rather than a problem: screening is where a cheap
 horizon buys a ranking over 1,180 tasks, and it is precisely what the finals
 exist not to repeat.

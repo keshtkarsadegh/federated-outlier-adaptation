@@ -198,8 +198,8 @@ and - since the figure pipeline landed - g-0's own per-fold training history in
 ## Level 4 — re-run a stage (hours to days, GPU)
 
 Follow `docs/RUNBOOK.md`. The cheapest meaningful rung is **the extremes**,
-`jobs/d01_extreme.txt`: 15 tasks and about one GPU-hour, the smallest stage of
-the programme.
+`jobs/d01_extreme.txt`: 10 tasks and under an hour of GPU, the smallest stage
+of the programme.
 
 The most expensive are the two screens: the aggregation screen (480 tasks,
 ~16 GPU-h) and the regularisation screen (700 tasks, ~25 GPU-h). You do not

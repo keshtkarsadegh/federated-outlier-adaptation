@@ -90,7 +90,7 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | 14 | twenty-client references | `tools/make_size_references.py` | `d01_c20_references.txt` | 235 | 100 |
 | 15 | **five clients, one dropped** | `study_emit.py five` | `d01_five.txt` | 20 | 100 |
 | 16 | **twenty clients, both dropout levels** | `study_emit.py c20` | `d01_c20.txt` | 30 | 100 |
-| 17 | **the extreme cases** | `study_emit.py extreme` | `d01_extreme.txt` | 15 | 100 |
+| 17 | **the extreme cases** | `study_emit.py extreme` | `d01_extreme.txt` | 10 | 100 |
 | 18 | **ten clients, one dropped** | `study_emit.py c10d10` | `d01_c10d10.txt` | 20 | 100 |
 | 19 | size evaluations, re-scored | *the evaluate-book lines of 13 and 14* | `d01_size_evals_rerun.txt` | 10 | - |
 
@@ -178,7 +178,7 @@ python tools/study_emit.py reg-hybrid --root $FOA_STUDY_DIR --out /tmp/x.txt --e
 python tools/study_emit.py five    --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 20
 python tools/study_emit.py c10d10  --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 20
 python tools/study_emit.py c20     --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 30
-python tools/study_emit.py extreme --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 15
+python tools/study_emit.py extreme --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 10
 ```
 
 `diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s17_reg_full4.txt`, `s18_hybrid.txt` and
@@ -545,7 +545,7 @@ and `numbers.tex` says which is which in a comment of its own:
 | `\nBadFraction`, `\nGoodPoolSize`, `\nDigitRows`, `\nDigitWriters`, `\nSamplesPerClassPerWriter`, `\nMacsPerImage`, `\nOldSize`, `\nOldMinSamples`, `\nLocalEpochs`, `\nBatchSize` | 10 | protocol constants: configuration the study was **given**, not a measurement it produced, so no view carries them |
 | `\nProxySamples`, `\nProxyAccStart`, `\nProxyAccEnd` | 3 | measurements of the public proxy set whose source has not been extracted into a view yet |
 
-The other 182 macros are generated. `tables/sensitivity_agg.tex` and
+The other 179 macros are generated. `tables/sensitivity_agg.tex` and
 `tables/sensitivity_reg.tex` are the two table files `make_paper_tables.py` does
 not write: a third generator in the manuscript checkout does, from the two
 `weight_sensitivity_*.csv` that ship here.
@@ -631,7 +631,7 @@ were removed for exactly this reason.
 | five-client point | 20 | 100 | ~2 |
 | ten-client point, one dropped | 20 | 100 | ~2 |
 | twenty-client pair | 30 | 100 | ~5 |
-| extremes | 15 | 100 | ~1 |
+| extremes | 10 | 100 | ~1 |
 
 One A100 per task, `grete:shared`. Those are the hours that were **booked**;
 `fairness_cost.py --what cost` reports the hours the round loop actually spent
@@ -646,7 +646,7 @@ size-reference tasks appear in neither row here.
 
 ## 10. The published records
 
-**In git - `study/artifacts/Digits_study01/`, 5.2 MB.** The metadata core: the
+**In git - `study/artifacts/Digits_study01/`, 5.5 MB.** The metadata core: the
 frozen cohort, the g-0 evaluation books both baselines are measured against, the
 fold books, the outlier and cohort records, every shipped table and CSV - the ten
 views the manuscript's figures are drawn on among them - every task file that was
@@ -657,15 +657,18 @@ the command that regenerates it. Absolute machine paths are rewritten to
 `$FOA_STUDY_DIR` and friends by `tools/sanitize_artifacts.py`; that this stayed
 true is asserted by `tests/test_release_artifacts.py`.
 
-**A release asset - `Digits_study01_records.tar.gz`, 68,303,506 bytes.** Every
-`accuracies_*.json` and `summary_0.json` under the 1,590 `d01_*` run folders plus
-the 380 reference-rung JSONs: 5,320 files, 522 MB unpacked. These are the numbers
+**A release asset - `Digits_study01_records.tar.gz`, 66,761,023 bytes.** Every
+`accuracies_*.json` and `summary_0.json` under the 1,585 `d01_*` run folders plus
+the 380 reference-rung JSONs: 5,310 files, 515 MB unpacked. These are the numbers
 every table is computed from. They are an asset rather than a tracked directory
 because git is the wrong place for half a gigabyte of machine output nobody will
-diff, and they carry no machine paths either - the same sanitiser was run over a
-staged copy before packing.
+diff, and they carry no machine paths either - the same sanitiser is run over a
+staged copy before packing. `tools/build_records_asset.py` builds it, decides
+membership with the same predicate every reader uses, and packs deterministically,
+so the checksum is a property of the records rather than of the day they were
+packed.
 
-    sha256 405a72c6127b2bec95831d4e0f181967ad38a21d22fb1a9ab861cfbb166665a5
+    sha256 9c54ef79ec96d7faefedd01abb0dea4e8e8cda110bff0d4626717dfbfe30c28f
 
 published beside the archive as `Digits_study01_records.tar.gz.sha256`. Paths
 inside are relative to the study root, so the asset unpacks straight over one -
@@ -675,7 +678,7 @@ study root on its own, and nothing runs until the two are brought together.
 
 ### Assembling the reviewer tree
 
-The asset carries the 1,590 `d01_*` run folders and the reference rungs and
+The asset carries the 1,585 `d01_*` run folders and the reference rungs and
 nothing else; the core carries the selection records, fold books, task files and
 tables that every tool reads alongside them. Both are laid out relative to the
 study root, so assembling one is two copies into an empty directory:
@@ -684,12 +687,12 @@ study root, so assembling one is two copies into an empty directory:
 export FOA_STUDY_DIR=/path/to/Digits_study01        # any empty directory
 mkdir -p "$FOA_STUDY_DIR"
 
-sha256sum -c Digits_study01_records.tar.gz.sha256   # 68,303,506 bytes
+sha256sum -c Digits_study01_records.tar.gz.sha256   # 66,761,023 bytes
 tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
 cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
 ```
 
-The result is 5,448 files - the asset's 5,320 plus this directory's 128 - across
+The result is 5,447 files - the asset's 5,310 plus this directory's 137 - across
 1,610 top-level entries, and every row of
 [§6](#6-which-command-produces-which-claim) runs against it from the repository
 root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
@@ -702,10 +705,12 @@ Two things behave differently on such a tree, and neither is a defect.
 `describe_cohort.py` reads the dataset rather than the records, so it needs
 `FOA_NIST28_DIR` and the `fetch_sd19.py` step in [§2](#2-environment-and-data);
 every other row of §6 runs without it. And `foa signals` recomputes the derived
-signal files over 2,470 runs where the machine that ran the study saw 2,471: the
-extra one is a single-task smoke run that predates the stage and was never part
-of it, so it is not in the asset. Every selected arm, oracle and gap comes out
-identical - only the `num_candidates` and `num_allowed` populations shift by one.
+signal files over 2,465 runs where the machine that ran the study saw 2,471: the
+six it does not carry are a one-task smoke run that predates the stage and was
+never part of it, and the five runs of the one-client extreme arrangement the
+study does not define. Neither belongs to a shipped table. Every selected arm,
+oracle and gap comes out identical - only the `num_candidates` and `num_allowed`
+populations shift.
 
 **Not published: the weights.** `g0_model`, the five `g0_fold*/global_model` and
 `global_results/fisher_g0` - 51 MB of checkpoints, which answer no question the

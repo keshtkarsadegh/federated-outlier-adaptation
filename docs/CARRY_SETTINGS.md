@@ -5,7 +5,7 @@
 Every method comparison in this study was made on one federation: ten clients
 with nine drawn per round. A result measured at one setting is a result about
 that setting until something else is measured, so the four arms the combination
-cross crowned were carried into three other federations and into three extreme
+cross crowned were carried into three other federations and into two extreme
 arrangements where there is barely a federation at all.
 
 Nothing here is searched. The arms are read out of the study's own selection
@@ -167,7 +167,7 @@ is not worth running at a third.
 
 ## 5. The extreme cases
 
-Three arrangements of the cohort's worst two writers, at full participation -
+Two arrangements of the cohort's worst two writers, at full participation -
 dropping a client from a two-client federation is not a participation study, it
 is a coin flip on whether the round happens.
 
@@ -175,7 +175,6 @@ is a coin flip on whether the round happens.
 |---|---|---|---|---|---|---|
 | `double` | two clients: the worst two | 0.9685 | 0.9363 | 14.60p | 6.23p | **8.37p** |
 | `dual` | one client holding both writers' rows merged | 0.9612 | 0.8558 | 13.86p | 14.28p | -0.41p |
-| `single` | one client: the worst writer | 0.9519 | 0.7528 | 12.94p | 24.57p | -11.63p |
 
 `double` and `dual` hold **precisely the same rows**. They differ only in whether
 the aggregation ever sees them as two updates or as one. That gap - 8.37p against
@@ -190,12 +189,12 @@ not aggregation. Whatever the server rule is called, the loop is plain
 fine-tuning on the outlier writer, and every mechanism this study selected for -
 anchoring toward the shipped model, trimming the tails of an ordered coordinate,
 averaging a penalty's effect across clients - needs a second update to have any
-effect at all. `single` and `dual` are therefore not "federated learning at
-n = 1"; they are the ablation that shows how much of the preservation was coming
-from the averaging rather than from the penalty.
+effect at all. `dual` is therefore not "federated learning at n = 1"; it is the
+ablation that shows how much of the preservation was coming from the averaging
+rather than from the penalty.
 
-`double` is the only one of the three with a second update, and it is the only
-one that ends above the shipped model's own trade.
+`double` is the one of the pair with a second update, and it is the only one
+that ends above the shipped model's own trade.
 
 ### Adaptation saturates in tens of rounds; the horizon spends the rest
 
@@ -205,16 +204,15 @@ validation columns and taking the round that maximises it:
 
 | case | oracle stop | score there | score at round 100 | the horizon cost | adaptation it bought |
 |---|---|---|---|---|---|
-| `single` | round 3 | 16.21p | -10.66p | 26.87p | -1.25p |
 | `dual` | round 8 | 16.60p | -0.59p | 17.19p | -1.96p |
 | `double` | round 36 | 15.68p | 9.72p | 5.96p | -1.30p |
 
-Every case reaches essentially its best adaptation within the first tens of
-rounds and then spends between six and twenty-seven points of score buying
-**negative** adaptation. The three peaks are within a point of each other
-(15.68p to 16.60p): the arrangements barely differ in what they can reach, they
+Both cases reach essentially their best adaptation within the first tens of
+rounds and then spend between six and seventeen points of score buying
+**negative** adaptation. The two peaks are within a point of each other
+(15.68p and 16.60p): the arrangements barely differ in what they can reach, they
 differ in how fast the horizon takes it away afterwards, and the ordering of the
-three by how long they last - 3, 8, 36 - is the ordering by how much averaging
+two by how long they last - 8 and 36 - is the ordering by how much averaging
 they have.
 
 **This is an oracle and not a method.** The stopping round is chosen by looking
@@ -224,16 +222,15 @@ found it online. It is reported to attribute the loss, not to fix it.
 ### Retention is blind to it
 
 Every run carries eight forgetting signals, and `retention_known` is the one that
-claims to say how much of the original behaviour survives. On these three cases
-it never leaves 1.0:
+claims to say how much of the original behaviour survives. On both of these
+cases it never leaves 1.0:
 
 | case | max deviation of `retention_known` from 1.0 | source population drop |
 |---|---|---|
-| `single` | 0.0154 | 26.13p |
 | `dual` | 0.0080 | 15.79p |
 | `double` | 0.0080 | 6.14p |
 
-A signal reading 1.0 through a twenty-six point collapse is a finding, not a
+A signal reading 1.0 through a sixteen point collapse is a finding, not a
 diagnostic. Whatever `retention_known` measures on these runs, it is not what the
 preservation column measures, and a reader who had watched it instead of the
 source-population curve would have seen nothing wrong at round 100. It is
@@ -242,7 +239,7 @@ figure plots the two accuracy curves rather than any signal.
 
 ### The decision: kept, with the discussion
 
-These three cases are **kept in the paper and discussed**, not dropped as a
+Both cases are **kept in the paper and discussed**, not dropped as a
 degenerate corner and not reported as a failure of the method. The reasoning:
 
 * they are the only measurement in the study that separates client boundaries
@@ -252,9 +249,8 @@ degenerate corner and not reported as a failure of the method. The reasoning:
 * the loss they show is mostly the horizon, and saying so is a claim about the
   protocol that the round series support directly.
 
-What they must not be reported as is a method comparison. `single` and `dual`
-are not the method losing to something; they are the method with the thing it
-needs removed.
+What they must not be reported as is a method comparison. `dual` is not the
+method losing to something; it is the method with the thing it needs removed.
 
 ### The figure and the command
 
