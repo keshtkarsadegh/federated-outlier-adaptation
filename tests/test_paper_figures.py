@@ -27,8 +27,10 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 TOOLS = REPO / "tools"
 FIGURES = TOOLS / "paper_figures"
-TABLES = REPO / "study" / "artifacts" / "Digits_study01" / "tables"
+STUDY = REPO / "study" / "artifacts" / "Digits_study01"
+TABLES = STUDY / "tables"
 VIEWS = TABLES / "paper_figures"
+PAPER = TABLES / "paper"
 
 for entry in (str(TOOLS), str(FIGURES), str(REPO / "src")):
     if entry not in sys.path:
@@ -174,3 +176,39 @@ def test_neither_generator_writes_into_the_checkout_by_default(monkeypatch):
     for module in (make_numbers, make_paper_tables):
         with pytest.raises(SystemExit):
             module.out_dir()
+
+
+def test_the_decoupling_view_is_rebuilt_from_the_shipped_records(tmp_path):
+    """
+    The one view whose generator was written after the file it produces.
+
+    `decouple_example.csv` was cut by hand and the paragraph it feeds is the
+    defence of the whole two-stage selection, so a tool that merely produces
+    something of the same shape would be worse than no tool at all. It reads
+    only `outliers/`, which ships in full, so the regeneration is checked byte
+    for byte against the shipped file rather than field by field.
+    """
+    import export_decouple_example
+
+    export_decouple_example.write_csv(tmp_path / "decouple_example.csv",
+                                      export_decouple_example.rows_of(STUDY))
+    assert (tmp_path / "decouple_example.csv").read_bytes() == \
+        (PAPER / "decouple_example.csv").read_bytes()
+
+
+def test_the_signal_extracts_carry_the_columns_their_tool_declares():
+    """
+    The signals extracts need the stored runs and cannot be rebuilt from the
+    clone, so what is pinned here is the joint that would break silently: a
+    column the tool stopped writing, or one the shipped file does not carry.
+    """
+    import export_signals_summary
+
+    with open(PAPER / "signals_summary_extract.csv", newline="") as handle:
+        header = next(csv.reader(handle))
+    assert header == list(export_signals_summary.COLUMNS)
+
+    with open(PAPER / "signals_extras_extract.csv", newline="") as handle:
+        keys = {row[0] for row in csv.reader(handle)}
+    assert {"stopping_arms", "fixed_mean_score", "oracle_mean_score",
+            "baseline_a0", "baseline_p0"} <= keys

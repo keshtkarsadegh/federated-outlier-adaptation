@@ -385,6 +385,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | the six per-round views, and the two rounds the extreme figure marks | `export_traces.py --root $FOA_STUDY_DIR --out <dir>` |
 | g-0's own training history, and the isolated clients | `export_baseline_views.py --root $FOA_STUDY_DIR --out <dir>` |
 | each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
+| the two extracts the forgetting-signals section is written on | `export_signals_summary.py --root $FOA_STUDY_DIR --out <dir>` |
+| the five writers the two selection rankings disagree about | `export_decouple_example.py --root $FOA_STUDY_DIR --out <dir>` |
 | every figure in the manuscript | [below](#and-which-command-produces-which-figure) - two commands per figure |
 | every number the manuscript sets | `paper_figures/make_numbers.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
 | every table the manuscript sets | `paper_figures/make_paper_tables.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
@@ -512,7 +514,7 @@ directories because four different tools write them:
 
 | where | what is in it | written by |
 |---|---|---|
-| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the three frozen extracts | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv` |
+| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py` |
 | `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
 | `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest | `stopping_table.py --csv` |
 | `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
@@ -548,12 +550,22 @@ The other 182 macros are generated. `tables/sensitivity_agg.tex` and
 not write: a third generator in the manuscript checkout does, from the two
 `weight_sensitivity_*.csv` that ship here.
 
-**THREE VIEWS TRAVEL AS FROZEN EXTRACTS.** `signals_summary_extract.csv` and
-`signals_extras_extract.csv` condense what `foa signals` writes into
-`$FOA_STUDY_DIR/signals/`, and `decouple_example.csv` is the five-writer rank
-comparison the cohort-selection section quotes. They are shipped so that
-`make_numbers.py` runs against a clone with no study root; rebuilding them from
-the records is not yet one of the commands above.
+**THREE VIEWS ARE EXTRACTS OF OTHER RECORDS, AND EACH HAS A COMMAND.**
+`signals_summary_extract.csv` and `signals_extras_extract.csv` join what `foa
+signals` wrote into `$FOA_STUDY_DIR/signals/` to the stop `stopping_table.py`
+reads off the same arms, and `decouple_example.csv` is the five-writer rank
+comparison the cohort-selection section quotes. All three still ship, so that
+`make_numbers.py` runs against a clone with no study root, and all three are now
+rebuilt from the records byte for byte:
+
+```bash
+python tools/export_signals_summary.py  --root "$FOA_STUDY_DIR" --out <dir>
+python tools/export_decouple_example.py --root "$FOA_STUDY_DIR" --out <dir>
+```
+
+The second reads only `outliers/`, so it runs against
+`study/artifacts/Digits_study01/` in a bare clone; the first reads the stored
+arms as well and needs the unpacked records. Neither writes into the study tree.
 
 ---
 

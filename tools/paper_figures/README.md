@@ -97,7 +97,7 @@ the fourth supplies `references.csv`, which `fig_problem` and `fig_baselines`
 read for the centralized ceiling and for `g-0`'s own source accuracy.
 
 The numbers and the tables read wider than the figures do — thirty views between
-them — so rebuilding *their* inputs takes five more commands into the same
+them — so rebuilding *their* inputs takes seven more commands into the same
 directory:
 
 ```bash
@@ -106,6 +106,8 @@ python tools/stopping_table.py     --root "$FOA_STUDY_DIR"             --csv vie
 python tools/compare_arms.py       --root "$FOA_STUDY_DIR" --what all  --csv views/
 python tools/weight_sensitivity.py --root "$FOA_STUDY_DIR" --grid both --csv views/
 python tools/describe_cohort.py    --root "$FOA_STUDY_DIR" --all       --csv views/
+python tools/export_signals_summary.py  --root "$FOA_STUDY_DIR" --out views/
+python tools/export_decouple_example.py --root "$FOA_STUDY_DIR" --out views/
 FOA_PAPER_DATA=$PWD/views FOA_PAPER_OUT=/tmp/paper \
     python tools/paper_figures/make_numbers.py
 ```
@@ -116,12 +118,20 @@ the third, the two `weight_sensitivity_*.csv` from the fourth and
 `cohort_composition.csv` from the fifth. `cohort_table.csv` is a stage artefact
 rather than a report, written when the cohort was drawn.
 
-**THREE VIEWS HAVE NO GENERATOR HERE** and travel as frozen extracts:
-`signals_summary_extract.csv` and `signals_extras_extract.csv`, condensed from
-what `foa signals` writes into `$FOA_STUDY_DIR/signals/`, and
-`decouple_example.csv`, the five-writer rank comparison the cohort-selection
-section quotes. They are shipped so that `make_numbers.py` runs from a clone;
-regenerating them from the records is not yet a command in this repository.
+The last two commands are the two extracts. `export_signals_summary.py` joins the
+correlations `foa signals` wrote into `$FOA_STUDY_DIR/signals/` to the stop
+`stopping_table.py` reads off the same arms, which is what the forgetting-signals
+section asks of a signal at once; `export_decouple_example.py` rebuilds the
+five-writer rank comparison the cohort-selection section quotes, and because it
+reads only `outliers/` it also runs against `study/artifacts/Digits_study01/` in
+a clone with no records unpacked:
+
+```bash
+python tools/export_decouple_example.py \
+    --root study/artifacts/Digits_study01 --out views/
+```
+
+All three views still ship, so that `make_numbers.py` runs from a bare clone.
 
 ## Which figure reads what
 
