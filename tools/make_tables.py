@@ -377,9 +377,7 @@ def master_table(root: Path) -> str:
     # ---- the extreme cases -------------------------------------------------
     worst = ranked[0] if ranked else "?"
     second = ranked[1] if len(ranked) > 1 else "?"
-    iso_scratch = _extreme_solo(root, "scratch", worst)
     iso_global = _extreme_solo(root, "global", worst)
-    single = read_folds(root, "extreme_single")
     dual = read_folds(root, "extreme_dual")
     double = read_folds(root, "extreme_double")
     solo_second = _extreme_solo(root, "global", second)
@@ -390,20 +388,10 @@ def master_table(root: Path) -> str:
         "",
         "## Extreme cases (winner combo) — the minimum-possible FL",
         "",
-        "Framing (owner): SINGLE is not an FL scenario — its proper benchmark is centralized",
-        "training on that client (isolated, both inits). DUAL and DOUBLE are the minimum",
-        "possible FL solutions, and they work.",
-        "",
-        f"### Single client ({worst}, do-nothing {f3(per_writer.get(worst))}) "
-        "vs its centralized alternatives",
-        "",
-        "| Approach | own test | old |",
-        "|---|---|---|",
-        f"| centralized scratch (isolated) | {f4(iso_scratch['own'])} | {f4(iso_scratch['old'])} |",
-        f"| centralized g-0 fine-tune (isolated) | {f4(iso_global['own'])} | {f4(iso_global['old'])} |",
-        f"| single-client \"FL\" (winner combo) | {f4(single['pooled'])} | {f4(single['old'])} |",
-        "",
-        "For one client, plain g-0 fine-tuning is the right tool — FL machinery adds nothing.",
+        "Framing (owner): DUAL and DOUBLE are the minimum possible FL solutions, and",
+        "they work. The one-client arrangement that used to sit above them is out of the",
+        "study: federating a lone writer is a question about fine-tuning, and its own",
+        "run folders are no longer part of what any table reports.",
         "",
         f"### The minimum FL (two writers: {worst} {f3(per_writer.get(worst))}, "
         f"{second} {f3(per_writer.get(second))} under g-0)",
