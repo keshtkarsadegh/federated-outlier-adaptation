@@ -69,14 +69,14 @@ def main():
     for e in range(1, longest + 1):
         vals = [s_[e - 1][2] for s_ in history.values() if len(s_) >= e]
         mean_val.append(sum(vals) / len(vals))
-    ax1.plot(range(1, longest + 1), mean_val, color=st.BLUE, lw=1, zorder=2)
+    ax1.plot(range(1, longest + 1), mean_val, color=st.BLUE, lw=0.5, zorder=2)
     ax1.set_xlabel("Epoch")
     ax1.set_ylabel("Source accuracy")
     ax1.set_title("The shipped model $g$-$0$", loc="left")
     ax1.set_ylim(0.96, 1.002)
     ax1.grid(True, color="#EEEEEE", lw=0.5)
     handles = [
-        plt.Line2D([], [], color=st.BLUE, lw=1, label="validation, fold-mean"),
+        plt.Line2D([], [], color=st.BLUE, lw=0.5, label="validation, fold-mean"),
         plt.Line2D([], [], color=st.LIGHT, lw=0.5, label="single folds"),
         plt.Line2D([], [], color=st.GREY, marker="o", ms=2.4, lw=0.5,
                    label="selected epoch"),
@@ -86,9 +86,9 @@ def main():
     rows_ = isolation()
     ys = list(range(1, len(rows_) + 1))
     for y, (before, own, src_) in zip(ys, rows_):
-        ax2.plot([before, own], [y, y], color=st.LIGHT, lw=0.86, zorder=1)
+        ax2.plot([before, own], [y, y], color=st.LIGHT, lw=0.5, zorder=1)
     ax2.scatter([r[0] for r in rows_], ys, s=22, facecolors="white",
-                edgecolors=st.BLUE, lw=0.79, zorder=2,
+                edgecolors=st.BLUE, lw=0.5, zorder=2,
                 label="shipped model $g$-$0$")
     ax2.scatter([r[1] for r in rows_], ys, s=22, color=st.BLUE,
                 zorder=3, label="after fine-tuning on this client")
@@ -109,11 +109,11 @@ def main():
         ref = next(_csv.DictReader(handle))
     p0 = float(ref["preservation"]) + float(ref["spent"])
     for y, (before, own, src_) in zip(ys, rows_):
-        ax3.plot([src_, p0], [y, y], color=st.LIGHT, lw=0.86, zorder=1)
+        ax3.plot([src_, p0], [y, y], color=st.LIGHT, lw=0.5, zorder=1)
     ax3.scatter([r[2] for r in rows_], ys, s=26, color=st.VERMILION,
-                marker="x", lw=0.86, zorder=3,
+                marker="x", lw=0.5, zorder=3,
                 label="after fine-tuning on this client")
-    ax3.axvline(p0, color=st.GREY, lw=0.58, ls=":")
+    ax3.axvline(p0, color=st.GREY, lw=0.5, ls=":")
     ax3.text(p0 - 0.0012, 0.62, "$g$-$0$", ha="right", va="bottom",
              fontsize=6.5, color=st.GREY)
     ax3.set_xlim(0.955, 1.003)

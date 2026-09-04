@@ -21,10 +21,10 @@ ARMS = [
     # The claim is a pair: the crowned combination (thick black) rides on its
     # penalty half (red dashed) --- those two carry the argument; the server
     # rule alone and the control are context, thin and light.
-    ("control_fedavg", fs.LIGHT, (0, (5, 2)), 0.72, 3),
-    ("anchor_h2", fs.SKY, (0, (1, 1.2)), 0.72, 4),
-    ("ntd_b0p01_t0p5", fs.VERMILION, (0, (5, 2)), 1.1, 7),
-    ("anchor_h2_ntd_b0p01_t0p5", fs.BLACK, "-", 1.2, 8),
+    ("control_fedavg", fs.LIGHT, (0, (5, 2)), 0.5, 3),
+    ("anchor_h2", fs.SKY, (0, (1, 1.2)), 0.5, 4),
+    ("ntd_b0p01_t0p5", fs.VERMILION, (0, (5, 2)), 0.5, 7),
+    ("anchor_h2_ntd_b0p01_t0p5", fs.BLACK, "-", 0.5, 8),
 ]
 
 

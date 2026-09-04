@@ -144,7 +144,7 @@ def setup():
         "legend.labelspacing": 0.35,
         "legend.borderaxespad": 0.4,
         "axes.linewidth": 0.6,
-        "lines.linewidth": 0.8,
+        "lines.linewidth": 0.5,
         "xtick.major.width": 0.6,
         "ytick.major.width": 0.6,
         "xtick.major.size": 2.6,
@@ -215,7 +215,7 @@ def panels(height=2.55, wide=False):
     return figure, left, right
 
 
-def draw(axis, rounds, values, colour, style="-", width=0.8, z=3, label=None):
+def draw(axis, rounds, values, colour, style="-", width=0.5, z=3, label=None):
     """One curve, vector, with the group's default weight."""
     return axis.plot(rounds, values, color=colour, linestyle=style,
                      linewidth=width, zorder=z, label=label,
