@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The three smallest federations, and when they should have stopped.
+"""The two extreme arrangements, and when they should have stopped.
 
 At one or two clients there is nothing left to average, and the fixed
 hundred-round budget stops being a schedule and becomes a hazard: every
