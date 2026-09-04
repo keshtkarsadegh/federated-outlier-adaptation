@@ -19,11 +19,11 @@ import matplotlib.pyplot as plt
 
 import figstyle as fs
 
-CONTROL = ("control_fedavg", fs.BLACK, (0, (5, 2)), 1.3, 9)
+CONTROL = ("control_fedavg", fs.BLACK, (0, (5, 2)), 0.5, 9)
 ROWS = [
     [("anchor_h2", fs.BLUE, "-", 0.5, 6),
-     ("eta_0p95", fs.GREEN, "-", 1.1, 5)],
-    [("weight_q0", fs.PURPLE, (0, (4, 1, 1, 1)), 1.2, 5)],
+     ("eta_0p95", fs.GREEN, "-", 0.5, 5)],
+    [("weight_q0", fs.PURPLE, (0, (4, 1, 1, 1)), 0.5, 5)],
 ]
 
 

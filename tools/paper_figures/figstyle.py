@@ -232,7 +232,7 @@ def mark_start(axis, value, text="shipped model", offset=(9, -2), va="top"):
 
 def handles(entries):
     """Proxy handles so a legend can be built in the order the figure argues."""
-    return [Line2D([], [], color=colour, linestyle=style, linewidth=1.0,
+    return [Line2D([], [], color=colour, linestyle=style, linewidth=0.5,
                    label=text) for text, colour, style in entries]
 
 
