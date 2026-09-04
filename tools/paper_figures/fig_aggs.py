@@ -72,23 +72,15 @@ def main():
         bbox_to_anchor=(0.5, 0.0))
     fs.save(figure, "fig_aggs", rect=(0, 0.105, 1, 1))
     fs.caption("fig_aggs", """
-        The three selected server rules, over the full hundred-round budget on
-        the study's ten-client cohort: accuracy on the source population
-        (left, preservation) and on the outlier cohort (right, adaptation),
-        fold-mean over the five folds on the validation halves.  All arms run
-        the parallel schedule with no client-side penalty, so every difference
-        is the rule alone.  Every panel repeats the two references everything
-        is measured against --- the plain federated-averaging control, the
-        black dashed curve, and the shipped model's own accuracy, the dotted
-        line every arm starts from --- and the three rules are split across
-        the two rows so no two of them overlap in one panel.  To read it: a rule helps only where
-        its curve rises above the black dashed control --- the anchor (top
-        row, blue) is the one rule that does so on preservation, from about
-        round 30, while the damped server step (top, green) and uniform
-        weighting (bottom, purple) stay on the control on both axes, and on
-        adaptation every rule ends where the control ends.  Validation
-        basis, so the endpoints are not the test-set figures the tables
-        report.
+        The three selected server rules on the parallel schedule with no
+        client-side penalty, over the full hundred-round budget on the
+        ten-client cohort, fold-mean over the five folds on the validation
+        halves.  Every panel repeats the federated-averaging control (black,
+        dashed) and the shipped model's accuracy (dotted); the rules are
+        split across the rows so their curves do not overlap.  A rule helps
+        only where it rises above the control: the anchor (blue) is the only
+        one that does, on preservation.  Validation basis, so the endpoints
+        are not the test-set figures the tables report.
         """)
 
 
