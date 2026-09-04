@@ -1,5 +1,6 @@
 """
-The figure pipeline: every view a figure reads is shipped, and shipped correctly.
+The paper pipeline: every view a figure or a generator reads is shipped, and
+shipped correctly.
 
 The figures are the one part of the manuscript that used to be built by hand.
 Now they are `tools/export_*.py` into `tables/paper_figures/` and `fig_*.py` out
@@ -8,6 +9,11 @@ the exporter stopped writing still leaves the old CSV in the tree, a figure that
 starts reading a new view finds nothing until somebody runs it, and a trace whose
 arms disagree at round 0 draws a difference that is about the shipped model
 rather than about the training.
+
+`make_numbers.py` and `make_paper_tables.py` sit in the same directory and read
+the same way, so the same joint is checked for them: they read thirty views
+spread over four bundles, and a view that stopped shipping would be found by
+the manuscript build rather than here.
 """
 
 from __future__ import annotations
@@ -16,10 +22,13 @@ import csv
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 TOOLS = REPO / "tools"
 FIGURES = TOOLS / "paper_figures"
-VIEWS = REPO / "study" / "artifacts" / "Digits_study01" / "tables" / "paper_figures"
+TABLES = REPO / "study" / "artifacts" / "Digits_study01" / "tables"
+VIEWS = TABLES / "paper_figures"
 
 for entry in (str(TOOLS), str(FIGURES), str(REPO / "src")):
     if entry not in sys.path:
@@ -95,3 +104,73 @@ def test_the_shipped_views_carry_the_columns_their_tools_declare():
         with open(VIEWS / name, newline="") as handle:
             header = next(csv.reader(handle))
         assert header == list(columns), f"{name}: header is not what its tool writes"
+
+
+def test_every_csv_the_numbers_and_the_tables_read_resolves():
+    """
+    The same check for the two generators, and it is a wider one.
+
+    `numbers.tex` and the twelve `tables/*.tex` are read out of thirty views that
+    live in four different bundles because four different tools write them. A
+    view that stopped shipping does not fail here unless it is looked for
+    through the generator's own resolution, which is why the names are read out
+    of the source and handed back to `locate`.
+    """
+    import re
+
+    import make_numbers
+    import make_paper_tables
+
+    for module in (make_numbers, make_paper_tables):
+        source = Path(module.__file__).read_text()
+        wanted = set(re.findall(r'rows\("([A-Za-z0-9_.-]+\.csv)"\)', source))
+        assert len(wanted) >= 15, f"{module.__name__}: the pattern stopped matching"
+        for name in sorted(wanted):
+            module.locate(name)        # raises SystemExit when it is not there
+
+
+def test_the_view_names_built_by_interpolation_are_shipped_too():
+    """
+    `sizes_%s.csv` and `fairness_%s.csv` are assembled from a tag, so the literal
+    name never appears in the source and the check above cannot see it. The tags
+    are the four carry settings, named in the table generator itself.
+    """
+    import make_numbers
+    import make_paper_tables
+
+    tags = [tag for tag, _, _ in make_paper_tables.SETTING]
+    assert sorted(tags) == ["c10d10", "c20d10", "c20d20", "five"], f"settings changed: {tags}"
+    for tag in tags:
+        make_paper_tables.locate(f"sizes_{tag}.csv")
+        make_numbers.locate(f"sizes_{tag}.csv")
+    for tag in ("c20d10", "c20d20"):
+        make_numbers.locate(f"fairness_{tag}.csv")
+
+
+def test_the_paper_bundle_wins_when_two_bundles_carry_one_name():
+    """
+    `tables/combos.csv` is the raw grid dump the stage left behind and
+    `tables/paper/combos.csv` is the view the manuscript quotes: one name, two
+    files, different rows. The order `_data_dirs` fixes is the only thing that
+    keeps the manuscript reading the second, so it is pinned here.
+    """
+    import make_numbers
+
+    assert (TABLES / "combos.csv").is_file() and (TABLES / "paper" / "combos.csv").is_file()
+    assert make_numbers.locate("combos.csv") == str(TABLES / "paper" / "combos.csv")
+
+
+def test_neither_generator_writes_into_the_checkout_by_default(monkeypatch):
+    """
+    Both rewrite LaTeX in place. Beside the script is the right answer in the
+    manuscript checkout and the wrong one here, where beside the script is the
+    tracked tree - so from a source checkout with no `FOA_PAPER_OUT` set the
+    answer has to be a refusal rather than a default.
+    """
+    import make_numbers
+    import make_paper_tables
+
+    monkeypatch.delenv("FOA_PAPER_OUT", raising=False)
+    for module in (make_numbers, make_paper_tables):
+        with pytest.raises(SystemExit):
+            module.out_dir()
