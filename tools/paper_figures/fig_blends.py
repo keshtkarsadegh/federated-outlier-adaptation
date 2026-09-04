@@ -20,14 +20,14 @@ import figstyle as fs
 
 ROWS = [
     ("Parallel schedule", [
-        ("kd_T0p25_a0p9", fs.VERMILION, "-", 1.4, 6),
-        ("fisher_lam8", fs.BLUE, "-", 1.4, 6),
-        ("hybrid_mix0p5", fs.GREEN, "-", 1.4, 7),
+        ("kd_T0p25_a0p9", fs.VERMILION, "-", 1, 6),
+        ("fisher_lam8", fs.BLUE, "-", 1, 6),
+        ("hybrid_mix0p5", fs.GREEN, "-", 1, 7),
     ]),
     ("Cyclic schedule", [
-        ("kd_T2_a0p99", fs.VERMILION, "-", 1.4, 6),
-        ("fisher_lam0p1", fs.BLUE, "-", 1.4, 6),
-        ("hybrid_seq_mix0p5", fs.GREEN, "-", 1.4, 7),
+        ("kd_T2_a0p99", fs.VERMILION, "-", 1, 6),
+        ("fisher_lam0p1", fs.BLUE, "-", 1, 6),
+        ("hybrid_seq_mix0p5", fs.GREEN, "-", 1, 7),
     ]),
 ]
 
@@ -42,7 +42,7 @@ def main():
                 (left, "src", fs.SRC_TITLE, fs.SRC_LABEL, fs.SRC_YLIM),
                 (right, "cohort", fs.COHORT_TITLE, fs.COHORT_LABEL,
                  fs.COHORT_YLIM)):
-            axis.grid(True, color="0.90", linewidth=0.4, zorder=0)
+            axis.grid(True, color="0.90", linewidth=0.6, zorder=0)
             axis.set_axisbelow(True)
             for side in ("top", "right"):
                 axis.spines[side].set_visible(False)

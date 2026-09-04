@@ -144,7 +144,7 @@ def setup():
         "legend.labelspacing": 0.35,
         "legend.borderaxespad": 0.4,
         "axes.linewidth": 0.6,
-        "lines.linewidth": 1.1,
+        "lines.linewidth": 0.8,
         "xtick.major.width": 0.6,
         "ytick.major.width": 0.6,
         "xtick.major.size": 2.6,
@@ -215,7 +215,7 @@ def panels(height=2.55, wide=False):
     return figure, left, right
 
 
-def draw(axis, rounds, values, colour, style="-", width=1.1, z=3, label=None):
+def draw(axis, rounds, values, colour, style="-", width=0.8, z=3, label=None):
     """One curve, vector, with the group's default weight."""
     return axis.plot(rounds, values, color=colour, linestyle=style,
                      linewidth=width, zorder=z, label=label,
@@ -232,7 +232,7 @@ def mark_start(axis, value, text="shipped model", offset=(9, -2), va="top"):
 
 def handles(entries):
     """Proxy handles so a legend can be built in the order the figure argues."""
-    return [Line2D([], [], color=colour, linestyle=style, linewidth=1.3,
+    return [Line2D([], [], color=colour, linestyle=style, linewidth=1.0,
                    label=text) for text, colour, style in entries]
 
 

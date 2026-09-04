@@ -61,7 +61,7 @@ def main():
     for fold, series in sorted(history.items()):
         epochs = [e for e, _, _ in series]
         val = [v for _, _, v in series]
-        ax1.plot(epochs, val, color=st.LIGHT, lw=0.6, zorder=1)
+        ax1.plot(epochs, val, color=st.LIGHT, lw=0.5, zorder=1)
         best = max(range(len(val)), key=lambda i: val[i])
         ax1.plot(epochs[best], val[best], marker="o", ms=2.6,
                  color=st.GREY, zorder=3)
@@ -69,16 +69,16 @@ def main():
     for e in range(1, longest + 1):
         vals = [s_[e - 1][2] for s_ in history.values() if len(s_) >= e]
         mean_val.append(sum(vals) / len(vals))
-    ax1.plot(range(1, longest + 1), mean_val, color=st.BLUE, lw=1.4, zorder=2)
+    ax1.plot(range(1, longest + 1), mean_val, color=st.BLUE, lw=1, zorder=2)
     ax1.set_xlabel("Epoch")
     ax1.set_ylabel("Source accuracy")
     ax1.set_title("The shipped model $g$-$0$", loc="left")
     ax1.set_ylim(0.96, 1.002)
-    ax1.grid(True, color="#EEEEEE", lw=0.4)
+    ax1.grid(True, color="#EEEEEE", lw=0.5)
     handles = [
-        plt.Line2D([], [], color=st.BLUE, lw=1.4, label="validation, fold-mean"),
-        plt.Line2D([], [], color=st.LIGHT, lw=0.6, label="single folds"),
-        plt.Line2D([], [], color=st.GREY, marker="o", ms=2.4, lw=0,
+        plt.Line2D([], [], color=st.BLUE, lw=1, label="validation, fold-mean"),
+        plt.Line2D([], [], color=st.LIGHT, lw=0.5, label="single folds"),
+        plt.Line2D([], [], color=st.GREY, marker="o", ms=2.4, lw=0.5,
                    label="selected epoch"),
     ]
     ax1.legend(handles=handles, loc="lower right")
@@ -86,9 +86,9 @@ def main():
     rows_ = isolation()
     ys = list(range(1, len(rows_) + 1))
     for y, (before, own, src_) in zip(ys, rows_):
-        ax2.plot([before, own], [y, y], color=st.LIGHT, lw=1.2, zorder=1)
+        ax2.plot([before, own], [y, y], color=st.LIGHT, lw=0.86, zorder=1)
     ax2.scatter([r[0] for r in rows_], ys, s=22, facecolors="white",
-                edgecolors=st.BLUE, lw=1.1, zorder=2,
+                edgecolors=st.BLUE, lw=0.79, zorder=2,
                 label="shipped model $g$-$0$")
     ax2.scatter([r[1] for r in rows_], ys, s=22, color=st.BLUE,
                 zorder=3, label="after fine-tuning on this client")
@@ -99,7 +99,7 @@ def main():
     ax2.set_yticklabels([str(y) for y in ys])
     ax2.set_xlim(0.72, 1.02)
     ax2.set_xticks([0.75, 0.80, 0.85, 0.90, 0.95, 1.0])
-    ax2.grid(True, axis="x", color="#EEEEEE", lw=0.4)
+    ax2.grid(True, axis="x", color="#EEEEEE", lw=0.5)
     handles2, labels2 = ax2.get_legend_handles_labels()
     fig.legend(handles2, labels2, loc="outside lower center", ncol=2,
                fontsize=6.3, handletextpad=0.4, columnspacing=1.0)
@@ -109,11 +109,11 @@ def main():
         ref = next(_csv.DictReader(handle))
     p0 = float(ref["preservation"]) + float(ref["spent"])
     for y, (before, own, src_) in zip(ys, rows_):
-        ax3.plot([src_, p0], [y, y], color=st.LIGHT, lw=1.2, zorder=1)
+        ax3.plot([src_, p0], [y, y], color=st.LIGHT, lw=0.86, zorder=1)
     ax3.scatter([r[2] for r in rows_], ys, s=26, color=st.VERMILION,
-                marker="x", lw=1.2, zorder=3,
+                marker="x", lw=0.86, zorder=3,
                 label="after fine-tuning on this client")
-    ax3.axvline(p0, color=st.GREY, lw=0.8, ls=":")
+    ax3.axvline(p0, color=st.GREY, lw=0.58, ls=":")
     ax3.text(p0 - 0.0012, 0.62, "$g$-$0$", ha="right", va="bottom",
              fontsize=6.5, color=st.GREY)
     ax3.set_xlim(0.955, 1.003)
@@ -123,7 +123,7 @@ def main():
     ax3.set_yticklabels([])
     ax3.set_xlabel("Source-population accuracy")
     ax3.set_title("What the source loses", loc="left")
-    ax3.grid(True, axis="x", color="#EEEEEE", lw=0.4)
+    ax3.grid(True, axis="x", color="#EEEEEE", lw=0.5)
 
     os.makedirs(st.OUT, exist_ok=True)
     fig.savefig(os.path.join(st.OUT, "fig_baselines.pdf"))

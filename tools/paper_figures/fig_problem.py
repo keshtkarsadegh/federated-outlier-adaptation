@@ -49,10 +49,10 @@ def main():
             (left, src, shipped_src, ceiling_src, "bottom", "top"),
             (right, cohort, shipped_cohort, ceiling_cohort, "bottom", "bottom")):
         axis.axhline(ref_shipped, color=fs.GREY, linestyle=(0, (1, 2)),
-                     linewidth=0.8, zorder=2)
+                     linewidth=0.6, zorder=2)
         axis.axhline(ref_ceiling, color=fs.GREEN, linestyle=(0, (5, 2)),
-                     linewidth=0.9, zorder=2)
-        fs.draw(axis, rounds, values, fs.VERMILION, "-", width=1.3, z=5)
+                     linewidth=0.65, zorder=2)
+        fs.draw(axis, rounds, values, fs.VERMILION, "-", width=0.94, z=5)
         axis.annotate("shipped model", (100, ref_shipped),
                       textcoords="offset points", xytext=(-2, 2 if ship_va == "bottom" else -2),
                       ha="right", va=ship_va, fontsize=6.6, color=fs.GREY)

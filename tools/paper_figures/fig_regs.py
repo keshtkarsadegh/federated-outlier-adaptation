@@ -25,10 +25,10 @@ ARMS = [
     # Four curves only: the falling control, the two output-space leaders,
     # and one elastic-weight representative for the trailing claim.  The
     # remaining families are in the table; more lines here buried the point.
-    ("param_l2_mu0", fs.BLACK, (0, (5, 2)), 1.6, 8),
-    ("logit_l2_lam0p003", fs.BLUE, "-", 1.5, 7),
-    ("ntd_b0p01_t2", fs.VERMILION, "-", 1.5, 7),
-    ("fisher_lam0p1", fs.SKY, (0, (4, 1, 1, 1)), 1.1, 4),
+    ("param_l2_mu0", fs.BLACK, (0, (5, 2)), 1.1, 8),
+    ("logit_l2_lam0p003", fs.BLUE, "-", 1.1, 7),
+    ("ntd_b0p01_t2", fs.VERMILION, "-", 1.1, 7),
+    ("fisher_lam0p1", fs.SKY, (0, (4, 1, 1, 1)), 0.79, 4),
 ]
 
 def main():

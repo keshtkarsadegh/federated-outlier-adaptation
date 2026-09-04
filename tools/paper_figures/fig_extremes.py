@@ -52,7 +52,7 @@ def main():
                       linestyle="none", zorder=9)
             axis.plot([rule], [values[rule]], marker="s", markersize=4.6,
                       markerfacecolor="white", markeredgecolor=colour,
-                      markeredgewidth=1.0, linestyle="none", zorder=9)
+                      markeredgewidth=0.72, linestyle="none", zorder=9)
     fs.mark_start(left, series[ARMS[0][0]]["src"][0], text=None)
     fs.mark_start(right, series[ARMS[0][0]]["cohort"][0], text=None)
 
@@ -62,7 +62,7 @@ def main():
         Line2D([], [], marker="o", markersize=4.2, color=fs.GREY,
                linestyle="none", label="oracle stop"),
         Line2D([], [], marker="s", markersize=4.6, markerfacecolor="white",
-               markeredgecolor=fs.GREY, markeredgewidth=1.0, linestyle="none",
+               markeredgecolor=fs.GREY, markeredgewidth=0.72, linestyle="none",
                label="rule fires"),
     ]
     right.legend(handles=markers, loc="lower right", bbox_to_anchor=(1.01, -0.02))
