@@ -34,7 +34,7 @@ from — one directory, or several separated the way `PATH` is.
 ## The numbers and the tables
 
 `make_numbers.py` writes `numbers.tex`, the file every quantitative sentence of
-the manuscript reads its value from; `make_paper_tables.py` writes the twelve
+the manuscript reads its value from; `make_paper_tables.py` writes the thirteen
 `tables/*.tex` the body and the appendices set. Both read the same shipped views
 and neither derives anything the CSVs do not already say:
 
@@ -114,9 +114,11 @@ FOA_PAPER_DATA=$PWD/views FOA_PAPER_OUT=/tmp/paper \
 
 That is `fairness_*.csv` and `cost_*.csv` from the first, `stopping_all.csv` and
 `stopping_extreme.csv` from the second (`plateau_rule.py --out views/` writes the
-four `plateau_*.csv` into the same bundle; no figure and no generator reads them
-yet, and `docs/STOPPING.md` does), `blends.csv` and `composition.csv` from
-the third, the two `weight_sensitivity_*.csv` from the fourth and
+four `plateau_*.csv` into the same bundle; `plateau_stages.csv` is what
+`plateau.tex` is built from, `plateau_extremes.csv` and `plateau_arms.csv` are
+read for macros, `fig_extremes.py` marks its stopping rounds from
+`plateau_extremes.csv`, and `docs/STOPPING.md` reads all four),
+`blends.csv` and `composition.csv` from the third, the two `weight_sensitivity_*.csv` from the fourth and
 `cohort_composition.csv` from the fifth. `cohort_table.csv` is a stage artefact
 rather than a report, written when the cohort was drawn.
 
@@ -144,7 +146,7 @@ All three views still ship, so that `make_numbers.py` runs from a bare clone.
 | `fig_regs` | `traces_regfull.csv` | `export_traces.py` |
 | `fig_blends` | `traces_blends.csv` | `export_traces.py` |
 | `fig_combo` | `traces_combo.csv` | `export_traces.py` |
-| `fig_extremes` | `traces_extreme.csv`, `extreme_stop_rounds.csv` | `export_traces.py` |
+| `fig_extremes` | `traces_extreme.csv`, `plateau_extremes.csv` | `export_traces.py`, `plateau_rule.py --out` |
 | `fig_baselines` | `g0_training.csv`, `isolated_clients.csv`, `references.csv` | `export_baseline_views.py`, `report_tables.py --what references` |
 
 `combos_folds.csv` is exported beside them by `export_combo_folds.py` and is read
@@ -180,5 +182,5 @@ differed.
 | `figstyle.py` | the shared canvas, palette, limits and CSV readers |
 | `paper_names.py` | run-record identifier to published method name, the one translation |
 | `fig_*.py` | one figure each: render only, no arithmetic |
-| `make_numbers.py` | the generated block of `numbers.tex`: 182 macros, each with its cell |
-| `make_paper_tables.py` | twelve `tables/*.tex`, every printed cell checked against its CSV |
+| `make_numbers.py` | the generated block of `numbers.tex`: 194 macros, each with its cell |
+| `make_paper_tables.py` | thirteen `tables/*.tex`, every printed cell checked against its CSV |

@@ -466,11 +466,12 @@ each export reproduces its shipped views byte for byte.
 | `fig_regs` | `traces_regfull.csv` | `export_traces.py --what traces_regfull` | `python tools/paper_figures/fig_regs.py` |
 | `fig_blends` | `traces_blends.csv` | `export_traces.py --what traces_blends` | `python tools/paper_figures/fig_blends.py` |
 | `fig_combo` | `traces_combo.csv` | `export_traces.py --what traces_combo` | `python tools/paper_figures/fig_combo.py` |
-| `fig_extremes` | `traces_extreme.csv`, `extreme_stop_rounds.csv` | `export_traces.py --what traces_extreme`, `--what extreme_stop_rounds` | `python tools/paper_figures/fig_extremes.py` |
+| `fig_extremes` | `traces_extreme.csv`, `plateau_extremes.csv` | `export_traces.py --what traces_extreme`, `plateau_rule.py --out` | `python tools/paper_figures/fig_extremes.py` |
 | `fig_baselines` | `g0_training.csv`, `isolated_clients.csv`, `references.csv` | `export_baseline_views.py`, `report_tables.py --what references` | `python tools/paper_figures/fig_baselines.py` |
 
 `export_traces.py --what all` writes the first six plus `extreme_stop_rounds.csv`
-in one pass; every export takes `--root $FOA_STUDY_DIR --out <dir>` like the
+in one pass - the last of those is read by `make_numbers.py` rather than by a
+figure now; every export takes `--root $FOA_STUDY_DIR --out <dir>` like the
 reporting tools take `--csv`.
 
 `FOA_PAPER_OUT` says where the PDF and its draft caption are written - without it
@@ -500,8 +501,8 @@ evaluations only.
 ### And which command produces the numbers and the tables
 
 One step further along the same shape. `numbers.tex` - the file every
-quantitative sentence of the manuscript reads its value from - and the twelve
-`tables/*.tex` it sets are written from the views too, by two generators that sit
+quantitative sentence of the manuscript reads its value from - and the
+thirteen `tables/*.tex` it sets are written from the views too, by two generators that sit
 beside the figure scripts and compute nothing:
 
 ```bash
@@ -525,7 +526,7 @@ directories because four different tools write them:
 |---|---|---|
 | `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py` |
 | `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
-| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, which the generators do not read yet and `docs/STOPPING.md` does | `stopping_table.py --csv`, `plateau_rule.py --out` |
+| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, three of which the generators read - `plateau_stages.csv` builds `plateau.tex`, `plateau_arms.csv` and `plateau_extremes.csv` fill macros, and `fig_extremes.py` marks its stopping rounds from the last - while `docs/STOPPING.md` reads all four | `stopping_table.py --csv`, `plateau_rule.py --out` |
 | `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
 
 **THE PAPER BUNDLE IS SEARCHED FIRST, AND THAT MATTERS.** `tables/combos.csv` is

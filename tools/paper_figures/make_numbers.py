@@ -410,6 +410,39 @@ def build():
                                   if r["all_positive"] == "1")),
         "blends.csv, rows with all_positive=1, min col mean, in points")
 
+    pst = rows("plateau_stages.csv")
+    pex = rows("plateau_extremes.csv")
+    parm = rows("plateau_arms.csv")
+    pall = pick(pst, stage="all")
+    put("nPlateauK", "%d" % int(float(pall["patience"])),
+        "plateau_stages.csv, row all, col patience")
+    put("nPlateauAllMean", dpts(f(pall, "rule_mean")),
+        "plateau_stages.csv, row all, col rule_mean, in points")
+    put("nPlateauAllGain", dpts(f(pall, "gain")),
+        "plateau_stages.csv, row all, col gain, in points")
+    put("nPlateauOracleMean", dpts(f(pall, "oracle_mean")),
+        "plateau_stages.csv, row all, col oracle_mean, in points")
+    put("nPlateauFixedMean", dpts(f(pall, "fixed_mean")),
+        "plateau_stages.csv, row all, col fixed_mean, in points")
+    put("nPlateauFires", "%d" % int(float(pall["fires"])),
+        "plateau_stages.csv, row all, col fires")
+    put("nPlateauArms", "%d" % int(float(pall["arms"])),
+        "plateau_stages.csv, row all, col arms")
+    pext = pick(pst, stage="extreme")
+    put("nPlateauExtremeGain", dpts(f(pext, "gain")),
+        "plateau_stages.csv, row extreme, col gain, in points")
+    hurt = [r for r in parm if float(r["gain"]) < 0]
+    put("nPlateauHurtArms", {0: "no", 1: "one", 2: "two"}.get(len(hurt), str(len(hurt))),
+        "plateau_arms.csv, count of rows with col gain < 0")
+    put("nPlateauWorstLoss", dpts(-min(float(r["gain"]) for r in parm)),
+        "plateau_arms.csv, most negative col gain, sign flipped, in points")
+    pd_ = pick(pex, cell="dual")
+    pb = pick(pex, cell="double")
+    put("nDualPlateauFire", "%d" % int(float(pd_["fire_round"])),
+        "plateau_extremes.csv, row dual, col fire_round")
+    put("nDoublePlateauFire", "%d" % int(float(pb["fire_round"])),
+        "plateau_extremes.csv, row double, col fire_round")
+
     isoc = rows("isolated_clients.csv")
     percl = {}
     for r in isoc:

@@ -253,7 +253,8 @@ STOP_COLUMNS = (
 
 def stop_rounds(root: Path, tag: str, a0: float, p0: float) -> List[dict]:
     """
-    The two rounds `fig_extremes` marks, for each extreme arrangement.
+    The two rounds the extremes figure used to mark, for each extreme
+    arrangement; `make_numbers.py` quotes them still.
 
     Both come out of `stopping_table` rather than from a rule restated here: the
     oracle round is the round maximising the study's own selection score along

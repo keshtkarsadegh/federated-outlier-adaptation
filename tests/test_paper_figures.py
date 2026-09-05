@@ -112,8 +112,9 @@ def test_every_csv_the_numbers_and_the_tables_read_resolves():
     """
     The same check for the two generators, and it is a wider one.
 
-    `numbers.tex` and the twelve `tables/*.tex` are read out of thirty views that
-    live in four different bundles because four different tools write them. A
+    `numbers.tex` and the thirteen `tables/*.tex` are read out of thirty-three
+    views that live in four different bundles because four different tools write
+    them. A
     view that stopped shipping does not fail here unless it is looked for
     through the generator's own resolution, which is why the names are read out
     of the source and handed back to `locate`.

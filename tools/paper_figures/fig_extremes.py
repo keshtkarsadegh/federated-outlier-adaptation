@@ -5,17 +5,17 @@ At one or two clients there is nothing left to average, and the fixed
 hundred-round budget stops being a schedule and becomes a hazard: every
 arrangement reaches its best trade in the first tens of rounds and then spends
 the rest of the horizon taking the source model apart.  Two rounds are marked
-on every curve.  The filled marker is the ORACLE stop --- the round that
-maximises the study's own selection score along the validation trace, which
-needs a source split to read and is therefore a bound, not a method.  The open
-marker is the round the study's one permitted rule fires: a fall of more than
-five points in the stored proxy-set accuracy, measured from the run's first
-round.
+on every curve.  The filled marker is the round the rule KEEPS --- the best
+cohort round along the validation trace, which on both arrangements is the round
+that maximises the study's own selection score as well.  The open marker is the
+round the rule runs out of patience: the study's one permitted stopping rule
+keeps the checkpoint of that best round and stops training after k rounds
+without an improvement on it.
 
     python fig_extremes.py       # regenerates fig_extremes.pdf from ../data
 
-Reads data/traces_extreme.csv and data/extreme_stop_rounds.csv, both of which
-carry the rounds already computed; nothing is re-derived here.
+Reads traces_extreme.csv and plateau_extremes.csv, both of which carry the
+rounds already computed; nothing is re-derived here.
 """
 
 from __future__ import annotations
@@ -33,16 +33,16 @@ ARMS = [
 def main():
     fs.setup()
     rounds, series = fs.read_traces("traces_extreme.csv")
-    stops = {row["arm"]: row for row in fs.read_rows("extreme_stop_rounds.csv")}
+    stops = {row["cell"]: row for row in fs.read_rows("plateau_extremes.csv")}
 
     figure, left, right = fs.panels(height=2.9, wide=True)
     for arm, colour, style in ARMS:
         if arm not in series or arm not in stops:
             raise SystemExit("no trace or no stopping row for %r" % arm)
-        oracle = int(stops[arm]["oracle_round"])
-        rule = int(stops[arm]["rule_round"])
-        print("  %-7s oracle round %3d, rule (%s > %s) round %3d"
-              % (arm, oracle, stops[arm]["rule_signal"], stops[arm]["rule_delta"], rule))
+        oracle = int(float(stops[arm]["kept_round"]))
+        rule = int(float(stops[arm]["fire_round"]))
+        print("  %-7s kept round %3d (= best), patience exhausted round %3d"
+              % (arm, oracle, rule))
         for axis, key in ((left, "src"), (right, "cohort")):
             values = series[arm][key]
             fs.draw(axis, rounds, values, colour, style, z=4)
@@ -54,10 +54,10 @@ def main():
                       markeredgewidth=0.5, linestyle="none", zorder=9)
     handles = fs.handles([(fs.label(a), c, s) for a, c, s in ARMS]) + [
         Line2D([], [], marker="o", markersize=4.2, color=fs.GREY,
-               linestyle="none", label="best round"),
+               linestyle="none", label="best round (kept checkpoint)"),
         Line2D([], [], marker="s", markersize=4.6, markerfacecolor="white",
                markeredgecolor=fs.GREY, markeredgewidth=0.5, linestyle="none",
-               label="early stop fires"),
+               label="patience exhausted"),
     ]
     figure.legend(handles=handles, loc="lower center", ncol=4,
                   columnspacing=1.4, bbox_to_anchor=(0.5, 0.0))

@@ -52,8 +52,11 @@ def _data_dirs():
     manuscript checkout they sit in ``<paper>/figures`` beside a ``data``
     directory; in the source repository they sit in ``tools/paper_figures``
     and the views travel in the study's metadata core, where the ones the
-    figures need are split across two directories because one bundle is
-    written by ``report_tables.py`` and the other by ``export_traces.py``.
+    figures need are split across three directories because three tools write
+    them --- ``export_traces.py`` into ``tables/paper_figures``,
+    ``report_tables.py`` into ``tables/paper``, and ``stopping_table.py`` into
+    ``tables/stopping``, which is where the plateau views the extremes figure
+    marks its stopping rounds from are left.
     ``FOA_PAPER_DATA`` overrides both with an explicit path (or several,
     separated the way ``PATH`` is), which is what a reader who unpacked the
     records elsewhere will want.
@@ -66,7 +69,8 @@ def _data_dirs():
         return [beside]
     tables = os.path.join(os.path.dirname(os.path.dirname(HERE)),
                           "study", "artifacts", "Digits_study01", "tables")
-    return [os.path.join(tables, "paper_figures"), os.path.join(tables, "paper")]
+    return [os.path.join(tables, "paper_figures"), os.path.join(tables, "paper"),
+            os.path.join(tables, "stopping")]
 
 
 #: Every directory a view may be read from, and the first of them, kept under

@@ -839,6 +839,48 @@ def t_cohort(cohort):
              "cut on $\\thg$ and not on the detector.")
 
 
+def t_plateau(pst):
+    """T6 --- the plateau rule, stage by stage: what stopping recovers."""
+    by = {r["stage"]: r for r in pst}
+    body = []
+    for stage, label in STAGE_LABEL:
+        r = by[stage]
+        if stage == "extreme":
+            body.append("\\midrule")
+        fired = int(float(r["fires"]))
+        body.append(" & ".join([
+            label, "%d" % int(float(r["arms"])),
+            derived(float(r["fixed_mean"]), 2, 100),
+            derived(float(r["rule_mean"]), 2, 100),
+            ("0.00" if fired == 0
+             else derived(float(r["gain"]), 2, 100, signed=True))]) + " \\\\")
+    r = by["all"]
+    body += ["\\midrule",
+             " & ".join(["\\emph{All arms}", "%d" % int(float(r["arms"])),
+                         derived(float(r["fixed_mean"]), 2, 100),
+                         derived(float(r["rule_mean"]), 2, 100),
+                         derived(float(r["gain"]), 2, 100, signed=True)])
+             + " \\\\"]
+    note = ("Mean score in points over each stage's arms, on the per-round "
+            "\\textbf{validation} trace, the only basis on which a stopping "
+            "round may be chosen. The rule keeps the checkpoint of the best "
+            "cohort round and stops training after $k=\\nPlateauK{}$ rounds "
+            "without improvement; it costs anything on exactly "
+            "\\nPlateauHurtArms{} arm of \\nPlateauArms{} "
+            "($-\\nPlateauWorstLoss{}$ points), and an arm on which it never "
+            "fires runs the full budget unchanged.")
+    return block(
+        "tab:plateau",
+        "The plateau rule, stage by stage: the fixed hundred-round budget "
+        "against stopping on the cohort's own validation accuracy.",
+        "lrrrr",
+        "Stage & Arms & Fixed budget & With the rule & Gain \\\\\n"
+        " & & (pts) & (pts) & (pts) \\\\",
+        body, colsep="5pt", note=note,
+        comment="source: data/plateau_stages.csv, primary setting rows\n"
+                "(patience 20, margin 0, checkpoint_best), stage means")
+
+
 def _median(xs):
     v = sorted(xs)
     n = len(v)
@@ -953,6 +995,7 @@ def main():
     extr = rows("extremes.csv")
     stopx = rows("stopping_extreme.csv")
     stopa = rows("stopping_all.csv")
+    pst = rows("plateau_stages.csv")
     cohort = rows("cohort_table.csv")
     sigs = rows("signals_summary_extract.csv")
     fair_combo = rows("fairness_combo.csv")
@@ -977,6 +1020,7 @@ def main():
         ("extreme.tex", t_extreme(extr, stopx), len(extr)),
         ("signals.tex", t_signals(sigs), len(sigs)),
         ("stopping.tex", t_stopping(stopa), len(stopa)),
+        ("plateau.tex", t_plateau(pst), len(pst) - 1),
         ("cohort.tex", t_cohort(cohort), len(cohort)),
     ]
     ids = identifiers(refs, agg, regu, blend, combo, extr, stopx, sigs,
