@@ -370,6 +370,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | the extreme-case figure | `extreme_stopping.py --root $FOA_STUDY_DIR --fig $FOA_STUDY_DIR/figures/extreme_stopping.png` |
 | what the fixed horizon cost every arm | `stopping_table.py --root $FOA_STUDY_DIR` |
 | what a permitted signal would have delivered | `stopping_table.py --root $FOA_STUDY_DIR --csv $FOA_STUDY_DIR/tables/stopping` |
+| what a plateau on the cohort's own accuracy would have delivered | `plateau_rule.py --root $FOA_STUDY_DIR` |
+| the four plateau views, and the grid the setting was fixed on | `plateau_rule.py --root $FOA_STUDY_DIR --out $FOA_STUDY_DIR/tables/stopping` |
 | do the eight signals track forgetting? | `foa signals --root $FOA_STUDY_DIR` |
 | does a combination beat its halves? | `compare_arms.py --what combos` |
 | penalty vs server rule | `compare_arms.py --what composition` |
@@ -399,20 +401,27 @@ The reporting tools all take `--root $FOA_STUDY_DIR` and all accept
 argument, as written above.
 `foa signals` writes to `$FOA_STUDY_DIR/signals/` - three CSVs, a summary JSON
 and one Pareto plot per method - and `stopping_table.py --csv` writes one CSV per
-stage plus `stopping_all.csv`. `docs/STOPPING.md` reads all of it.
+stage plus `stopping_all.csv`. `plateau_rule.py --out` writes four more into
+that same directory - `plateau_arms.csv`, `plateau_stages.csv`,
+`plateau_grid.csv` and `plateau_extremes.csv`. `docs/STOPPING.md` reads all of
+it.
 `fairness_cost.py --csv` writes one CSV per stage plus a per-client detail CSV
 beside each, and `cost_stages.csv` and `cost_arms.csv`. `docs/FAIRNESS_AND_COST.md`
 reads all of it.
 
-**The two stopping tools are the exception to the test basis below**: both
-`extreme_stopping.py` and `stopping_table.py` read the **validation** columns,
-because the round they report is the round the study's own selection rule would
-have picked, and a selection may only see what a selection is allowed to see.
-Both say so in their own header lines. `stopping_table.py` imports the fold
-mean, the oracle round and the score from `extreme_stopping.py`, and the drift
-and stopping semantics from `analysis/forgetting_signals.py`, so the three
-cannot come apart: `stopping_table.py --stage extreme` reproduces
-`extreme_stopping.py` row for row, and that is the check.
+**The three stopping tools are the exception to the test basis below**:
+`extreme_stopping.py`, `stopping_table.py` and `plateau_rule.py` all read the
+**validation** columns, because the round they report is the round the study's
+own selection rule would have picked, and a selection may only see what a
+selection is allowed to see. All three say so in their own header lines.
+`stopping_table.py` imports the fold mean, the oracle round and the score from
+`extreme_stopping.py`, and the drift and stopping semantics from
+`analysis/forgetting_signals.py`; `plateau_rule.py` imports its whole basis -
+arm reader, fold mean, score, oracle round and the one-signal rule - from
+`stopping_table.py`. So the four cannot come apart: `stopping_table.py --stage
+extreme` reproduces `extreme_stopping.py` row for row, and `plateau_arms.csv`
+carries `stopping_all.csv`'s own `final_score` arm for arm. Both are checks
+rather than claims, and `tests/test_plateau.py` pins the second.
 
 **Two bases, and every tool says which it used.**
 
@@ -516,7 +525,7 @@ directories because four different tools write them:
 |---|---|---|
 | `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py` |
 | `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
-| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest | `stopping_table.py --csv` |
+| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, which the generators do not read yet and `docs/STOPPING.md` does | `stopping_table.py --csv`, `plateau_rule.py --out` |
 | `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
 
 **THE PAPER BUNDLE IS SEARCHED FIRST, AND THAT MATTERS.** `tables/combos.csv` is
@@ -692,12 +701,13 @@ tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
 cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
 ```
 
-The result is 5,447 files - the asset's 5,310 plus this directory's 137 - across
+The result is 5,451 files - the asset's 5,310 plus this directory's 141 - across
 1,610 top-level entries, and every row of
 [§6](#6-which-command-produces-which-claim) runs against it from the repository
 root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
 for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`,
-`weight_sensitivity.py --csv` and the three `export_*.py` of
+`plateau_rule.py --out`, `weight_sensitivity.py --csv` and the three
+`export_*.py` of
 [§6](#and-which-command-produces-which-figure) for their own tables and views -
 which is the check that the two halves were assembled correctly.
 

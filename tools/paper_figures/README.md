@@ -113,7 +113,9 @@ FOA_PAPER_DATA=$PWD/views FOA_PAPER_OUT=/tmp/paper \
 ```
 
 That is `fairness_*.csv` and `cost_*.csv` from the first, `stopping_all.csv` and
-`stopping_extreme.csv` from the second, `blends.csv` and `composition.csv` from
+`stopping_extreme.csv` from the second (`plateau_rule.py --out views/` writes the
+four `plateau_*.csv` into the same bundle; no figure and no generator reads them
+yet, and `docs/STOPPING.md` does), `blends.csv` and `composition.csv` from
 the third, the two `weight_sensitivity_*.csv` from the fourth and
 `cohort_composition.csv` from the fifth. `cohort_table.csv` is a stage artefact
 rather than a report, written when the cohort was drawn.

@@ -4,7 +4,10 @@
 
 Every stage in this study runs to a fixed hundred-round horizon and reports the
 last round. This document asks what that costs, and whether anything the server
-is **allowed** to compute could have told it to stop earlier.
+is **allowed** to compute could have told it to stop earlier. Two answers come
+out of it: the eight forgetting signals recover +0.47p of the oracle's 1.50p
+(section 4), and a plateau on the cohort's own accuracy - which is not a proxy
+for forgetting and does not have to be - recovers +1.22p (section 5).
 
 ---
 
@@ -144,7 +147,100 @@ through the signals rather than through the oracle.
 
 ---
 
-## 5. Only five of the eight signals can be steered at all
+## 5. The rule that does not need a proxy at all
+
+Sections 2 and 4 take the constraint at its word: forgetting lives on data the
+server has lost, so a rule has to be built on something that stands in for it.
+But there is a series in every one of these runs that is neither forbidden nor a
+proxy for anything. **The cohort's own validation accuracy is held by the
+clients.** The server reads it every round to report a number, it is the
+adaptation half of the study's own score, and nothing about it is unavailable
+the way `source_val_accuracies` is unavailable. It says nothing about
+forgetting - and it does not have to, because the round the cohort stops
+improving turns out to be close to the round after which the horizon is only
+spending the source model.
+
+`tools/plateau_rule.py` prices it. Let `c(t)` be the fold-mean cohort validation
+accuracy and `b(t)` its best value so far. The rule **fires** at the first round
+where `c` has failed to exceed `b + eps` for `k` consecutive rounds. What the
+server deploys is not the round it fired on: it has been keeping the checkpoint
+of the best cohort round all along, so it deploys `t_kept = argmax c(t)` over
+`t <= t_fire`, earliest round on ties. An arm the rule never fires on runs the
+full horizon and is scored at its last round, exactly as the tables report it.
+The setting the paper reports is **`k = 20`, `eps = 0`**.
+
+Over the same 81 arms, on the same basis, against the same horizon:
+
+| over all 81 arms | mean score | vs the horizon |
+|---|---|---|
+| the fixed horizon | 7.73p | - |
+| one permitted signal, fixed in advance (section 4) | 8.20p | +0.47p |
+| **the plateau rule, best checkpoint kept** | **8.95p** | **+1.22p** |
+| the oracle - a bound, never a rule | 9.23p | +1.50p |
+
+**The plateau recovers four fifths of what stopping is worth on this study, and
+the eight signals recover under a third of it.** The rule fires on 50 of the 81
+arms; on the other 31 it returns the horizon exactly.
+
+| stage | arms | final | plateau | vs final | fires | oracle |
+|---|---|---|---|---|---|---|
+| aggregation finals | 19 | 5.82p | 8.04p | **+2.22p** | 19 | 8.31p |
+| regularisation finals | 26 | 8.27p | 8.70p | +0.43p | 10 | 9.00p |
+| combinations | 18 | 8.86p | 9.17p | +0.31p | 11 | 9.44p |
+| ten clients, one dropped | 5 | 7.81p | 8.70p | +0.89p | 4 | 9.02p |
+| five clients, one dropped | 5 | 8.47p | 10.94p | **+2.47p** | 4 | 11.33p |
+| twenty clients, two dropped | 3 | 8.33p | 8.33p | 0.00p | 0 | 8.63p |
+| twenty clients, four dropped | 3 | 8.37p | 8.37p | 0.00p | 0 | 8.69p |
+| the extremes | 2 | 4.57p | 16.14p | **+11.57p** | 2 | 16.14p |
+| **all** | **81** | **7.73p** | **8.95p** | **+1.22p** | **50** | **9.23p** |
+
+The extreme row is the one to read twice. **The plateau reaches the oracle on
+both extreme arrangements**: `dual` fires at round 28 and keeps round 8 for
+16.60p, `double` fires at round 56 and keeps round 36 for 15.68p, and those are
+the oracle rounds and the oracle scores. On the two runs where the horizon costs
+most, a rule with no access to the source population finds exactly the round a
+rule with full access would have chosen - because on those runs the cohort's
+accuracy peaks where the score does.
+
+**Exactly one arm of the eighty-one is hurt, and it loses half a point.** The
+combination `weight_q0 x hybrid_seq_mix0p5` on the parallel schedule keeps a
+round worth 0.50p less than its hundredth. Against the one-signal rule of
+section 4, which costs its worst arm 5.28 points, that is the more important
+number than the mean: a rule fixed in advance is a rule that is sometimes wrong,
+and this one is wrong by very little.
+
+**Keeping the checkpoint is where most of the gain is.** Deploying the round the
+rule fired on instead scores 8.23p, +0.51p - about what the signals deliver. The
+plateau is not principally a better stopping detector; it is the observation that
+a server which keeps its best cohort round does not have to detect the peak, only
+notice afterwards that it has passed.
+
+### Is `k = 20`, `eps = 0` fitted to the extremes?
+
+It is the best of sixteen `(k, eps)` cells on the mean over all 81 arms, and the
+two extreme arrangements are the arms with by far the most to gain, so the
+objection writes itself. The answer is in `plateau_grid.csv`, which carries the
+mean over the 79 non-extreme arms beside the mean over all of them:
+**choosing the setting on the non-extreme arms alone, with both extremes held
+out entirely, picks `k = 20`, `eps = 0` as well.** The grid is also flat around
+it - `eps` of 0.001 and 0.0025 give 8.92p and 8.93p - so the setting is a region
+rather than a point. `tests/test_plateau.py` pins the hold-out result and the
+headline row, so a regenerated view that moved either is a failing test.
+
+The grid is deliberately small and coarse: four patiences, four margins, one
+tie-break. A finer sweep on these same runs would be a setting fitted to them,
+which is the objection this section exists to answer rather than to earn.
+
+**What it is not.** It is not the oracle, which maximises the *score* - a
+function of the source population - where this maximises the cohort accuracy,
+which is not. It is not a per-arm choice: one `(k, eps)` is fixed for every arm
+of every stage. And it is not free of the horizon: an arm that fires at round 56
+still ran 56 rounds, which is why `plateau_arms.csv` reports the fire round
+beside the kept round rather than folding the two together.
+
+---
+
+## 6. Only five of the eight signals can be steered at all
 
 The budget grid is shared across signals - nine budgets from 0.001 to 0.5 - which
 is deliberate: a budget tuned per signal is a budget fitted to the runs it is
@@ -179,7 +275,7 @@ fires at all, 41 are served by one of those two and 3 by
 
 ---
 
-## 6. The extremes: the case that made this necessary
+## 7. The extremes: the case that made this necessary
 
 The figure is `$FOA_STUDY_DIR/figures/extreme_stopping.png`, written by
 `tools/extreme_stopping.py --fig`: one panel per case, adaptation and
@@ -209,7 +305,7 @@ arrangement is not what made that number negative. The horizon is.
 
 ---
 
-## 7. What `retention_known` reads while the model comes apart
+## 8. What `retention_known` reads while the model comes apart
 
 `retention_known` is the fraction of the source model's correct predictions the
 current model still gets right, measured on data the clients hold. On the two
@@ -229,7 +325,7 @@ population.
 
 ---
 
-## 8. Do the signals track forgetting at all?
+## 9. Do the signals track forgetting at all?
 
 `foa signals` correlates each signal with both definitions of true forgetting -
 the source validation drop and the source test drop - per run and pooled over
@@ -290,7 +386,7 @@ selection is `foa select`, per stage, per cohort.
 
 ---
 
-## 9. Regenerating all of it
+## 10. Regenerating all of it
 
 ```bash
 export FOA_STUDY_DIR=$FOA_PROJECT_DIR/results/studies/Digits_study01
@@ -311,7 +407,12 @@ foa signals --root $FOA_STUDY_DIR
 python tools/stopping_table.py --root $FOA_STUDY_DIR \
        --csv $FOA_STUDY_DIR/tables/stopping
 
-# the extremes on their own, and the figure in section 6
+# the plateau on the cohort's own accuracy, section 5
+#     -> $FOA_STUDY_DIR/tables/stopping/plateau_*.csv
+python tools/plateau_rule.py --root $FOA_STUDY_DIR \
+       --out $FOA_STUDY_DIR/tables/stopping
+
+# the extremes on their own, and the figure in section 7
 python tools/stopping_table.py --root $FOA_STUDY_DIR --stage extreme
 python tools/extreme_stopping.py --root $FOA_STUDY_DIR \
        --fig $FOA_STUDY_DIR/figures/extreme_stopping.png
