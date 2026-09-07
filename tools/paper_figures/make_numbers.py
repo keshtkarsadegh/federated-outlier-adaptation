@@ -349,6 +349,8 @@ def build():
 
     # ---- Section 6.1, the starting line ---------------------------------
     put("nGZeroSrcAcc", acc(P0), SRC_P0)
+    put("nGZeroSrcPct", "%.1f\\,\\%%" % (100 * P0), SRC_P0 + ", as a percentage")
+    put("nGZeroCohortPct", "%.1f\\,\\%%" % (100 * A0), SRC_A0 + ", as a percentage")
     put("nGZeroCohortAcc", acc(A0), SRC_A0)
     put("nStartingGap", dpts(P0 - A0, 1), "derived: P0 - A0 (%s; %s)" % (SRC_P0, SRC_A0))
 
