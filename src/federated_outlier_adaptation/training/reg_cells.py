@@ -233,6 +233,47 @@ def blend_lam_of_ewc(lam_ewc: float, mix: float) -> float:
     return lam_ewc / (1.0 - mix)
 
 
+def combo_tune_lam_mix(c_ewc: float, c_kd: float, mix: float) -> tuple:
+    """
+    The ``(lam, mix)`` that puts named coefficients on BOTH halves at once.
+
+    :func:`blend_lam_of_ewc` writes the strength in one parent's units and lets
+    the other half ride wherever the ratio puts it, which is the right move when
+    ``mix`` is the axis being searched.  It is the wrong move when the two
+    coefficients are themselves the axes: there the intended penalty is
+
+        m * c_kd * KD + (1 - m) * c_ewc * Fisher
+
+    with ``m`` the blend weight the owner asked for, and :class:`AnchoredTrainer`
+    computes ``lam * (mix * KD + (1 - mix) * Fisher)``.  Matching the two term by
+    term gives ``lam * mix = m * c_kd`` and ``lam * (1 - mix) = (1 - m) * c_ewc``,
+    hence
+
+        lam = m * c_kd + (1 - m) * c_ewc
+        mix = m * c_kd / lam
+
+    So the trainer's ``mix`` is NOT the owner's ``m`` except by coincidence: it is
+    the KD half's share of the total penalty weight, and it moves with the two
+    coefficients as well as with ``m``.  A grid that wrote ``m`` straight into
+    ``mix`` would be sweeping a different object than the one it named, and
+    nothing in the emitted line would say so - the line would carry a legal
+    coefficient and run.
+
+    THIS IS AN EXTENSION HELPER.  Nothing in the core programme calls it; the
+    blend's own screen is written in EWC's units and uses
+    :func:`blend_lam_of_ewc`.
+    """
+    if not 0.0 < mix < 1.0:
+        raise ValueError(f"mix must lie in (0, 1); got {mix!r}")
+    if c_ewc <= 0.0 or c_kd <= 0.0:
+        raise ValueError(
+            f"both coefficients must be positive; got c_ewc={c_ewc!r}, "
+            f"c_kd={c_kd!r}"
+        )
+    lam = mix * c_kd + (1.0 - mix) * c_ewc
+    return lam, mix * c_kd / lam
+
+
 def _fmt(value: float) -> str:
     """A float as a filename-safe token."""
     return f"{value:g}".replace(".", "p").replace("-", "m").replace("+", "")
@@ -363,6 +404,185 @@ def blend_cells() -> List[Dict[str, Any]]:
             raise ValueError(f"Duplicate blend cell id {cell['id']!r}")
         seen.add(cell["id"])
     return cells
+
+
+# --------------------------------------------------------------------------- #
+# EXTENSION - the best rule and the best penalty, tuned together
+# --------------------------------------------------------------------------- #
+# NOT PART OF THE CORE PROGRAMME.  Everything above is a stage the study runs
+# and reports; this is an extension bolted on afterwards, and it is kept out of
+# :func:`screen_cells`, out of the shortlists and out of the combination cross
+# for the same reason :func:`blend_cells` is: those tables have run, and a cell
+# added to a catalogue a shipped file was emitted from moves every seed after it
+# and stops that file regenerating.  The extension reads the core's records; the
+# core never reads the extension's.
+#
+# WHAT IT ASKS.  The combination stage crossed shortlists at ONE setting each: a
+# pair is a rule at its own winning coefficients beside a penalty at its own, and
+# nothing in that cross ever moved the two together.  Neither half was chosen in
+# the other's presence, so "the two do not compose" is measured only at the point
+# where each was best alone.  This screens the joint grid of the pair that leads
+# each schedule, at the ranking horizon.
+
+#: The EWC half's coefficient.  Around the two values the study's own selections
+#: landed on - lambda = 8 concurrent, lambda = 0.1 sequential - as they appear
+#: once the blend's screen is read: that screen chose lambda_ewc = 0.1 in BOTH
+#: schedules, the bottom of the row, so the live region is at the floor of
+#: REG_GRID_RANGES.md section 2 rather than in its middle.  The row therefore
+#: brackets 0.1 rather than reaching up to 8.
+CTUNE_EWC_COEFFS = (0.05, 0.1, 0.3)
+
+#: The KD half's coefficient, in the trainer's units.  The kd row is written in
+#: alpha and emits lam = (1 - alpha) / alpha, so its two winners - alpha = 0.9
+#: and alpha = 0.99 - are lam = 0.111 and lam = 0.0101.  This row brackets the
+#: first and reaches down toward the second.
+CTUNE_KD_COEFFS = (0.05, 0.11, 0.2)
+
+#: Distillation temperature.  The two the kd row's own winners sat at, and the
+#: two the blend's screen chose: T = 0.25 (sequential) and T = 2 (concurrent).
+#: Not the full six-point row - this grid pays for four other axes, and the two
+#: values are the measured ones rather than a bracket around a guess.
+CTUNE_TEMPERATURES = (0.25, 2.0)
+
+#: The owner's blend weight m: the share of the penalty the KD half carries
+#: BEFORE the two coefficients are applied.  The same three points the emitted
+#: blends swept, so this axis can be read against them.
+CTUNE_MIXES = HYBRID_MIXES
+
+#: The parallel schedule's rule knob: the server step of ``con_delta_eta``, which
+#: is what ``eta_0p95`` is a setting of.  0.95 is the winner and the row brackets
+#: it; 1.0 is the plain full step, so the row also says what the rule buys at
+#: all.  The cyclic schedule's winner - ``seq_delta_capped`` - has no
+#: coefficient, which is why that half of the grid is a third the size.
+CTUNE_SERVER_ETAS = (0.9, 0.95, 1.0)
+
+#: Which server rule each schedule's leader is, and the flags it carries.  Read
+#: against ``agg_cells``: ``eta_*`` cells are ``con_delta_eta`` at a server step,
+#: ``seq_delta_capped`` is a rule with no coefficient at all.
+CTUNE_RULES = {
+    "concurrent": ("con_delta_eta", "eta"),
+    "sequential": ("seq_delta_capped", None),
+}
+
+
+def combo_tune_id(family: str, c_ewc: float, c_kd: float, temperature: float,
+                  mix: float, server_eta: float = None) -> str:
+    """
+    A cell id that names the OWNER'S dials, not the trainer's coefficients.
+
+    ``lam`` and the trainer's ``mix`` are both functions of all three penalty
+    dials, so an id built from them would be unreadable against the grid it came
+    from and two different dial settings could not be told apart by eye.  The id
+    names what was swept; :func:`combo_tune_lam_mix` says what the trainer gets.
+
+    The schedule is in the id by construction rather than by a tag: the parallel
+    cells carry a server step and the cyclic ones cannot, because the rule they
+    run has no coefficient.  So an ``_eta`` suffix is exactly the parallel cells,
+    and no two schedules can name one folder.
+    """
+    identifier = (f"ctune_ewc{_fmt(c_ewc)}_kd{_fmt(c_kd)}"
+                  f"_T{_fmt(temperature)}_mix{_fmt(mix)}")
+    if server_eta is not None:
+        identifier += f"_eta{_fmt(server_eta)}"
+    return identifier
+
+
+def combo_tune_cells() -> List[Dict[str, Any]]:
+    """
+    The joint grid of the pair that leads each schedule.  **Extension only.**
+
+    One cell is a whole arm - a server rule at a coefficient AND a penalty at
+    three - so it carries the aggregation cell it runs under beside the penalty
+    it adds, and the emitted line names one rule and therefore produces one
+    family's result.  That is the combination stage's shape, not the screens':
+    a ``--aggregation fedavg`` line would run both schedules under a rule that
+    belongs to one of them.
+
+    ``dials`` is the owner's grid, kept beside ``hypers`` rather than folded into
+    it.  The boundary report is about the grid that was searched, and every one
+    of ``hypers``' three numbers is a function of all four dials - so asking
+    whether ``lam`` sat at the end of its row would answer a question nobody
+    asked and miss the four that were.
+
+    DEDUPLICATION.  Two dial settings collide when they hand the trainer the
+    same ``(lam, mix, T)`` under the same rule, and nothing in the run records
+    would say so - two folders, two seeds, one experiment.  The check is on the
+    coefficients rather than on the dials for exactly that reason.  It finds
+    nothing on this grid (see :func:`combo_tune_duplicates`), and it is here so
+    that a widened row cannot quietly pay twice for one cell.
+    """
+    cells: List[Dict[str, Any]] = []
+    seen: Dict[tuple, str] = {}
+    for family in FAMILIES:
+        rule, knob = CTUNE_RULES[family]
+        etas = CTUNE_SERVER_ETAS if knob == "eta" else (None,)
+        for c_ewc in CTUNE_EWC_COEFFS:
+            for c_kd in CTUNE_KD_COEFFS:
+                for temperature in CTUNE_TEMPERATURES:
+                    for mix in CTUNE_MIXES:
+                        lam, lam_mix = combo_tune_lam_mix(c_ewc, c_kd, mix)
+                        for eta in etas:
+                            key = (family, eta, round(lam, 12),
+                                   round(lam_mix, 12), temperature)
+                            if key in seen:
+                                continue
+                            cell_id = combo_tune_id(family, c_ewc, c_kd,
+                                                    temperature, mix, eta)
+                            seen[key] = cell_id
+                            cell = _cell(
+                                cell_id, "kd+fisher", "kd+fisher",
+                                f"the {family} leader's rule and penalty tuned "
+                                f"together: c_ewc={c_ewc:g}, c_kd={c_kd:g}, "
+                                f"T={temperature:g}, m={mix:g}"
+                                + (f", eta_s={eta:g}" if eta is not None else "")
+                                + f" (lam={lam:.6g}, mix={lam_mix:.6g})",
+                                needs_fisher=True,
+                                lam=lam, T=temperature, mix=lam_mix,
+                            )
+                            cell["family"] = family
+                            cell["dials"] = {
+                                "c_ewc": c_ewc, "c_kd": c_kd,
+                                "T": temperature, "m": mix,
+                            }
+                            flags: Dict[str, Any] = {}
+                            if eta is not None:
+                                cell["dials"]["server_eta"] = eta
+                                flags["server_eta"] = eta
+                            cell["agg"] = {
+                                "id": ("eta_" + _fmt(eta)) if eta is not None
+                                      else rule,
+                                "path": family,
+                                "rule": rule,
+                                "flags": flags,
+                                "note": (f"server step eta_s={eta:g}"
+                                         if eta is not None
+                                         else "cyclic capped delta form"),
+                            }
+                            cells.append(cell)
+    return cells
+
+
+def combo_tune_duplicates() -> int:
+    """
+    How many dial settings the deduplication removed.  Zero on this grid.
+
+    Reported rather than assumed: the two halves' weights are ``m * c_kd`` and
+    ``(1 - m) * c_ewc``, and a collision needs both to repeat, which no pair of
+    rows here manages.  A widened row could, and then the number in the README
+    would move with the grid instead of standing as a claim nobody rechecked.
+    """
+    dials = (len(CTUNE_EWC_COEFFS) * len(CTUNE_KD_COEFFS)
+             * len(CTUNE_TEMPERATURES) * len(CTUNE_MIXES))
+    total = dials * (len(CTUNE_SERVER_ETAS) + 1)
+    return total - len(combo_tune_cells())
+
+
+def combo_tune_by_family() -> Dict[str, List[Dict[str, Any]]]:
+    """The extension's cells, split by the schedule whose leader they tune."""
+    grouped: Dict[str, List[Dict[str, Any]]] = {name: [] for name in FAMILIES}
+    for cell in combo_tune_cells():
+        grouped[cell["family"]].append(cell)
+    return grouped
 
 
 def control_cell() -> Dict[str, Any]:

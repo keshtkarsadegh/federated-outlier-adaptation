@@ -469,6 +469,61 @@ def five_line(cfg, config: Dict[str, Any], clients_file: str,
                        "five", FIVE_PER_ROUND)
 
 
+# --------------------------------------------------------------------------- #
+# EXTENSION - the joint tuning of a schedule's leading pair
+# --------------------------------------------------------------------------- #
+#: The stage tags of the extension.  Their own, and not ``combo``: the
+#: combination cross has ninety folders under that tag and a stage that reused
+#: it would have its runs read by the selector that ranks those.
+CTUNE_SCREEN_TAG = "ctune"
+CTUNE_FULL_TAG = "ctunefull"
+
+
+def combo_tune_line(cfg, cell: Dict[str, Any], fold: int, rounds: int,
+                    seed: int, family: Optional[str] = None) -> str:
+    """
+    One jointly-tuned arm: a server rule and a client penalty, moved together.
+
+    NOT PART OF THE CORE PROGRAMME - see :func:`~.reg_cells.combo_tune_cells`.
+
+    Shaped like :func:`combo_line` rather than like :func:`reg_line`, and it has
+    to be: the cell names ONE aggregation rule, which lives in exactly one
+    schedule, so the task produces one result.  A ``--aggregation fedavg`` line
+    would run the cyclic family under a rule chosen for the parallel one and
+    hand the selector a row it never asked for.
+
+    Args:
+        family: ``None`` on the screen - the cell ids already carry the schedule,
+            because only the parallel rule has a coefficient to name.  The
+            full-horizon stage sets it anyway, as P14 and P22 do, so a folder
+            says which schedule's finals it belongs to without anyone having to
+            know that rule.
+    """
+    prefix = (f"{cfg.tag}_{CTUNE_SCREEN_TAG}" if rounds == SCREEN_ROUNDS
+              else f"{cfg.tag}_{CTUNE_FULL_TAG}")
+    if family is not None:
+        prefix = f"{prefix}_{family}"
+    # The parent is <prefix>_<cell id>_fold<k>, and the cell id already opens
+    # with "ctune_", so the screen's folders read d01_ctune_ctune_... - a
+    # redundancy kept on purpose. The id is what the record, the README and the
+    # paper name a cell by, and shortening it in the folder would mean the two
+    # could not be matched by eye.
+    agg = cell["agg"]
+    line = _base(cfg, f"{prefix}_{cell['id']}_fold{fold}", fold, rounds, seed,
+                 cell["trainer"])
+    line += f" --aggregation {agg['rule']} --extended-aggregations"
+    line += " --outer-workers 1 --inner-workers 1"
+    # RESOLVE, do not emit what is stored - combo_line's reason, unchanged: a
+    # cell may hold the stage-independent form of a knob and _agg_flags has no
+    # flag for those names, so emitting the stored dictionary would drop the
+    # coefficient silently.
+    extra = _agg_flags(resolve_agg_flags(agg["flags"], cfg, rounds))
+    if extra:
+        line += f" {extra}"
+    penalty = _reg_set(cell, cfg)
+    return line + (f" {penalty}" if penalty else "")
+
+
 def counts(cfg) -> Dict[str, int]:
     """
     The screen's task counts, computed from the table it runs.
@@ -497,4 +552,17 @@ def counts(cfg) -> Dict[str, int]:
         "c10d10": len(five_cells.ARMS) * folds,
         "drop20": len(five_cells.ARMS) * folds,
         "c20": (len(five_cells.ARMS) - 1) * folds * 2,
+        # EXTENSION STAGES, registered here and nowhere else in the core. They
+        # are counted because an --array range is written from these numbers and
+        # a generator that emits a different one must fail loudly; they are
+        # labelled because nothing in the core programme's tables, shortlists or
+        # crossings reads them.
+        "combo_tune_screen": len(reg_cells.combo_tune_cells()) * folds,
+        "combo_tune_full": len(FAMILIES) * folds,
     }
+
+
+#: Which entries of :func:`counts` belong to the EXTENSION rather than to the
+#: core programme.  Named so that a reader of the counts - or a test - does not
+#: have to infer the distinction from a stage number.
+EXTENSION_COUNTS = ("combo_tune_screen", "combo_tune_full")

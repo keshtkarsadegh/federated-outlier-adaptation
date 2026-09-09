@@ -10,7 +10,8 @@ gained 2.20 points of preservation for 0.09 of adaptation.
 
 These tests pin the rule itself, and pin that it is the SAME rule everywhere a
 winner is chosen - the aggregation finals, the aggregation patch, the
-regularisation finals and the regularisation patch.
+regularisation finals, the regularisation patch, the blend's finals, and the
+extension that tunes a schedule's leading pair jointly.
 """
 
 from __future__ import annotations
@@ -120,16 +121,20 @@ def test_a_root_without_the_baselines_is_refused(tmp_path):
 
 def test_every_selection_in_the_programme_uses_the_same_rule():
     """
-    Five places pick a winner: the aggregation finals and their patch, the
-    regularisation finals and theirs, and the blend's own finals. One rule for
-    all five, or the tables were not chosen the same way and cannot be read
-    against each other - and the blend is the arm that makes that matter, since
-    it is reported in the same table as the seven penalties it was screened
-    apart from.
+    Six places pick a winner: the aggregation finals and their patch, the
+    regularisation finals and theirs, the blend's own finals, and the joint
+    tuning of the leading pair. One rule for all six, or the tables were not
+    chosen the same way and cannot be read against each other - and the last two
+    are the arms that make that matter, since both are reported beside the seven
+    penalties they were screened apart from.
+
+    THE SIXTH IS AN EXTENSION, and that is exactly why it is pinned here rather
+    than exempted. An extension exists to be read against the programme; a
+    winner chosen by a different rule could not be.
     """
     source = Path(study_emit.__file__).read_text()
     picks = [line for line in source.splitlines() if "max(scored" in line]
-    assert len(picks) == 5, f"expected five selection sites, found {len(picks)}"
+    assert len(picks) == 6, f"expected six selection sites, found {len(picks)}"
     for line in picks:
         assert "trade_score" in line, f"selects without the rule: {line.strip()}"
 

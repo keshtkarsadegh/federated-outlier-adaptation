@@ -191,6 +191,26 @@ def _rules():
                           r"T{=}%s" % _dec(g[1]),
                           r"m{=}%s" % _dec(g[2])]))
 
+    # -- the EXTENSION: the leading pair, tuned jointly.  One identifier names
+    # -- a whole arm - a server rule AND the penalty beside it - because that
+    # -- is what was swept, so the name has to carry both halves.  The dials
+    # -- are the owner's, not the trainer's: lambda_E and lambda_K are the two
+    # -- coefficients and m the blend weight, and the trainer's own mix is a
+    # -- function of all three, so printing that instead would name a number
+    # -- nobody chose.  A cell with a server step is a parallel cell and one
+    # -- without is cyclic; that is the whole of the schedule marking, and it
+    # -- is why the two get different names rather than a shared one.
+    rule(r"ctune_ewc([0-9pem]+)_kd([0-9pem]+)_T([0-9p]+)_mix([0-9p]+)"
+         r"(?:_eta([0-9p]+))?",
+         lambda g: ("FedAvg + KD+EWC blend" if g[4]
+                    else r"Cyclic, capped $\delta$ + KD+EWC blend"),
+         lambda g: ("Server step + blend (tuned)" if g[4]
+                    else "Cyclic capped + blend (tuned)"),
+         lambda g: _math(
+             ([r"\eta_s{=}%s" % _dec(g[4])] if g[4] else [])
+             + [r"\lambda_E{=}%s" % _sci(g[0]), r"\lambda_K{=}%s" % _sci(g[1]),
+                r"T{=}%s" % _dec(g[2]), r"m{=}%s" % _dec(g[3])]))
+
     # -- the carried arms and the extreme federations -----------------------
     rule(r"winner", "Anchor + FedNTD (crowned)", "Crowned")
     rule(r"balanced", "FedAvg + KD/EWC blend", "Balanced")

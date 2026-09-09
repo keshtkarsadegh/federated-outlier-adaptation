@@ -131,3 +131,39 @@ nothing in the output to say so. `tools/check_seeds.py` now cross-checks every
 task file's span when they are passed together.
 
 Neither failure would have raised an error.
+
+---
+
+## Addendum, 2026-09-09: an extension that tunes the pair jointly
+
+**Nothing above is superseded, and nothing above is re-emitted.** The shortlists,
+the eighteen combinations, the fold-paired reading and the conclusion this
+document draws all stand exactly as they are. This paragraph records that an
+**extension** now exists beside them, and says what it screens.
+
+The cross above paired two shortlists at **one setting each**. Every pair in it
+is a server rule at the coefficients it won on *alone* beside a penalty at the
+coefficients it won on *alone*: the two shortlists were selected independently -
+one under plain FedAvg, the other with no penalty - and no stage of the
+programme ever moved the two together. So the conclusion recorded above, that
+the two halves do not measurably compose at five folds, is measured at one point
+of a joint grid: the point at which each half is best in the other's absence.
+That is what was run, and it is what the sentence should be read as saying.
+
+`s23_combo_screen.txt` screens the joint grid for the pair that leads each
+schedule by TEST score of `tables/paper/agg-winners.csv` and
+`tables/paper/reg-winners.csv` - `eta_0p95` with the KD+EWC blend on the
+parallel schedule, `seq_delta_capped` with the same blend on the cyclic one -
+over the EWC coefficient, the KD coefficient, the KD temperature, the blend
+weight, and, on the parallel side, the server step: 216 cells, 1,080 tasks, 25
+rounds, at the same search rate and under the same protocol as the pair's own
+shipped `s20` lines, whose every non-grid flag it copies. Its winners are
+re-run at the reporting horizon by a stage of its own, under the study's own
+selection rule - gain less spend at `w = 1`, on the validation columns.
+
+**It is an extension and it does not alter the core selection.** It is outside
+the stage table in `REPRODUCE.md` by design, it has its own section in
+`REG_GRID_RANGES.md`, its cells are in no catalogue that `reg-top3`, `combos` or
+`stage-winner` reads, and its record - `tables/p23_combo_tune_winners.json` -
+says so in its own text. Whatever it finds is read *beside* this document, not
+into it.

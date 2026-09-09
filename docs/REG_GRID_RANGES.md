@@ -950,3 +950,122 @@ compete in `reg-top3`; nothing here supersedes them.
 |---|---|---|
 | the blend as emitted, per schedule | 3 | 15 |
 | this screen | 234 | 1170 |
+
+---
+
+# EXTENSION, 2026-09-09: the leading pair, tuned together
+
+**Everything above is part of the study. This is not.** Every range above was
+placed for a knob that a stage of the programme then screened, and every winner
+in this document is reported. What follows is an extension added after the
+programme closed: `s23_combo_screen.txt` and the finals it feeds. No shortlist,
+no crossing, no crowning and no paper view reads anything either produces, and
+none of them is re-emitted.
+
+## Why an extension, and not a ninth range
+
+The combination stage crossed two shortlists at **one setting each**. A pair in
+`s20_combos4.txt` is a server rule at the coefficients it won on *alone* beside
+a penalty at the coefficients it won on *alone*: the two shortlists were selected
+independently, one under plain FedAvg and the other with no penalty, and nothing
+in the cross ever moved the two together. So `COMBINATIONS.md`'s conclusion -
+that the two halves do not measurably compose - is a statement about one point
+of a joint grid, the point at which each half is best in the other's absence.
+That is the honest reading of what was run. It is also the reading with the
+obvious gap in it, and this extension is that gap and nothing more.
+
+The pair is read by **TEST** score off the two shipped views, which is the
+owner's documented departure from ranking on validation:
+
+| schedule | best rule alone | best penalty alone |
+|---|---|---|
+| parallel | `eta_0p95` (score 0.0775) | `hybrid_seq_mix0p75` (0.1050) |
+| cyclic | `seq_delta_capped` (0.0702) | `hybrid_seq_mix0p75` (0.1069) |
+
+The penalty is the same object in both schedules; the rule is not, and only one
+of the two rules has a coefficient at all. That asymmetry is why the parallel
+half of the grid is three times the size of the cyclic one.
+
+## 9. `kd+fisher` + the server rule - the joint grid
+
+    penalty = m * c_kd * T^2 * KL( p_anchor^T || p_student^T )
+            + (1 - m) * c_ewc * 0.5 * sum_i F_i * (theta_i - theta_g,i)^2
+
+**The dials are not the trainer's arguments.** `AnchoredTrainer` computes
+`lam * (mix * KD + (1 - mix) * Fisher)` - one strength and one split - while
+this grid names *two* coefficients and a weight. Matching the two expressions
+term by term gives `lam * mix = m * c_kd` and `lam * (1 - mix) = (1 - m) * c_ewc`,
+hence
+
+    lam = m * c_kd + (1 - m) * c_ewc
+    mix = m * c_kd / lam
+
+which is `reg_cells.combo_tune_lam_mix`, sitting beside `blend_lam_of_ewc` and
+doing the other half of that function's job. Section 8 writes the strength in
+**one** parent's units and lets the other half ride where the ratio puts it,
+which is right when `mix` is the axis being searched; here the two coefficients
+*are* the axes, so both are named and the pair the trainer takes is solved for.
+
+**The trainer's `mix` is not the owner's `m`.** It is the KD half's share of the
+total penalty weight and moves with `c_ewc` and `c_kd` as well as with `m`; the
+two coincide only where the coefficients are equal, which on this grid is
+`c_ewc = c_kd = 0.05` and nowhere else. A grid that wrote `m` straight into
+`mix` would sweep a different object than the one it named, and every emitted
+line would still be legal, still parse and still run.
+
+**Old range:** none. Nothing in the programme ever moved a rule and a penalty
+together.
+
+**New range:**
+
+    c_ewc in {0.05, 0.1, 0.3}          EWC coefficient          3
+    c_kd  in {0.05, 0.11, 0.2}         KD coefficient           3
+    T     in {0.25, 2}                 KD temperature           2
+    m     in {0.25, 0.5, 0.75}         blend weight             3   = 54
+    eta_s in {0.9, 0.95, 1}            server step, PARALLEL ONLY
+
+    54 x 3 server steps = 162 parallel cells
+    54 x 1 (no rule knob) =  54 cyclic cells
+                          = 216 cells x 5 folds = 1080 tasks at 25 rounds
+
+**`c_ewc`.** EWC's own selections sat at `lambda = 8` parallel and `lambda = 0.1`
+cyclic - two decades apart, which already says the coefficient is not the same
+object in the two loops. What settles the range is section 8's own screen:
+`tables/p21_blend_winners.json` records `lambda_ewc = 0.1` chosen in **both**
+schedules, and 0.1 is the *floor* of the thirteen-value row in section 2. A
+winner on the floor of a row says the live region is at or below it, so this row
+brackets the floor - 0.05 under, 0.1 at, 0.3 over - rather than reaching back up
+to 8. Nothing here re-searches the standalone EWC row; that selection stands.
+
+**`c_kd`.** Section 6's row is written in `alpha` and emits
+`lam = (1 - alpha) / alpha`, so its two winners - `kd_T0p25_a0p9` parallel and
+`kd_T2_a0p99` cyclic - are `lam = 0.111` and `lam = 0.0101`. This row brackets
+the first (0.05, 0.11, 0.2) and steps down toward the second.
+
+**`T`.** The two temperatures those same two `kd` winners sat at: 0.25 and 2.
+Not the six-point row of section 6 - this grid pays for four other axes, and two
+measured points are worth more here than a bracket around a guess. Section 8's
+own winners chose 0.5 and 0.25, both inside the interval these two span.
+
+**`m`.** The three the emitted blends swept, so the axis reads directly against
+`s18`, `s19` and the `hybrid_*` rows of `reg-winners.csv`.
+
+**`eta_s`.** `eta_0p95` is one setting of a coefficient row, so the parallel
+pair's rule half *has* a knob and this grid moves it: 0.95 is the winner, 0.9 is
+one step below it, and 1.0 is the plain full step - so the row also says what the
+rule is worth at all once the penalty beside it moves. `seq_delta_capped` has no
+coefficient, so the cyclic half has no rule axis.
+
+**Deduplication: 0 cells removed.** Two dial settings collide when they hand the
+trainer the same `(lam, mix, T)` under the same rule - two folders, two seeds,
+one experiment, and nothing in the records to say so. The check is on the
+coefficients rather than on the dials, and it finds nothing here: a collision
+needs `m * c_kd` and `(1 - m) * c_ewc` to repeat *together*, and the nine
+`(m, c_kd)` products on this grid are all distinct. It is emitted anyway, so a
+widened row cannot quietly pay twice.
+
+| | cells | tasks at 5 folds |
+|---|---|---|
+| the pair as `s20` ran it, per schedule | 1 | 5 |
+| this screen, parallel | 162 | 810 |
+| this screen, cyclic | 54 | 270 |

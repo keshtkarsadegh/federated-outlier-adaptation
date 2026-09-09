@@ -2041,6 +2041,156 @@ def c10d10(cfg, root: Path, out: Path, expect: int) -> int:
     return size_stage(cfg, root, out, expect, "c10d10")
 
 
+# --------------------------------------------------------------------------- #
+# EXTENSION - the joint tuning of a schedule's leading pair
+# --------------------------------------------------------------------------- #
+# NOT PART OF THE CORE PROGRAMME.  Everything above emits or selects a stage the
+# study reports.  This one mode is an extension added afterwards: it reads the
+# core's records and writes a record of its own, and nothing in the core -
+# ``reg_top3``, ``combos``, ``stage_winner``, the size stages - reads it back.
+# The separation is physical as well as documented, so that a later reader can
+# see at a glance which side of the line a generator sits on.
+
+#: The extension finals' seed block.  Its own, as every stage's is: the screen
+#: opens at 60000 and runs to 762155, so the finals sit clear of it at 64000 -
+#: and both sit above the highest seed any shipped stage draws (750105), which
+#: keeps the extension's blocks visibly outside the programme's rather than
+#: interleaved with them.
+COMBO_TUNE_BLOCK = 64000
+
+#: The method the extension's cells carry in its record.  Not ``kd+fisher``: the
+#: cells ARE kd+fisher blends, but an entry read beside P13's and P21's records
+#: under that name would look like a third selection of the same penalty, and it
+#: is not - it is a selection over a penalty AND the server rule beside it.
+COMBO_TUNE_METHOD = "combo-tune"
+
+
+def combo_tune_full(cfg, root: Path, out: Path, expect: int,
+                    allow_unmeasured: bool = False) -> int:
+    """
+    The jointly-tuned pair's best cell **per schedule**, at the full horizon.
+
+    Reg-full's rule applied to the extension's catalogue and to nothing else.
+    Same score, same weight at w = 1, same validation basis, same argmax and its
+    tie-break, same per-family selection, same refusal to emit over a screen that
+    measured nothing: only the catalogue and the seed block differ, because only
+    they can.  A different rule here would make the arm it crowns incomparable
+    with every other winner in the study, which is the one thing an extension
+    must not do - it is added to be read *against* the programme.
+
+    The schedule is not a filter applied after the fact.  A cell here names one
+    server rule, which lives in one family, so the cells themselves are split
+    between the two schedules and each is ranked only against its own.
+
+    THE BOUNDARY REPORT IS ON THE DIALS.  ``hypers`` holds ``lam``, ``mix`` and
+    ``T``, and the first two are functions of all four dials - asking whether
+    ``lam`` sat at the end of its row would answer a question nobody asked and
+    miss the four that were.
+    """
+    cfg = searched_at(cfg)
+    # No with_extensions(): the boundary-extension records belong to the agg and
+    # reg grids, and a cell of another grid ranked in here would put a row that
+    # is not in this catalogue against cells that are.
+    cells = reg_cells.combo_tune_cells()
+    by_family = reg_cells.combo_tune_by_family()
+
+    rows = reg_selector.summarise(
+        reg_selector.collect(root, cells, f"{cfg.tag}_{SL.CTUNE_SCREEN_TAG}_")
+    )
+    by_id = {cell["id"]: cell for cell in cells}
+
+    a0, p0 = shipped_baselines(root)
+    print(f"  shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}")
+
+    winners, record, hits = [], {}, []
+    for family in SL.FAMILIES:
+        siblings = by_family[family]
+        ids = {cell["id"] for cell in siblings}
+        scored = [
+            row for row in rows
+            if row["id"] in ids and row["family"] == family
+            and row["adaptation"]["mean"] is not None
+        ]
+        if not scored:
+            print(f"  {COMBO_TUNE_METHOD}/{family}: nothing measured; "
+                  "first cell used")
+            best = siblings[0]
+            record[f"{COMBO_TUNE_METHOD}/{family}"] = {"winner": best["id"],
+                                                       "measured": False}
+        else:
+            top = max(scored, key=lambda r: trade_score(r, a0, p0))
+            best = by_id[top["id"]]
+            record[f"{COMBO_TUNE_METHOD}/{family}"] = {
+                "winner": best["id"], "measured": True,
+                "adaptation": top["adaptation"]["mean"],
+                "preservation": top["preservation"]["mean"],
+                "considered": len(scored),
+                "dials": best["dials"],
+                "hypers": best["hypers"],
+                "rule": best["agg"]["rule"],
+            }
+            hits.extend(numeric_boundary(best, siblings, "dials"))
+            print(f"  {family}: {best['id']} of {len(scored)} scored "
+                  f"(score {trade_score(top, a0, p0):+.4f})")
+        winners.append((family, best))
+
+    measured = sum(1 for entry in record.values() if entry.get("measured"))
+    if not check_measured("combo-tune-full", measured, len(record),
+                          allow_unmeasured):
+        return 1
+
+    write_table(dict(record, extension={
+        "is_core_programme": False,
+        "note": (
+            "EXTENSION. The joint grid of the best rule and the best penalty "
+            "per schedule, screened by s23_combo_screen.txt and finalised here. "
+            "No table, shortlist or crossing the study reports reads this "
+            "record; it is written to be read beside p13_reg_method_winners.json "
+            "and p21_blend_winners.json, not in place of either."
+        ),
+        "screen": "s23_combo_screen.txt",
+        "cells_considered": len(cells),
+    }), root, "p23_combo_tune_winners.json")
+    note_boundaries(root, "p24/combo-tune-full", hits)
+
+    lines = []
+    for index, (family, cell) in enumerate(winners):
+        for fold in SL.folds_of(cfg):
+            lines.append(SL.combo_tune_line(
+                cfg, cell, fold, SL.FULL_ROUNDS,
+                cfg.seed_base + COMBO_TUNE_BLOCK + index * 10 + fold,
+                family=family,
+            ))
+    return emit(lines, out, expect, "p24/combo-tune-full", [
+        "# AN EXTENSION, NOT A STAGE OF THE PROGRAMME. The study is complete",
+        "# without it and nothing the paper reports reads what it produces.",
+        "#",
+        f"# The jointly-tuned pair's best cell PER SCHEDULE from the"
+        f" {len(cells)}-cell",
+        f"# screen, re-run at the full {SL.FULL_ROUNDS}-round horizon:"
+        f" {len(SL.FAMILIES)} schedules x"
+        f" {len(SL.folds_of(cfg))} folds.",
+        "#",
+    ] + [
+        f"#   {family:<11} {cell['id']}"
+        for family, cell in winners
+    ] + [
+        "#",
+        "# THESE ARE NOT THE COMBINATIONS ALREADY ON DISK. s20 crossed two",
+        "# shortlists at one setting each - a rule at the coefficients it won on",
+        "# alone beside a penalty at the coefficients it won on alone. These",
+        "# carry the coefficients a joint screen measured. They are new arms,",
+        "# not a re-run of the old ones, and they keep their own folders and",
+        "# seeds; s20's eighteen combinations are untouched.",
+        "#",
+        "# THE SCHEDULE IS IN THE PARENT, as it is in P14's and P22's. The cell",
+        "# ids already carry it - only the parallel rule has a coefficient to",
+        "# name - but a folder that says which schedule's finals it belongs to",
+        "# cannot be misread by a selector that does not know that.",
+        "#",
+    ])
+
+
 WHAT = {
     "agg-full": agg_full,
     "combos": combos,
@@ -2057,6 +2207,10 @@ WHAT = {
     "reg-top3": reg_top3,
     "reg-hybrid": reg_hybrid,
     "blend-full": blend_full,
+    # EXTENSION - see the section above. Listed last, and named so that
+    # `study_emit.py --help` puts the extension beside the stages it is
+    # read against rather than hiding it among them.
+    "combo-tune-full": combo_tune_full,
 }
 
 

@@ -160,6 +160,41 @@ parents were screened over, at the ranking horizon, in both schedules.
 *reports*. Nothing from a screen is a reported number. The distinction is not
 cosmetic - see [§7](#7-things-that-look-like-bugs-and-are-not).
 
+### Extension: joint tuning of the best pair
+
+**The stage below is not part of the programme above.** It is an extension,
+added after every stage in the table had run, and nothing the paper reports
+reads anything it produces: the shortlists, the combination cross, the crowning,
+the carry settings and the paper views are all unchanged and are not
+re-emitted. It is listed here - in its own table, deliberately outside the core
+one - because it runs under the same runner, draws from the same seed scheme and
+has to be reproducible on the same terms as everything else.
+
+| # | extension stage | generator | task file | tasks | rounds |
+|---|---|---|---|---|---|
+| E1 | **joint screen of the leading pair** | `tools/make_digits_p23.py` | `s23_combo_screen.txt` | 1080 | 25 |
+
+**What it asks.** Stage 12 crossed the top three server rules with the top three
+penalties per schedule, and every pair in it is a rule at the coefficients it
+won on *alone* beside a penalty at the coefficients it won on *alone*. The two
+shortlists were selected independently and nothing in the cross ever moved the
+two together, so `COMBINATIONS.md`'s finding - that the two halves do not
+measurably compose - is measured at one point of a joint grid. E1 screens that
+grid for the pair that leads each schedule by TEST score of
+`tables/paper/agg-winners.csv` and `tables/paper/reg-winners.csv`: `eta_0p95`
+with the KD+EWC blend on the parallel schedule, `seq_delta_capped` with the same
+blend on the cyclic one. Every non-grid flag is copied from the shipped `s20`
+line that pairs the same two halves, so a line here differs from one there in
+the horizon and in the coefficients and in nothing else.
+
+The grid is the owner's four dials - the EWC coefficient, the KD coefficient,
+the KD temperature and the blend weight - plus the server step on the parallel
+side, where the rule has a coefficient to move at all. `REG_GRID_RANGES.md`
+records the ranges and the mapping onto the two numbers `AnchoredTrainer`
+actually takes; `s23_combo_screen_README.md` records both again beside the file.
+
+E1 is a screen, so nothing it produces is a reported number.
+
 ---
 
 ## 4. Regenerating a stage's task file
@@ -207,6 +242,20 @@ one's.
 
 `diff /tmp/x.txt $FOA_STUDY_DIR/jobs/s10_agg_full2.txt` closes the loop on the
 aggregation finals the same way.
+
+### The extension's task files
+
+Not stages of the programme - see [the extension
+subsection](#extension-joint-tuning-of-the-best-pair) - but regenerated on the
+same terms, and byte for byte:
+
+```bash
+python tools/make_digits_p23.py --jobs-dir /tmp/check     # the joint screen
+diff /tmp/check/s23_combo_screen.txt \
+     study/artifacts/Digits_study01/jobs/s23_combo_screen.txt
+diff /tmp/check/s23_combo_screen_README.md \
+     study/artifacts/Digits_study01/jobs/s23_combo_screen_README.md
+```
 
 ### The reference stages, which do take arguments
 
