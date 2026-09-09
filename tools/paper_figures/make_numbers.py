@@ -37,6 +37,7 @@ import csv
 import math
 import os
 import re
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1075,9 +1076,18 @@ def main():
 
     tex = os.path.join(out_dir(), "numbers.tex")
     if not os.path.isfile(tex):
-        sys.exit("%s: not there.  Only the block between the markers is\n"
-                 "rewritten, so the file to rewrite has to exist: copy the\n"
-                 "manuscript's numbers.tex into that directory first." % tex)
+        # Only the block between the markers is rewritten, so the file to
+        # rewrite has to exist.  A source checkout has no manuscript to copy
+        # one from, which used to make this script unrunnable outside the
+        # paper tree; the template shipped beside it is that starting point.
+        seed = os.path.join(HERE, "numbers.template.tex")
+        if not os.path.isfile(seed):
+            sys.exit("%s: not there, and no numbers.template.tex beside %s to\n"
+                     "seed it from.  Copy a numbers.tex into that directory."
+                     % (tex, HERE))
+        os.makedirs(os.path.dirname(tex) or ".", exist_ok=True)
+        shutil.copyfile(seed, tex)
+        print("seeded %s from numbers.template.tex" % tex)
     text = open(tex).read()
     if BEGIN not in text or END not in text:
         sys.exit("%s has no %s / %s markers" % (tex, BEGIN, END))
