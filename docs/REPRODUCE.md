@@ -675,8 +675,12 @@ python tools/export_decouple_example.py --root "$FOA_STUDY_DIR" --out <dir>
 ```
 
 The second reads only `outliers/`, so it runs against
-`study/artifacts/Digits_study01/` in a bare clone; the first reads the stored
-arms as well and needs the unpacked records. Neither writes into the study tree.
+`study/artifacts/Digits_study01/` in a bare clone. The first needs more than the
+unpacked records: the three CSVs it joins them to are `foa signals`' own output,
+which is derived, is 195 MB, and is published in neither half - so on a freshly
+assembled reviewer tree it stops and says the files are not there, and the
+`foa signals` pass of [§6](#6-which-command-produces-which-claim) is what puts
+them there. Neither writes into the study tree.
 
 ---
 
