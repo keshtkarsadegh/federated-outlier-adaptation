@@ -682,8 +682,11 @@ packed.
 
     sha256 9c54ef79ec96d7faefedd01abb0dea4e8e8cda110bff0d4626717dfbfe30c28f
 
-published beside the archive as `Digits_study01_records.tar.gz.sha256`. Paths
-inside are relative to the study root, so the asset unpacks straight over one -
+published beside the archive as `Digits_study01_records.tar.gz.sha256`. Both are
+attached to the repository's `v0.3.0` release:
+<https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/tag/v0.3.0>.
+Paths inside are relative to the study root, so the asset unpacks straight over
+one -
 but the asset is only half of a study root. The other half is the metadata core
 above, which travels in the clone rather than in the archive. Neither half is a
 study root on its own, and nothing runs until the two are brought together.
