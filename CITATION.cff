@@ -8,7 +8,7 @@ abstract: >-
   in federated learning, covering communication scheduling, aggregation forms
   and regularisation on NIST SD19 by writer.
 type: software
-version: 0.3.0
+version: 0.3.1
 license: Apache-2.0
 repository-code: "https://github.com/keshtkarsadegh/federated-outlier-adaptation"
 keywords:

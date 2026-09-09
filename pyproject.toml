@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "federated_outlier_adaptation"
-version = "0.3.0"
+version = "0.3.1"
 description = "Knowledge-preserving adaptation to outlier clients in federated learning"
 authors = [
     "Sadegh Keshtkar <sadegh.keshtkar@gwdg.de>",

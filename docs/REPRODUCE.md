@@ -470,6 +470,28 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
 
+### The extension's own views
+
+**Nothing above reads these two, and nothing the manuscript reports does
+either.** They exist so that the extension of [§3](#extension-joint-tuning-of-the-best-pair)
+can be read on the basis the tables of §6 are measured on rather than off its
+task file's README, and they are written into `tables/paper/` beside the
+manuscript bundle under names that begin `extension_` - so a reader sorting that
+directory can see at a glance which two of its files are not the programme.
+
+| the claim | the command |
+|---|---|
+| the jointly-tuned pair against the rule alone, the penalty alone, the untuned pair of those same halves and the best shipped combination, per schedule | `export_extension_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `extension_combo_tune.csv` |
+| what the joint screen ranked: its top five cells per schedule, their dials, and which of those dials sit at the end of a row | the same command -> `extension_combo_screen.csv` |
+
+Which arms either view carries is read and not typed: the pair comes from
+`make_digits_p23.THE_PAIR`, the untuned line from `THE_SHIPPED_LINES` beside it,
+the tuned cell from `tables/p23_combo_tune_winners.json`, and the best shipped
+combination from the two shortlists the cross was emitted from. The first view
+is on TEST because it reports; the second is on VALIDATION because a screen is a
+selection, and it is ranked by `study_emit`'s own rule so that its first row is
+the cell the record crowned.
+
 The reporting tools all take `--root $FOA_STUDY_DIR` and all accept
 `--csv <dir>`. `check_seeds.py`, `check_programme.py` and
 `freeze_selection.py` are the exception: each takes its path as a positional
@@ -604,6 +626,10 @@ directories because four different tools write them:
 | `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, three of which the generators read - `plateau_stages.csv` builds `plateau.tex`, `plateau_arms.csv` and `plateau_extremes.csv` fill macros, and `fig_extremes.py` marks its stopping rounds from the last - while `docs/STOPPING.md` reads all four | `stopping_table.py --csv`, `plateau_rule.py --out` |
 | `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
 
+`tables/paper/` also holds the extension's two views. They feed neither
+generator and no figure, they are named `extension_*` for that reason, and the
+thirty above are thirty without them.
+
 **THE PAPER BUNDLE IS SEARCHED FIRST, AND THAT MATTERS.** `tables/combos.csv` is
 the raw grid dump the combination stage left behind and `tables/paper/combos.csv`
 is the view the manuscript quotes. They carry one name and different rows, so the
@@ -668,8 +694,8 @@ cross-entropy once the client has drifted, so every `lambda` above the saturatio
 point is the same run. A winner among those is an arbitrary pick between
 duplicates, not a tuned value.
 
-**A combination that beats both halves on the means.** Eleven of eighteen do;
-one of eighteen is positive on every fold. The gains are smaller than the fold
+**A combination that beats both halves on the means.** Seven of eighteen do;
+two of eighteen are positive on every fold. The gains are smaller than the fold
 spread. Always read `compare_arms.py`, never a table of means, for a claim of the
 form "A beats B".
 
@@ -717,21 +743,30 @@ were removed for exactly this reason.
 | ten-client point, one dropped | 20 | 100 | ~2 |
 | twenty-client pair | 30 | 100 | ~5 |
 | extremes | 10 | 100 | ~1 |
+| blend screen | 1170 | 25 | ~30 |
+| blend finals | 10 | 100 | <1 |
 
 One A100 per task, `grete:shared`. Those are the hours that were **booked**;
 `fairness_cost.py --what cost` reports the hours the round loop actually spent
 inside them, read from the runner's own timer, and
 [`docs/FAIRNESS_AND_COST.md`](FAIRNESS_AND_COST.md#4-what-it-cost) reads the two
 against each other. The table above is the submission plan and the measured one
-is read off disk, so two rows differ: the regularisation finals are 100 folders
-rather than 70 once the two hybrid emissions are counted with them, and the 50
-size-reference tasks appear in neither row here.
+is read off disk, so two rows differ: the regularisation finals are 110 folders
+rather than 70 once the two hybrid emissions and the blend's finals are counted
+with them, the regularisation screen is 1,870 once the blend's own screen is,
+and the 50 size-reference tasks appear in neither row here.
+
+**The extension is not in this table**, for the same reason it is not in the
+stage table of [§3](#3-the-stage-graph): its joint screen booked ~32 GPU-h and
+measured 18.4, and its finals are under one, but nothing the paper reports reads
+either, so they are priced in `s23_combo_screen_README.md` and
+`s24_combo_full_README.md` and are not added to the programme's total.
 
 ---
 
 ## 10. The published records
 
-**In git - `study/artifacts/Digits_study01/`, 5.5 MB.** The metadata core: the
+**In git - `study/artifacts/Digits_study01/`, 7.3 MB.** The metadata core: the
 frozen cohort, the g-0 evaluation books both baselines are measured against, the
 fold books, the outlier and cohort records, every shipped table and CSV - the ten
 views the manuscript's figures are drawn on among them - every task file that was
@@ -742,9 +777,12 @@ the command that regenerates it. Absolute machine paths are rewritten to
 `$FOA_STUDY_DIR` and friends by `tools/sanitize_artifacts.py`; that this stayed
 true is asserted by `tests/test_release_artifacts.py`.
 
-**A release asset - `Digits_study01_records.tar.gz`, 66,761,023 bytes.** Every
-`accuracies_*.json` and `summary_0.json` under the 1,585 `d01_*` run folders plus
-the 380 reference-rung JSONs: 5,310 files, 515 MB unpacked. These are the numbers
+**A release asset - `Digits_study01_records.tar.gz`, 130,058,517 bytes.** Every
+`accuracies_*.json` and `summary_0.json` under the 3,855 `d01_*` run folders plus
+the 380 reference-rung JSONs: 12,210 files, 1.0 GB unpacked. The blend's two
+stages and the extension's two are in it with the rest: the extension's views
+are computed from its records, so an asset that carried only the core would
+publish a table nobody could rebuild. These are the numbers
 every table is computed from. They are an asset rather than a tracked directory
 because git is the wrong place for half a gigabyte of machine output nobody will
 diff, and they carry no machine paths either - the same sanitiser is run over a
@@ -753,11 +791,11 @@ membership with the same predicate every reader uses, and packs deterministicall
 so the checksum is a property of the records rather than of the day they were
 packed.
 
-    sha256 9c54ef79ec96d7faefedd01abb0dea4e8e8cda110bff0d4626717dfbfe30c28f
+    sha256 f0ed575ddd7bdadeadb35b2553f5115378058978901fb7228a92b5542dacf911
 
 published beside the archive as `Digits_study01_records.tar.gz.sha256`. Both are
-attached to the repository's `v0.3.0` release:
-<https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/tag/v0.3.0>.
+attached to the repository's `v0.3.1` release:
+<https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/tag/v0.3.1>.
 Paths inside are relative to the study root, so the asset unpacks straight over
 one -
 but the asset is only half of a study root. The other half is the metadata core
@@ -766,7 +804,7 @@ study root on its own, and nothing runs until the two are brought together.
 
 ### Assembling the reviewer tree
 
-The asset carries the 1,585 `d01_*` run folders and the reference rungs and
+The asset carries the 3,855 `d01_*` run folders and the reference rungs and
 nothing else; the core carries the selection records, fold books, task files and
 tables that every tool reads alongside them. Both are laid out relative to the
 study root, so assembling one is two copies into an empty directory:
@@ -775,13 +813,13 @@ study root, so assembling one is two copies into an empty directory:
 export FOA_STUDY_DIR=/path/to/Digits_study01        # any empty directory
 mkdir -p "$FOA_STUDY_DIR"
 
-sha256sum -c Digits_study01_records.tar.gz.sha256   # 66,761,023 bytes
+sha256sum -c Digits_study01_records.tar.gz.sha256   # 130,058,517 bytes
 tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
 cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
 ```
 
-The result is 5,451 files - the asset's 5,310 plus this directory's 141 - across
-1,610 top-level entries, and every row of
+The result is 12,363 files - the asset's 12,210 plus this directory's 153 -
+across 3,880 top-level entries, and every row of
 [§6](#6-which-command-produces-which-claim) runs against it from the repository
 root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
 for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`,
@@ -794,10 +832,11 @@ Two things behave differently on such a tree, and neither is a defect.
 `describe_cohort.py` reads the dataset rather than the records, so it needs
 `FOA_NIST28_DIR` and the `fetch_sd19.py` step in [§2](#2-environment-and-data);
 every other row of §6 runs without it. And `foa signals` recomputes the derived
-signal files over 2,465 runs where the machine that ran the study saw 2,471: the
-six it does not carry are a one-task smoke run that predates the stage and was
-never part of it, and the five runs of the one-client extreme arrangement the
-study does not define. Neither belongs to a shipped table. Every selected arm,
+signal files over **six runs fewer** than the machine that ran the study saw:
+a one-task smoke run that predates the stage and was never part of it, and the
+five runs of the one-client extreme arrangement the study does not define. The
+difference is named rather than the two totals, which move whenever a stage is
+added and say nothing when they do. Neither belongs to a shipped table. Every selected arm,
 oracle and gap comes out identical - only the `num_candidates` and `num_allowed`
 populations shift.
 

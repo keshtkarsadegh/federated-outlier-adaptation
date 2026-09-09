@@ -14,7 +14,7 @@ pip install -e ".[dev]"    # or: pip install -r requirements.txt
 pytest -q tests
 ```
 
-1,803 tests, on synthetic fixtures. They pin the study's invariants, not just
+1,887 tests, on synthetic fixtures. They pin the study's invariants, not just
 the plumbing. The ones that matter most to a reader of the paper:
 
 | Test file | What it pins |
@@ -28,7 +28,8 @@ the plumbing. The ones that matter most to a reader of the paper:
 | `test_selection.py`, `test_outlier_selection.py` | the two-phase g-init/g-0 selection and its no-leakage property |
 | `test_release_artifacts.py` | that no absolute machine path survives in the release; that the fetcher's checksums are the documented ones; that the scaling table pins fold 1 explicitly and carries no spread on a single-fold cell |
 | `test_paper_figures.py` | that every CSV view a figure, `numbers.tex` or a table reads is shipped and resolves, that round 0 of every trace is one shared point, and that no view carries a column its tool no longer writes |
-| `test_plateau.py` | what the plateau stopping rule means, on synthetic traces; that its basis is `stopping_table.py`'s own rather than a copy; and that the shipped view still says +1.22p over the fixed horizon, so a silently regenerated table is a failure and not a diff |
+| `test_plateau.py` | what the plateau stopping rule means, on synthetic traces; that its basis is `stopping_table.py`'s own rather than a copy; and that the shipped view still says +1.19p over the fixed horizon on all 83 arms, so a silently regenerated table is a failure and not a diff |
+| `test_shipped_view_membership.py` | that the blend's finals reach every regularisation view a reg-full arm belongs in, that no core view carries an arm of the joint-tuning extension, and that the record generator counts a stage's folders without the ones a later stage lodged under its prefix |
 
 ### The shipped artefacts
 
@@ -44,7 +45,7 @@ cd study/artifacts && sha256sum -c SHA256SUMS
 cd ../jobs        && sha256sum -c SHA256SUMS
 ```
 
-141 derived artefacts and 13 submission chains - no model checkpoint among
+153 derived artefacts and 17 submission chains - no model checkpoint among
 them, because this study ships no weights (`study/UPSTREAM.sha256` says so, and
 the metadata core's own README names them as the one thing it excludes). This
 proves you hold the fold assignments, writer lists, selection records, task
@@ -202,8 +203,9 @@ Follow `docs/RUNBOOK.md`. The cheapest meaningful rung is **the extremes**,
 `jobs/d01_extreme.txt`: 10 tasks and under an hour of GPU, the smallest stage
 of the programme.
 
-The most expensive are the two screens: the aggregation screen (480 tasks,
-~16 GPU-h) and the regularisation screen (700 tasks, ~25 GPU-h). You do not
+The most expensive are the screens: the aggregation screen (480 tasks,
+~16 GPU-h), the regularisation screen (700 tasks, ~25 GPU-h) and the blend's own
+screen (1,170 tasks, ~30 GPU-h). You do not
 need either to check the reported winners — the winners and their evidence are
 shipped in `study/artifacts/Digits_study01/tables/`, and
 `study_emit.py --rank-by {val,test}` will re-derive the ordering from whatever
@@ -214,7 +216,7 @@ file and its task count, and §9 the GPU-hours quoted here.
 
 ## What a reviewer can verify without a GPU
 
-- Every test in the suite (1,803).
+- Every test in the suite (1,887).
 - Every task file parses and passes the runner's guard.
 - Every derived artefact matches its checksum.
 - The cohort chain: worst-5 ⊂ worst-10 ⊂ worst-20, all cut from one ranking.
