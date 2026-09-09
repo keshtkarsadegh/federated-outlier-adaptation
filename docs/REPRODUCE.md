@@ -95,6 +95,7 @@ sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
 | 17 | **the extreme cases** | `study_emit.py extreme` | `d01_extreme.txt` | 10 | 100 |
 | 18 | **ten clients, one dropped** | `study_emit.py c10d10` | `d01_c10d10.txt` | 20 | 100 |
 | 19 | size evaluations, re-scored | *the evaluate-book lines of 13 and 14* | `d01_size_evals_rerun.txt` | 10 | - |
+| 20 | **kd+fisher blend screen** | `tools/make_digits_p21.py` | `s21_blend_screen.txt` | 1170 | 25 |
 
 Stages 8-12 have all run at the search rate and are reported in
 `REG_GRID_RANGES.md`. Stage 12 was re-emitted from the shortlists stages 9-11
@@ -148,6 +149,13 @@ is `make_size_references.py`, the same generator as stages 5 and 13.
 Superseded task files live in `jobs/superseded/`. They are kept as a record and
 must not be re-run: their seeds and their cells belong to a previous programme.
 
+**Stage 20 is the screen the blend never had.** Stages 10 and 11 built the
+kd+fisher blend from the two winners stage 9 named and swept `mix` alone, so its
+`lam` and its `T` were inherited rather than searched - and it then held the best
+mean score in both schedules. Stage 20 screens its own grid over the rows its two
+parents were screened over, at the ranking horizon, in both schedules.
+`REG_GRID_RANGES.md` records the grid and the unit conversion it needs.
+
 **Screen then final.** A screen runs 25 rounds and *ranks*; a final runs 100 and
 *reports*. Nothing from a screen is a reported number. The distinction is not
 cosmetic - see [§7](#7-things-that-look-like-bugs-and-are-not).
@@ -165,10 +173,15 @@ an argument remembered by hand is a task file nobody can regenerate.
 ```bash
 python tools/make_digits_p11.py --jobs-dir /tmp/check     # aggregation screen
 python tools/make_digits_p13.py --jobs-dir /tmp/check     # regularisation screen
+python tools/make_digits_p21.py --jobs-dir /tmp/check     # the blend's screen
 diff /tmp/check/d01_p11.txt $FOA_STUDY_DIR/jobs/s09_agg_screen2.txt
 diff /tmp/check/d01_p13.txt $FOA_STUDY_DIR/jobs/s16_reg_screen3.txt
 diff /tmp/check/d01_p11_README.md $FOA_STUDY_DIR/jobs/d01_p11_README.md
 diff /tmp/check/d01_p13_README.md $FOA_STUDY_DIR/jobs/s16_reg_screen3_README.md
+diff /tmp/check/s21_blend_screen.txt \
+     study/artifacts/Digits_study01/jobs/s21_blend_screen.txt
+diff /tmp/check/s21_blend_screen_README.md \
+     study/artifacts/Digits_study01/jobs/s21_blend_screen_README.md
 
 python tools/study_emit.py agg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 85
 python tools/study_emit.py reg-full --root $FOA_STUDY_DIR --out /tmp/x.txt --expect 70

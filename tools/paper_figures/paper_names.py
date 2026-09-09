@@ -182,6 +182,14 @@ def _rules():
     rule(r"hybrid_seq_mix([0-9p]+)",
          "KD+EWC blend", "KD+EWC blend, cyclic-tuned",
          lambda g: _math([r"m{=}%s" % _dec(g[0])]), "cyclic-tuned")
+    # -- and the same blend as its own screen names it.  Those three cells
+    # -- inherited their lam and T; these carry them, so the identifier has
+    # -- to print all three coefficients rather than the mix alone.
+    rule(r"blend_lam([0-9pem]+)_T([0-9p]+)_mix([0-9p]+)",
+         "KD+EWC blend", "KD+EWC blend",
+         lambda g: _math([r"\lambda{=}%s" % _dec(g[0]),
+                          r"T{=}%s" % _dec(g[1]),
+                          r"m{=}%s" % _dec(g[2])]))
 
     # -- the carried arms and the extreme federations -----------------------
     rule(r"winner", "Anchor + FedNTD (crowned)", "Crowned")

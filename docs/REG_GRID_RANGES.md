@@ -885,3 +885,68 @@ because the cross has not been re-run against these shortlists. Every pairing
 that does exist is positive on all five folds, which is a much stronger statement
 than the mean-against-mean reading that `COMBINATIONS.md` records for the
 discarded run - there, only 1 of 9 survived pairing.
+
+---
+
+# 2026-09-09: the blend's own grid
+
+Every range above was placed for a penalty that was then screened over it. The
+`kd+fisher` blend was not. It was left out of the screen on purpose - a mixture
+is only worth pricing once each half's own strength is known - and
+`study_emit.py reg-hybrid` then built it from the two winners and swept `mix`
+alone, taking `lam` and `T` from the KD half. It went on to hold the best mean
+score in both schedules and the nine highest preservation figures in the table.
+The strongest method in the study is the one whose grid nobody ran, and
+`s21_blend_screen.txt` runs it: 234 cells, 1,170 tasks, 25 rounds, both
+schedules per task.
+
+## 8. `kd+fisher` - the blend
+
+    penalty = lam * ( mix * T^2 * KL( p_anchor^T || p_student^T )
+                    + (1 - mix) * 0.5 * sum_i F_i * (theta_i - theta_g,i)^2 )
+
+**`lam` is not a free third knob.** The two halves' coefficients are `lam * mix`
+and `lam * (1 - mix)`, locked in the ratio `mix : (1 - mix)`, so one `lam` cannot
+put `kd`'s row on the KD half and `fisher`'s row on the Fisher half at the same
+time. It can put one of them on one half exactly, and the Fisher half is the one
+that needs it: the three blends that ran inherit `lam` from the KD winner -
+0.111111 concurrent, 0.010101 sequential - so their Fisher term ran at
+`lam * (1 - mix)`, between 0.083 and 0.028 where the concurrent selection chose
+`lambda = 8`, and between 0.0076 and 0.0025 where the sequential one chose 0.1.
+That is the same fact recorded above as *"`mix = 0` does not reproduce the Fisher
+winner"*, stated as a range rather than as an endpoint.
+
+So the strength axis is written as the EWC lambda the Fisher half **receives**,
+and converted on the way to the line:
+
+    lam = lambda_ewc / (1 - mix)
+
+which is the move the `kd` row already makes in writing itself in `alpha` and
+emitting `(1 - alpha) / alpha`. The KD half then rides at
+`lambda_ewc * mix / (1 - mix)`.
+
+**Old range:** none. `mix in {0.25, 0.5, 0.75}` at one inherited `(lam, T)` per
+schedule - 3 cells, and the only knob searched was `mix`.
+
+**New range:**
+
+    lambda_ewc in {0.1, 1, 2, 3, 5, 8, 10, 20, 50, 100, 200, 500, 1000}   13
+    T          in {0.25, 0.5, 1, 2, 4, 8}                                  6
+    mix        in {0.25, 0.5, 0.75}                                        3   = 234
+
+The strength row is §2's row and the temperature row is §6's row, neither
+narrowed: a blend screened over less than its parents were would answer a smaller
+question than the one being asked. `alpha` is **not** gridded - `AnchoredTrainer`
+has no `alpha`, and inside the blend that coefficient is `lam * mix`, so
+sweeping it would sweep `lam` twice.
+
+**The two inherited points sit below the row.** 0.111111 and 0.010101 are KD-half
+lambdas; as Fisher-half coefficients they are 0.083 and below, under §2's floor
+of 0.1. The row starts where EWC's row starts because that is the range EWC was
+screened over. The three cells that ran keep their full-horizon results and still
+compete in `reg-top3`; nothing here supersedes them.
+
+| | cells | tasks at 5 folds |
+|---|---|---|
+| the blend as emitted, per schedule | 3 | 15 |
+| this screen | 234 | 1170 |

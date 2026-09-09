@@ -70,12 +70,17 @@ The grids, and where the numbers come from
                 ``T`` do.  The earlier work declared
                 ``beta in [0.3, 1, 3] x tau in [1, 3]`` and never ran it either,
                 so the method now leading this study has no prior measurement.
-``kd+fisher``   deliberately **not** in the screen.  A blend of two penalties is
+``kd+fisher``   deliberately **not** in this screen.  A blend of two penalties is
                 only worth pricing once each one's own strength is known, so its
                 three cells are emitted afterwards from the two winners by
                 ``tools/study_emit.py reg-hybrid``, once per schedule: the two
                 families select different halves, so the blend is a different
                 penalty in each and gets its own cell ids and its own seeds.
+                Those three cells sweep ``mix`` and nothing else, which is why
+                the blend now has a screen of its own - :func:`blend_cells`,
+                emitted by ``tools/make_digits_p21.py`` as a separate stage
+                rather than folded in here, so this file stays the table that
+                ran as ``s16_reg_screen3.txt``.
 
 Where the Fisher comes from
 ---------------------------
@@ -153,6 +158,31 @@ NTD_TAUS = (0.5, 1.0, 2.0, 3.0, 4.0, 8.0)
 HYBRID_MIXES = (0.25, 0.5, 0.75)
 
 # --------------------------------------------------------------------------- #
+# The blend's own grid
+# --------------------------------------------------------------------------- #
+#: The kd+fisher screen, written in ITS PARENTS' units.
+#:
+#: The three cells ``reg-hybrid`` emits are not a search.  They take ``lam`` and
+#: ``T`` from the KD winner and sweep ``mix`` alone, so the blend is the one
+#: penalty in this study whose coefficients were never screened - it was added
+#: after the screen closed and then led both schedules.  This row gives it the
+#: treatment every other penalty had: its own grid, at the ranking horizon, in
+#: both schedules.
+#:
+#: ``lam`` IS NOT A FREE THIRD KNOB.  The objective is
+#: ``lam * (mix * KD + (1 - mix) * Fisher)``, so the two halves' coefficients are
+#: locked in the ratio ``mix : (1 - mix)`` and one ``lam`` cannot carry both
+#: parents' rows at once.  It can carry one of them exactly, and the Fisher half
+#: is the one that needs it: the emitted blends run their Fisher term at
+#: ``lam * (1 - mix)``, which is 0.083 where the concurrent selection chose
+#: ``lambda = 8``, two decades below the row EWC was screened over.  So the
+#: strength axis is written as the EWC lambda and converted - the same choice
+#: the kd row makes in writing itself in alpha, and for the same reason.
+BLEND_EWC_LAMS = FISHER_LAMS
+BLEND_TEMPERATURES = KD_TEMPERATURES
+BLEND_MIXES = HYBRID_MIXES
+
+# --------------------------------------------------------------------------- #
 # Boundary extensions
 # --------------------------------------------------------------------------- #
 # There are none.  The first screen ran narrower rows and appended four KD cells
@@ -181,6 +211,26 @@ def kd_lam_of_alpha(alpha: float) -> float:
     if not 0.0 < alpha <= 1.0:
         raise ValueError(f"alpha must lie in (0, 1]; got {alpha!r}")
     return (1.0 - alpha) / alpha
+
+
+def blend_lam_of_ewc(lam_ewc: float, mix: float) -> float:
+    """
+    The blend's ``lam`` that puts ``lam_ewc`` on its Fisher half.
+
+    :class:`AnchoredTrainer` computes ``lam * (mix * KD + (1 - mix) * Fisher)``,
+    so the Fisher term's coefficient is ``lam * (1 - mix)``.  Setting
+    ``lam = lam_ewc / (1 - mix)`` makes that coefficient the EWC lambda the
+    ``fisher`` row was screened over, and the KD term then rides at
+    ``lam_ewc * mix / (1 - mix)``.
+
+    Writing the grid in a parent's units and converting is what
+    :func:`kd_lam_of_alpha` already does, for the same reason: a cell should
+    name the quantity whose range was argued for, not the number the trainer
+    happens to take.
+    """
+    if not 0.0 < mix < 1.0:
+        raise ValueError(f"mix must lie in (0, 1); got {mix!r}")
+    return lam_ewc / (1.0 - mix)
 
 
 def _fmt(value: float) -> str:
@@ -285,6 +335,36 @@ def ntd_cells() -> List[Dict[str, Any]]:
     return cells
 
 
+def blend_cells() -> List[Dict[str, Any]]:
+    """
+    The kd+fisher blend's own grid.  **Not** part of :func:`screen_cells`.
+
+    Deliberately a separate catalogue rather than an eighth row of the screen:
+    ``s16_reg_screen3.txt`` has run, and a row added to the table it was emitted
+    from would change every seed after it and stop that file regenerating.
+    """
+    cells = []
+    for lam_ewc in BLEND_EWC_LAMS:
+        for temperature in BLEND_TEMPERATURES:
+            for mix in BLEND_MIXES:
+                lam = blend_lam_of_ewc(lam_ewc, mix)
+                cells.append(_cell(
+                    f"blend_lam{_fmt(lam_ewc)}_T{_fmt(temperature)}"
+                    f"_mix{_fmt(mix)}",
+                    "kd+fisher", "kd+fisher",
+                    f"KD blended with the Fisher distance to g-0, EWC half at "
+                    f"lambda={lam_ewc:g}, T={temperature:g}, mix={mix:g} "
+                    f"(lam={lam:.6g})",
+                    needs_fisher=True, lam=lam, T=temperature, mix=mix,
+                ))
+    seen = set()
+    for cell in cells:
+        if cell["id"] in seen:  # pragma: no cover - guarded by a test
+            raise ValueError(f"Duplicate blend cell id {cell['id']!r}")
+        seen.add(cell["id"])
+    return cells
+
+
 def control_cell() -> Dict[str, Any]:
     """
     Plain FedAvg with no penalty at all and no anchored trainer instantiated.
@@ -334,9 +414,10 @@ def cells_by_method() -> Dict[str, List[Dict[str, Any]]]:
 #: Grid points deliberately not run, with the reason.
 SKIPPED_CELLS = {
     "kd+fisher": (
-        "not screened - a blend is only worth pricing once each penalty's own "
-        "strength is known; emitted from the kd and fisher winners by "
-        "tools/study_emit.py reg-hybrid, once per schedule"
+        "not in THIS screen - a blend is only worth pricing once each penalty's "
+        "own strength is known; emitted from the kd and fisher winners by "
+        "tools/study_emit.py reg-hybrid, once per schedule, and screened over "
+        "its own grid afterwards by tools/make_digits_p21.py"
     ),
     "fisher_lam0": (
         "param_l2_mu0 - any space at lam <= 0 returns zero penalty, so every "

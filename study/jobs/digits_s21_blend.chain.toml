@@ -1,0 +1,39 @@
+# Digits_study01 - the screen the kd+fisher blend never had.
+#
+#   foa submit study/jobs/digits_s21_blend.chain.toml --go
+#
+# One stage, no chain: nothing here reads what another element writes, so the
+# array is a fan-out and the width is the only thing to choose. It is held at
+# %20 because this is 1,170 elements of a grid whose winners are not reported -
+# a screen ranks, and a ranking that arrives slowly is still a ranking.
+#
+# It requires the shipped model's Fisher, which the g-0 stage wrote next to the
+# winning fold's checkpoint. Every cell of this grid reads it; the runner
+# resolves $G0_FOLD from the study's own g0_selection.json, so the requirement
+# is stated here at the fold the selection recorded rather than as a pattern.
+#
+# jobs_dir is the STUDY's jobs directory, as every other manifest here names it -
+# it resolves against $FOA_PROJECT_DIR, so the copy under study/artifacts is the
+# shipped record and this is the one the preflight counts lines in.
+
+study    = "Digits_study01"
+jobs_dir = "results/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "01:00:00"
+
+[[stage]]
+name     = "s21_blend_screen"
+tasks    = "s21_blend_screen.txt"
+count    = 1170
+array    = "1-1170%20"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/g0_selection.json",
+    "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+    "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz",
+    "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz",
+    "$FOA_STUDY_DIR/g0_fold1/global_results/fisher",
+]
