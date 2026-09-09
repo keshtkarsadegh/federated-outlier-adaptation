@@ -120,13 +120,16 @@ def test_a_root_without_the_baselines_is_refused(tmp_path):
 
 def test_every_selection_in_the_programme_uses_the_same_rule():
     """
-    Four places pick a winner: the aggregation finals and their patch, the
-    regularisation finals and theirs. One rule for all four, or the two tables
-    were not chosen the same way and cannot be read against each other.
+    Five places pick a winner: the aggregation finals and their patch, the
+    regularisation finals and theirs, and the blend's own finals. One rule for
+    all five, or the tables were not chosen the same way and cannot be read
+    against each other - and the blend is the arm that makes that matter, since
+    it is reported in the same table as the seven penalties it was screened
+    apart from.
     """
     source = Path(study_emit.__file__).read_text()
     picks = [line for line in source.splitlines() if "max(scored" in line]
-    assert len(picks) == 4, f"expected four selection sites, found {len(picks)}"
+    assert len(picks) == 5, f"expected five selection sites, found {len(picks)}"
     for line in picks:
         assert "trade_score" in line, f"selects without the rule: {line.strip()}"
 

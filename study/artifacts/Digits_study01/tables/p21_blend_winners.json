@@ -1,0 +1,16 @@
+{
+  "kd+fisher/concurrent": {
+    "winner": "blend_lam0p1_T0p5_mix0p25",
+    "measured": true,
+    "adaptation": 0.8810277184072941,
+    "preservation": 0.9957825391126641,
+    "considered": 234
+  },
+  "kd+fisher/sequential": {
+    "winner": "blend_lam0p1_T0p25_mix0p5",
+    "measured": true,
+    "adaptation": 0.880107809122527,
+    "preservation": 0.9961620418412857,
+    "considered": 234
+  }
+}

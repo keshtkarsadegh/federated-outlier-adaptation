@@ -743,6 +743,114 @@ def reg_full(cfg, root: Path, out: Path, expect: int, allow_unmeasured: bool = F
     ])
 
 
+#: The blend finals' seed block.  Its own, because every stage's is: the screen
+#: opened at 22000 and runs to 724335, the combination stage opens at 730351,
+#: and two winners span twenty - so the finals sit in the gap between them
+#: rather than at the next round number, which is the arithmetic that let the
+#: combination stage draw seeds the regularisation screen had already used.
+BLEND_BLOCK = 26000
+
+#: The method the blend's cells carry.  One row rather than seven:
+#: :func:`reg_cells.blend_cells` is a single penalty's grid, so reg-full's loop
+#: over the methods collapses to a loop over the two schedules.  The record
+#: still names the method, because it is read beside P13's and a key that named
+#: only a schedule would not say which penalty it had chosen.
+BLEND_METHOD = "kd+fisher"
+
+
+def blend_full(cfg, root: Path, out: Path, expect: int,
+               allow_unmeasured: bool = False) -> int:
+    """
+    The blend's best cell **per family**, re-run at the full horizon.
+
+    Reg-full's rule applied to the one catalogue reg-full cannot see. The blend
+    was kept out of the screen deliberately and given a grid of its own
+    afterwards, so ``screen_cells()`` does not carry it and the loop over
+    ``REG_METHODS`` walks straight past it - which would leave a penalty
+    screened over 234 cells represented in the finals only by the three points
+    ``reg-hybrid`` built from inherited coefficients. Same score, same weight,
+    same validation basis, same tie-break, same per-family selection: only the
+    catalogue and the seed block differ, because only they can.
+    """
+    cfg = searched_at(cfg)
+    # "blend", not "reg": the extension record of the regularisation grid holds
+    # cells of other methods, and adding them here would have this selection
+    # rank a penalty's grid against rows that are not in it. The blend has no
+    # extensions today; naming its own grid is what keeps that true if it ever
+    # gains one.
+    cells = with_extensions(root, reg_cells.blend_cells(), "blend")
+
+    rows = reg_selector.summarise(
+        reg_selector.collect(root, cells, prefixes(cfg)["reg_screen"])
+    )
+    by_id = {cell["id"]: cell for cell in cells}
+
+    a0, p0 = shipped_baselines(root)
+    print(f"  shipped on cohort A0={a0:.4f}   shipped on source P0={p0:.4f}")
+
+    winners, record, hits = [], {}, []
+    for family in SL.FAMILIES:
+        scored = [
+            row for row in rows
+            if row["family"] == family and row["adaptation"]["mean"] is not None
+        ]
+        if not scored:
+            print(f"  {BLEND_METHOD}/{family}: nothing measured; first cell used")
+            best = cells[0]
+            record[f"{BLEND_METHOD}/{family}"] = {"winner": best["id"],
+                                                  "measured": False}
+        else:
+            top = max(scored, key=lambda r: trade_score(r, a0, p0))
+            best = by_id[top["id"]]
+            record[f"{BLEND_METHOD}/{family}"] = {
+                "winner": best["id"], "measured": True,
+                "adaptation": top["adaptation"]["mean"],
+                "preservation": top["preservation"]["mean"],
+                "considered": len(scored),
+            }
+            hits.extend(numeric_boundary(best, cells, "hypers"))
+            print(f"  {family}: {best['id']} of {len(scored)} scored "
+                  f"(score {trade_score(top, a0, p0):+.4f})")
+        winners.append((family, best))
+
+    measured = sum(1 for entry in record.values() if entry.get("measured"))
+    if not check_measured("blend-full", measured, len(record), allow_unmeasured):
+        return 1
+
+    write_table(record, root, "p21_blend_winners.json")
+    note_boundaries(root, "p22/blend-full", hits)
+
+    lines = []
+    for index, (family, cell) in enumerate(winners):
+        for fold in SL.folds_of(cfg):
+            lines.append(SL.reg_line(
+                cfg, cell, fold, SL.FULL_ROUNDS,
+                cfg.seed_base + BLEND_BLOCK + index * 10 + fold, family=family,
+            ))
+    return emit(lines, out, expect, "p22/blend-full", [
+        "# The kd+fisher blend's best cell PER FAMILY from the 234-cell screen",
+        f"# it never had, re-run at the full {SL.FULL_ROUNDS}-round"
+        f" horizon: {len(SL.FAMILIES)} schedules x"
+        f" {len(SL.folds_of(cfg))} folds.",
+        "#",
+    ] + [
+        f"#   {family:<11} {cell['id']}"
+        for family, cell in winners
+    ] + [
+        "#",
+        "# THESE ARE NOT THE BLENDS ALREADY ON DISK. s18 and s19 swept mix",
+        "# alone, at a lam and a T inherited from the KD winner; these carry",
+        "# the coefficients the screen measured. They are new arms, not a",
+        "# re-run of the old ones, and they keep their own folders and seeds.",
+        "#",
+        "# THE FAMILY IS IN THE PARENT, for the reason it is in P14's: the two",
+        "# schedules choose their own cell and may choose the same one, and",
+        "# without the tag two tasks would name one output folder and race each",
+        "# other into it. Each task still runs BOTH families; the tag records",
+        "# which one the folder is read for.",
+        "#",
+    ])
+
 #: THE BLEND IS A PER-FAMILY OBJECT. Its two halves are selected per (method,
 #: family), so "the KD winner blended with the Fisher winner" only names a
 #: penalty once a schedule is named: the concurrent selection picks one KD cell
@@ -1948,6 +2056,7 @@ WHAT = {
     "reg-patch": reg_patch,
     "reg-top3": reg_top3,
     "reg-hybrid": reg_hybrid,
+    "blend-full": blend_full,
 }
 
 

@@ -483,6 +483,10 @@ def counts(cfg) -> Dict[str, int]:
         "agg_full": len(AGG_METHODS) * folds,
         "reg_screen": len(reg_cells.screen_cells()) * folds,
         "reg_full": len(REG_METHODS) * len(FAMILIES) * folds,
+        # ONE PENALTY, TWO SCHEDULES. The blend's grid is a catalogue of
+        # its own and it reaches the finals as a single method, so its
+        # finals are one winner per schedule and not one per method.
+        "blend_full": len(FAMILIES) * folds,
         "combos": COMBO_TOP_K * COMBO_TOP_K * len(FAMILIES) * folds,
         "extreme": len(extreme_cells.CASES) * folds,
         # The ARMS, not the cells they resolve to: how many arms a size
