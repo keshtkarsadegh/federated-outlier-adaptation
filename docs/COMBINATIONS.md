@@ -22,7 +22,7 @@ finals - not from the screens, and not from anything written down in source.
 ```bash
 python tools/study_emit.py agg-top3 --root "$FOA_STUDY_DIR" --out "$FOA_STUDY_DIR/tables/p12_agg_top3.json"
 python tools/study_emit.py reg-top3 --root "$FOA_STUDY_DIR" --out "$FOA_STUDY_DIR/tables/p13_reg_top3.json"
-python tools/study_emit.py combos   --root "$FOA_STUDY_DIR" --out jobs/s13_combos2.txt --expect 90 --clients-per-round 9
+python tools/study_emit.py combos   --root "$FOA_STUDY_DIR" --out /tmp/x.txt --expect 90
 
 python tools/check_seeds.py "$FOA_STUDY_DIR"/jobs/s*.txt      # every stage at once
 
@@ -34,18 +34,20 @@ python tools/compare_arms.py --root "$FOA_STUDY_DIR" --what composition
 
 | | concurrent | sequential |
 |---|---|---|
-| server rules | `anchor_h2`, `eta_0.95`, `weight_q0` | `seq_delta_capped`, `seq_fedavg`, `seq_mix_r0.3` |
-| penalties | `logit_l2_lam0.003`, `ntd_b0.01_t0.5`, `kd_T8_a0.99` | `ntd_b0.01_t1`, `logit_l2_lam0.003`, `fisher_lam0.1` |
+| server rules | `anchor_h2`, `eta_0p95`, `weight_q0` | `seq_delta_capped`, `seq_fedavg`, `seq_mix_r0p3` |
+| penalties | `logit_l2_lam0p001`, `ntd_b0p01_t0p5`, `hybrid_seq_mix0p5` | `ntd_b0p01_t2`, `logit_l2_lam0p003`, `hybrid_mix0p5` |
 
-The two schedules shortlist different penalties: `kd` fell to last on the cyclic
-schedule at full horizon and `fisher` rose to third, so the cross is not the same
-nine pairs twice.
+The two schedules shortlist different penalties - each row's own winner at the
+full horizon, at that schedule's own coefficients - so the cross is not the same
+nine pairs twice. Both lists carry a kd+fisher blend, which is the arm the
+finals table is topped by and the reason the blend was later given a screen of
+its own.
 
 ## The result, read the wrong way first
 
-Comparing each pair's mean against its two halves' means, **eleven of eighteen
-combinations beat both halves**, by +0.04 to +0.73 points. Read that way the
-stage is a clean positive: the two mechanisms compose.
+Comparing each pair's mean against its two halves' means, **seven of eighteen
+combinations beat both halves**, by +0.09 to +1.21 points. Read that way seven
+rows of the stage look like a clean positive: the two mechanisms compose.
 
 **That reading is wrong, and it is wrong in a way a table of means cannot show.**
 
@@ -55,30 +57,36 @@ The five folds are the same five partitions for every arm, so a fold that is
 hard for one arm is hard for all of them. Differencing within a fold removes
 that shared difficulty. Doing so:
 
+Differencing each pair against its better half:
+
 | | gains | fold sd | positive on every fold |
 |---|---|---|---|
-| concurrent | +0.04 to +0.45 | 0.47 to 1.39 | **1 of 9** |
-| sequential | +0.09 to +0.73 | 0.22 to 2.07 | **0 of 9** |
+| concurrent | -0.57 to +1.21 | 0.40 to 1.46 | **2 of 9** |
+| sequential | -0.20 to +0.80 | 0.24 to 1.43 | **0 of 9** |
 
-Every gain is smaller than the spread it came from. What the means were hiding:
+Almost every gain is smaller than the spread it came from. What the means were
+hiding:
 
-    anchor_h2 x ntd            +0.30 mean    +2.5  -0.9  -0.9  +0.3  +0.5
-    seq_delta_capped x logit   +0.73 mean    +0.3  +2.5  -0.1  +1.0  -0.1
-    weight_q0 x kd             +0.23 mean    -1.5  +0.1  +2.3  +0.1  +0.1
+    seq_mix_r0p3 x hybrid_mix0p5       +0.80 mean   +2.0  +1.0  -0.6  +0.7  +0.9
+    seq_delta_capped x ntd_b0p01_t2    +0.44 mean   +1.3  +0.6  +0.5  -1.0  +0.9
+    seq_delta_capped x hybrid_mix0p5   +0.28 mean   +1.8  +1.0  -1.8  -0.5  +1.0
 
-Each is one good fold and four flat or negative ones.
+Each is carried by one or two folds and contradicted by another.
 
-The single survivor is `eta_0.95 x kd_T8_a0.99`: +0.36, sd 0.47, positive on all
-five folds - and even that is carried by one fold of the five.
+The two survivors are both the same penalty under two different rules:
+`anchor_h2 x ntd_b0p01_t0p5` at +1.21, sd 0.58, and `eta_0p95 x ntd_b0p01_t0p5`
+at +0.77, sd 0.40, positive on all five folds. They are the same two rows that
+clear **both** halves on every fold in `tables/paper_figures/combos_folds.csv`.
 
-One row is consistently **negative**: `weight_q0 x logit_l2_lam0.003`, on every
-fold. Adding that server rule to that penalty genuinely hurts.
+No row is negative on every fold. Four are negative on the mean, the worst of
+them `weight_q0 x hybrid_seq_mix0p5` at -0.57: adding that server rule to that
+penalty does not help, and the folds do not agree that it hurts either.
 
 **Conclusion: the two halves do not measurably compose at five folds.** The best
 combination is still the best single number in the study -
-`seq_delta_capped x logit_l2_lam0.003`, 0.9270 adaptation / 0.9910 preservation,
-score 9.69 - but its margin over the penalty alone is inside fold noise and must
-not be reported as a gain.
+`seq_delta_capped x ntd_b0p01_t2`, 0.9375 adaptation / 0.9902 preservation,
+score 10.661 - but its margin over the penalty alone is +0.44 against a fold sd
+of 0.89 and must not be reported as a gain.
 
 ## What does survive: the penalty is the mechanism
 
@@ -87,13 +95,15 @@ times larger, and it holds:
 
 | | difference | positive on every fold |
 |---|---|---|
-| concurrent | +1.06 to +2.19 | 3 of 9 (all 9 positive on the mean) |
-| sequential | +1.51 to +2.68 | **8 of 9** |
+| concurrent | +1.25 to +3.16 | **9 of 9** |
+| sequential | +1.81 to +4.14 | 6 of 9 (all 9 positive on the mean) |
 
-Every client penalty beats every server rule, by one to two and a half points.
-On the cyclic schedule this is close to unconditional. On the parallel schedule
-the effect is the same size but noisier - fold 1 is where the near-zeros sit,
-and it is the fold that keeps rows out of the consistent column throughout.
+Every client penalty beats every server rule, by one and a quarter to four
+points, and every one of the eighteen rows is positive on the mean. On the
+parallel schedule it is unconditional: nine rows, forty-five folds, no
+exception. On the cyclic schedule the three rows that fall out of the consistent
+column are all the same penalty - the `hybrid_mix0p5` blend, whose fold spread
+is twice the other two penalties' - and not the same rule.
 
 So the honest statement of what this study found is:
 
@@ -167,3 +177,32 @@ the stage table in `REPRODUCE.md` by design, it has its own section in
 `stage-winner` reads, and its record - `tables/p23_combo_tune_winners.json` -
 says so in its own text. Whatever it finds is read *beside* this document, not
 into it.
+
+### What it found, read beside the table above
+
+The two cells it crowned were re-run at the reporting horizon and are in
+`tables/paper/extension_combo_tune.csv`, five arms per schedule on the test
+basis: the rule alone, the penalty alone, the untuned pair of those same two
+halves, the tuned pair, and the best of the eighteen combinations above.
+
+    concurrent  tuned pair  9.34p   vs untuned -0.75 (2 of 5 folds)
+                                    vs penalty alone -1.16 (1 of 5)
+    sequential  tuned pair  9.14p   vs untuned +0.03 (3 of 5 folds)
+                                    vs penalty alone -1.55 (0 of 5)
+
+**Moving the two halves together did not find a pair that beats the point where
+each half is best alone.** On neither schedule does the tuned pair clear the
+penalty on its own, and on neither does it clear the best shipped combination;
+the one difference that is even positive is +0.03 on three folds of five, which
+is the same shape of non-result as every row of the paired table above. So the
+sentence this document draws - that the two halves do not measurably compose -
+is now measured at more than one point of the joint grid rather than at one, and
+it says the same thing.
+
+The screen that chose those two cells ranked on the validation columns at 25
+rounds, and this table reports test at 100: a screen ranks and cannot price, and
+this is what that distinction costs when a screen's winner is finally priced.
+The screen's own top five per schedule, with the dials and where each sits in
+its row, are in `tables/paper/extension_combo_screen.csv`. Every dial of both
+winners but one is at an end of its row, which is the finding to read first and
+is why the pair is not offered as a tuned configuration to use.

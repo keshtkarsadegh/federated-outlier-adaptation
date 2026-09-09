@@ -40,14 +40,30 @@ from report_tables import in_study  # noqa: E402  - one definition of membership
 #: blend by its own full stem. The folder count is a check on the task count
 #: beside it, and a count that silently absorbs another stage's folders cannot
 #: perform that check.
+#:
+#: A LEADING "-" SUBTRACTS. The blend's own screen and its own finals write
+#: under the two stems the regularisation screen and the regularisation finals
+#: already own - d01_reg_blend_* sits inside d01_reg_*, and
+#: d01_regfull_<schedule>_blend_* inside d01_regfull_<schedule>_* - so a plain
+#: prefix would credit s16 with s21's 1,170 folders and s17 with s22's ten, and
+#: the count would stop being a check on the task count beside it. The stage
+#: that owns those folders claims them by their full stem, and the stage that
+#: merely contains them says so by subtraction.
 PREFIXES = {
     "s09_agg_screen2": ("d01_agg_",),
     "s10_agg_full2": ("d01_aggfull_",),
-    "s16_reg_screen3": ("d01_reg_",),
-    "s17_reg_full4": ("d01_regfull_concurrent_", "d01_regfull_sequential_"),
+    "s16_reg_screen3": ("d01_reg_", "-d01_reg_blend_"),
+    "s17_reg_full4": ("d01_regfull_concurrent_", "d01_regfull_sequential_",
+                      "-d01_regfull_concurrent_blend_",
+                      "-d01_regfull_sequential_blend_"),
     "s18_hybrid": ("d01_regfull_hybrid_mix",),
     "s19_hybrid_seq": ("d01_regfull_hybrid_seq_mix",),
     "s20_combos4": ("d01_combo_",),
+    "s21_blend_screen": ("d01_reg_blend_",),
+    "s22_blend_full": ("d01_regfull_concurrent_blend_",
+                       "d01_regfull_sequential_blend_"),
+    "s23_combo_screen": ("d01_ctune_",),
+    "s24_combo_full": ("d01_ctunefull_",),
     "d01_five": ("d01_five_",),
     "d01_c10d10": ("d01_c10d10_",),
     "d01_c20": ("d01_c20d",),
@@ -60,6 +76,22 @@ PREFIXES = {
 CARRY = ("d01_c5_references.txt", "d01_c20_references.txt", "d01_five.txt",
          "d01_c20.txt", "d01_extreme.txt", "d01_c10d10.txt",
          "d01_size_evals_rerun.txt")
+
+
+def counted(root: Path, prefixes) -> int:
+    """
+    How many result folders a stage's prefixes claim, minus the ones they lend.
+
+    COUNTED AGAINST THE CELL LIST, not against the glob. A stage that dropped
+    an arrangement leaves its folders behind, and a record that counted them
+    would report more folders than tasks and read as a missing task file rather
+    than as a retired arm.
+    """
+    keep = tuple(p for p in prefixes if not p.startswith("-"))
+    drop = tuple(p[1:] for p in prefixes if p.startswith("-"))
+    return sum(1 for prefix in keep
+               for folder in root.glob(f"{prefix}*")
+               if in_study(folder.name) and not folder.name.startswith(drop))
 
 
 def runnable(path: Path) -> int:
@@ -110,14 +142,7 @@ def main() -> int:
         stem = path.stem
         n = runnable(path)
         prefixes = PREFIXES.get(stem)
-        # COUNTED AGAINST THE CELL LIST, not against the glob. A stage that
-        # dropped an arrangement leaves its folders behind, and a record that
-        # counted them would report more folders than tasks and read as a
-        # missing task file rather than as a retired arm.
-        made = (sum(1 for prefix in prefixes
-                    for folder in root.glob(f"{prefix}*")
-                    if in_study(folder.name))
-                if prefixes else "")
+        made = counted(root, prefixes) if prefixes else ""
         print(f"| `{stem}` | {n} | {made} |")
 
     walked = {p.name for p in stages}

@@ -9,10 +9,10 @@ different failure mode.
 WHY THIS EXISTS.  The combination stage crosses the three best server rules with
 the three best client penalties, and the obvious way to read it is to compare
 each pair's mean against its two halves' means.  Done that way on this study,
-eleven of eighteen combinations "beat both halves" and the stage looks like a
+seven of eighteen combinations "beat both halves" and those rows look like a
 clean positive result.  Pairing the same numbers by fold shows the gains are
-+0.04 to +0.73 against a fold standard deviation of 0.22 to 1.52, and that only
-one of the eighteen is positive on every fold.  The eleven were an artefact of
+-0.57 to +1.21 against a fold standard deviation of 0.24 to 1.46, and that only
+two of the eighteen are positive on every fold.  The seven were an artefact of
 reading means without their spread, and nothing in a table of means says so.
 
 So this tool never prints a mean difference without the per-fold differences
@@ -39,7 +39,7 @@ cannot be.
                  line between two named methods, so the claim it invites is
                  about both ends at once, and reading its means the way the
                  combination stage was first read says all six points beat both
-                 parents.  Paired, four of the six clear their KD parent on
+                 parents.  Paired, five of the six clear their KD parent on
                  every fold and none clears its Fisher parent.
 
 WHERE THE HALVES ARE READ FROM.  A standalone penalty is looked for under the

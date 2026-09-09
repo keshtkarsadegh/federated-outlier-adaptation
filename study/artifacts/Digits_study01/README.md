@@ -3,10 +3,10 @@
 This directory is the study's **metadata core**: the records that say what was
 selected, what was run, against which rows, and what came out - everything a
 reader needs to check a claim in the manuscript against something other than the
-manuscript. It is 5.2 MB and 127 files besides this one, which is small enough
+manuscript. It is 7.3 MB and 152 files besides this one, which is small enough
 to live in git and be diffed like source.
 
-It is not the study. The study is 1,590 run folders and about 1.9 million files.
+It is not the study. The study is 3,855 run folders and about 4 million files.
 What is here is the part of it that is *evidence* rather than *bulk*, plus the
 exact commands that reproduce the bulk. Everything excluded is named below with
 the reason it is excluded and the way to get it back; nothing has been left out
@@ -34,18 +34,23 @@ paths and were not touched; only these copies were rewritten.
 | `tables/p12_agg_top3.json`, `tables/p13_reg_top3.json` | the two shortlists the cross was emitted from | `compare_arms.py`, `study_emit.py combos` |
 | `tables/p14_hybrid_construction*.json` | which two cells each family's blend was built from | `study_emit.py reg-hybrid`, `compare_arms.py --what blends` |
 | `tables/p15_*.json` | the combination grid and its winner | `report_tables.py --what combos`, `study_emit.py` |
-| `tables/p18_*.json`, `tables/p20_*.json`, `tables/p21_*.json` | the carried arms at each federation size | `report_tables.py --what sizes` |
+| `tables/p18_*.json`, `tables/p20_*.json`, `tables/p21_c10_d10.json` | the carried arms at each federation size | `report_tables.py --what sizes` |
+| `tables/p21_blend_winners.json` | which blend cell each schedule's own screen crowned, and how many it ranked | `study_emit.py blend-full`, `study_record.py` |
+| `tables/p23_combo_tune_winners.json` | **the extension**: the jointly-tuned cell per schedule, its dials and the rule it runs | `study_emit.py combo-tune-full`, `export_extension_views.py` |
 | `tables/cohort_table.*`, `tables/cohort_composition.csv` | who is in the cohort and what they hold | `describe_cohort.py` |
 | `tables/clients_acc_on_g0.json` | the shipped model per cohort client | `study_emit.py`, `analyse_signals_fairness_cost.py` |
 | `tables/paper/*.csv` | the manuscript bundle, one CSV per view | `report_tables.py --what all --csv` |
+| `tables/paper/extension_combo_tune.csv`, `extension_combo_screen.csv` | **the extension**, in the same directory and under a name that says so: the tuned pair against the four arms it is offered against, and the screen that chose it. Read by no figure and no generator | `export_extension_views.py` |
 | `tables/paper_figures/traces_*.csv`, `extreme_stop_rounds.csv` | the per-round views the figures are drawn on | `export_traces.py`, then `tools/paper_figures/fig_*.py` |
 | `tables/paper_figures/g0_training.csv`, `isolated_clients.csv` | the two baseline views | `export_baseline_views.py`, `fig_baselines.py` |
 | `tables/paper_figures/combos_folds.csv` | each combination against BOTH of its halves | `export_combo_folds.py` |
-| `tables/stopping/*.csv` | what the fixed horizon cost every arm | `stopping_table.py --csv` |
+| `tables/stopping/stopping_*.csv` | what the fixed horizon cost every arm | `stopping_table.py --csv` |
+| `tables/stopping/plateau_*.csv` | what a plateau on the cohort's own accuracy would have delivered instead | `plateau_rule.py --out` |
 | `tables/combos.csv`, `composition.csv`, `blends.csv` | the paired differences, folds expanded | `compare_arms.py --csv` |
 | `tables/weight_sensitivity_*.csv` | do the winners survive a different `w`? | `weight_sensitivity.py` |
 | `tables/BOUNDARY_HITS.txt` | winners sitting at the edge of their grid row | written by `study_emit.py`, read by hand |
 | `tables/gallery/cohort_vs_typical.*` | the cohort against a typical draw | `make_digits_p05v2.py` |
+| `jobs/s2[1-4]_*.txt` | the blend's screen and finals, and the extension's two stages - submitted after the views above were first cut | `check_seeds.py`, `check_programme.py`, `submit_chain.py` |
 | `jobs/*.txt` | every task line that was submitted, verbatim | `check_seeds.py`, `check_programme.py`, `submit_chain.py` |
 | `jobs/*_README.md` | what each stage's file was emitted for | read by hand |
 | `figures/extreme_stopping.png` | when the extreme cases should have stopped | `extreme_stopping.py --fig` |
@@ -81,15 +86,15 @@ figures. Nothing about them is a judgement call, which is why they are the first
 thing to drop.
 
 **The per-run records - a release asset.** Every `accuracies_*.json` and
-`summary_0.json` under the 1,590 `d01_*` run folders, plus the 380 JSONs of the
-`centralized_c*` and `isolated_c*` reference rungs: 5,320 files, 522 MB raw.
+`summary_0.json` under the 3,855 `d01_*` run folders, plus the 380 JSONs of the
+`centralized_c*` and `isolated_c*` reference rungs: 12,210 files, 1.0 GB raw.
 These are the numbers every table in the study is computed from, so they are
 published - but as a release asset rather than in the tree, because git is the
 wrong place for half a gigabyte of machine output that no one will diff.
 
     Digits_study01_records.tar.gz
-    sha256 405a72c6127b2bec95831d4e0f181967ad38a21d22fb1a9ab861cfbb166665a5
-    68,303,506 bytes
+    sha256 f0ed575ddd7bdadeadb35b2553f5115378058978901fb7228a92b5542dacf911
+    130,058,517 bytes
 
 Paths inside it are relative to the study root, so it unpacks over
 `$FOA_STUDY_DIR` - but the asset is only half of a study root and this directory

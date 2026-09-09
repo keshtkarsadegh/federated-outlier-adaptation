@@ -1,6 +1,6 @@
 # Who the gain reaches, and what it cost
 
-*Read 2026-09-01, against `Digits_study01`: 2,465 stored payloads, 1,585 jobs.*
+*Read 2026-09-09, against `Digits_study01`: 4,825 stored payloads, 2,765 jobs.*
 
 Every score in this study is a cohort mean. A mean can rise while the writer the
 cohort was assembled around does not move, and a method chosen on a mean has no
@@ -16,7 +16,7 @@ python tools/fairness_cost.py --root "$FOA_STUDY_DIR" --what all --csv "$FOA_STU
 Nothing is retrained and nothing is recomputed from weights. Both halves read
 keys the runner already wrote: `final_evaluation.clients.per_client` for the
 distribution, and `round_seconds`, `comm_bytes_per_round` and `param_count` for
-the cost. All 2,465 payloads carry all five.
+the cost. All 4,825 payloads carry all five.
 
 ---
 
@@ -136,8 +136,8 @@ spread is zero by construction and whose reference no book carries.
 |---|---|---|---|
 | aggregation screen | 480 | 25 | 2.19 |
 | aggregation finals | 85 | 100 | 1.97 |
-| regularisation screen | 700 | 25 | 13.68 |
-| regularisation finals | 100 | 100 | 7.99 |
+| regularisation screen | 1,870 | 25 | 37.51 |
+| regularisation finals | 110 | 100 | 8.79 |
 | combinations | 90 | 100 | 1.76 |
 | ten clients, one dropped | 20 | 100 | 0.62 |
 | five clients, one dropped | 20 | 100 | 0.30 |
@@ -145,25 +145,31 @@ spread is zero by construction and whose reference no book carries.
 | twenty, four dropped | 15 | 100 | 0.57 |
 | extremes | 10 | 100 | 0.06 |
 | size references | 50 | 100 | 2.40 |
-| **whole programme** | **1,585** | | **32.18** |
+| **whole programme** | **2,765** | | **56.81** |
 
 **These are round-loop hours, not booked hours.** `round_seconds` is measured by
 the runner from the top of a round to the end of aggregation, so it covers local
 training, the in-loop evaluations and the eight signals, and it does not cover
 process start-up, dataset caching, model loading or the final evaluation. Read
-against the ~53 GPU-h of allocation in [`REPRODUCE.md`](REPRODUCE.md#9-cost),
-about **three fifths of what was booked was spent inside the round loop**.
+against the ~112 GPU-h of allocation in [`REPRODUCE.md`](REPRODUCE.md#9-cost),
+about **half of what was booked was spent inside the round loop**.
 
 Two rows differ from that table because this one is read off disk rather than
-off the submission plan: the regularisation finals row here is 100 tasks, which
-is the 70 of `s17_reg_full4` plus the two hybrid emissions that §9 lists
-nowhere, and the size references are 50 tasks that §9 omits entirely.
+off the submission plan, and each is a stem that holds more than one stage. The
+regularisation screen row is 1,870 tasks - `s16_reg_screen3`'s 700 and the
+blend's own 1,170 screen, which write under one prefix because they screen one
+grid's rows - and the regularisation finals row is 110, the 70 of
+`s17_reg_full4` plus the two hybrid emissions and the blend's ten finals. The
+size references are 50 tasks that §9 omits entirely. **The extension of §3 is
+not in this table at all**: it is not part of the programme, its two stages are
+priced in their own READMEs, and a row for them here would put 1,090 tasks
+nobody reports into the total.
 
-The screens dominate. The two twenty-five round screens are **15.87 h of the
-32.18** - every hundred-round stage in the programme put together is 16.32 h.
-That is the intended shape rather than a problem: screening is where a cheap
-horizon buys a ranking over 1,180 tasks, and it is precisely what the finals
-exist not to repeat.
+The screens dominate, and the blend's screen doubled the gap. The two
+twenty-five round stems are **39.70 h of the 56.81** - every hundred-round stage
+in the programme put together is 17.11 h. That is the intended shape rather than
+a problem: screening is where a cheap horizon buys a ranking over 2,350 tasks,
+and it is precisely what the finals exist not to repeat.
 
 ### The methods are free; the federation is not
 

@@ -1,13 +1,14 @@
 # When to stop, without the data that would tell you
 
-*Read 2026-09-01, against `Digits_study01`: 2,465 audited payloads, 81 hundred-round arms.*
+*Read 2026-09-09, against `Digits_study01`: 83 hundred-round arms, and the
+2,465 payloads the shipped signals pass audited.*
 
 Every stage in this study runs to a fixed hundred-round horizon and reports the
 last round. This document asks what that costs, and whether anything the server
 is **allowed** to compute could have told it to stop earlier. Two answers come
-out of it: the eight forgetting signals recover +0.47p of the oracle's 1.50p
+out of it: the eight forgetting signals recover +0.46p of the oracle's 1.48p
 (section 4), and a plateau on the cohort's own accuracy - which is not a proxy
-for forgetting and does not have to be - recovers +1.22p (section 5).
+for forgetting and does not have to be - recovers +1.19p (section 5).
 
 ---
 
@@ -74,19 +75,26 @@ measured from, which is why a permitted rule can never stop before round 2.
 
 ## 3. What the horizon costs, stage by stage
 
-The gap between the oracle stop and the fixed horizon, over the 81 arms of the
+The gap between the oracle stop and the fixed horizon, over the 83 arms of the
 eight hundred-round stages:
 
 | stage | arms | min | median | max | median r\* |
 |---|---|---|---|---|---|
 | aggregation finals | 19 | 1.00p | 2.17p | 4.62p | 38 |
-| regularisation finals | 26 | 0.00p | 0.58p | 1.92p | 94 |
+| regularisation finals | 28 | 0.00p | 0.58p | 1.92p | 94 |
 | combinations | 18 | 0.12p | 0.54p | 1.01p | 87 |
 | ten clients, one dropped | 5 | 0.32p | 0.85p | 2.38p | 63 |
 | five clients, one dropped | 5 | 0.76p | 1.46p | 6.10p | 44 |
 | twenty clients, two dropped | 3 | 0.15p | 0.23p | 0.51p | 94 |
 | twenty clients, four dropped | 3 | 0.04p | 0.08p | 0.83p | 93 |
 | **the extremes** | **2** | **5.96p** | **11.57p** | **17.19p** | **22** |
+
+The regularisation row is 28 arms rather than the 26 it was: the blend's own
+finals are two more full-horizon regularisation arms and they belong in every
+reg-full view. Neither of them fires under any rule below, and both sit at the
+median of that stage - so the population this document is read over grew by two
+and the answer it gives did not change, which is the only reason the numbers
+here moved at all.
 
 **The horizon is close to harmless everywhere the federation has something to
 average, and catastrophic where it does not.** Seven stages have a median cost
@@ -105,26 +113,26 @@ control (6.10p), which is the setting with the fewest updates to average.
 
 ## 4. What one permitted rule delivers
 
-Chosen on the mean score it stops at, over all 81 arms:
+Chosen on the mean score it stops at, over all 83 arms:
 
 > **stop when `proxy_acc` has drifted more than 0.05 from its round-1 value**
 
 `proxy_acc` is the shipped model's accuracy on a fixed public proxy set (MNIST
 here), which the server keeps; the budget is five points of it. The runner-up is
 `proxy_kl > 0.5` at 8.12p mean against this rule's 8.20p, and the fixed horizon
-is 7.73p.
+is 7.74p.
 
 | stage | arms | final | one rule | vs final | worst arm | best arm | oracle |
 |---|---|---|---|---|---|---|---|
 | aggregation finals | 19 | 5.82p | 6.68p | **+0.86p** | -2.50p | +2.96p | 8.31p |
-| regularisation finals | 26 | 8.27p | 8.17p | -0.10p | -5.28p | +1.08p | 9.00p |
+| regularisation finals | 28 | 8.26p | 8.17p | -0.09p | -5.28p | +1.08p | 8.98p |
 | combinations | 18 | 8.86p | 8.86p | 0.00p | 0.00p | 0.00p | 9.44p |
 | ten clients, one dropped | 5 | 7.81p | 8.30p | +0.49p | 0.00p | +1.41p | 9.02p |
 | five clients, one dropped | 5 | 8.47p | 10.16p | **+1.69p** | -0.05p | +4.94p | 11.33p |
 | twenty clients, two dropped | 3 | 8.33p | 8.33p | 0.00p | 0.00p | 0.00p | 8.63p |
 | twenty clients, four dropped | 3 | 8.37p | 8.37p | 0.00p | 0.00p | 0.00p | 8.69p |
 | the extremes | 2 | 4.57p | 11.29p | **+6.73p** | +1.00p | +12.46p | 16.14p |
-| **all** | **81** | **7.73p** | **8.20p** | **+0.47p** | -5.28p | +12.46p | 9.23p |
+| **all** | **83** | **7.74p** | **8.20p** | **+0.46p** | -5.28p | +12.46p | 9.22p |
 
 **One rule, fixed before any of these runs started, recovers six and three
 quarters of the extremes' eleven-and-a-half-point median loss and does not
@@ -140,7 +148,7 @@ for reasons that were not forgetting. A rule fixed in advance is a rule that is
 sometimes wrong, and that column is printed beside the mean so the trade is
 visible rather than averaged away.
 
-**37 of the 81 arms are best served by a rule that never fires.** For those arms
+**39 of the 83 arms are best served by a rule that never fires.** For those arms
 the horizon already *is* the best round reachable by any permitted stop, and no
 rule can beat it - which is the other half of the finding in section 3, seen
 through the signals rather than through the oracle.
@@ -169,30 +177,30 @@ of the best cohort round all along, so it deploys `t_kept = argmax c(t)` over
 full horizon and is scored at its last round, exactly as the tables report it.
 The setting the paper reports is **`k = 20`, `eps = 0`**.
 
-Over the same 81 arms, on the same basis, against the same horizon:
+Over the same 83 arms, on the same basis, against the same horizon:
 
-| over all 81 arms | mean score | vs the horizon |
+| over all 83 arms | mean score | vs the horizon |
 |---|---|---|
-| the fixed horizon | 7.73p | - |
-| one permitted signal, fixed in advance (section 4) | 8.20p | +0.47p |
-| **the plateau rule, best checkpoint kept** | **8.95p** | **+1.22p** |
-| the oracle - a bound, never a rule | 9.23p | +1.50p |
+| the fixed horizon | 7.74p | - |
+| one permitted signal, fixed in advance (section 4) | 8.20p | +0.46p |
+| **the plateau rule, best checkpoint kept** | **8.93p** | **+1.19p** |
+| the oracle - a bound, never a rule | 9.22p | +1.48p |
 
 **The plateau recovers four fifths of what stopping is worth on this study, and
-the eight signals recover under a third of it.** The rule fires on 50 of the 81
-arms; on the other 31 it returns the horizon exactly.
+the eight signals recover under a third of it.** The rule fires on 50 of the 83
+arms; on the other 33 it returns the horizon exactly.
 
 | stage | arms | final | plateau | vs final | fires | oracle |
 |---|---|---|---|---|---|---|
 | aggregation finals | 19 | 5.82p | 8.04p | **+2.22p** | 19 | 8.31p |
-| regularisation finals | 26 | 8.27p | 8.70p | +0.43p | 10 | 9.00p |
+| regularisation finals | 28 | 8.26p | 8.66p | +0.40p | 10 | 8.98p |
 | combinations | 18 | 8.86p | 9.17p | +0.31p | 11 | 9.44p |
 | ten clients, one dropped | 5 | 7.81p | 8.70p | +0.89p | 4 | 9.02p |
 | five clients, one dropped | 5 | 8.47p | 10.94p | **+2.47p** | 4 | 11.33p |
 | twenty clients, two dropped | 3 | 8.33p | 8.33p | 0.00p | 0 | 8.63p |
 | twenty clients, four dropped | 3 | 8.37p | 8.37p | 0.00p | 0 | 8.69p |
 | the extremes | 2 | 4.57p | 16.14p | **+11.57p** | 2 | 16.14p |
-| **all** | **81** | **7.73p** | **8.95p** | **+1.22p** | **50** | **9.23p** |
+| **all** | **83** | **7.74p** | **8.93p** | **+1.19p** | **50** | **9.22p** |
 
 The extreme row is the one to read twice. **The plateau reaches the oracle on
 both extreme arrangements**: `dual` fires at round 28 and keeps round 8 for
@@ -202,7 +210,7 @@ most, a rule with no access to the source population finds exactly the round a
 rule with full access would have chosen - because on those runs the cohort's
 accuracy peaks where the score does.
 
-**Exactly one arm of the eighty-one is hurt, and it loses half a point.** The
+**Exactly one arm of the eighty-three is hurt, and it loses half a point.** The
 combination `weight_q0 x hybrid_seq_mix0p5` on the parallel schedule keeps a
 round worth 0.50p less than its hundredth. Against the one-signal rule of
 section 4, which costs its worst arm 5.28 points, that is the more important
@@ -210,20 +218,20 @@ number than the mean: a rule fixed in advance is a rule that is sometimes wrong,
 and this one is wrong by very little.
 
 **Keeping the checkpoint is where most of the gain is.** Deploying the round the
-rule fired on instead scores 8.23p, +0.51p - about what the signals deliver. The
+rule fired on instead scores 8.23p, +0.49p - about what the signals deliver. The
 plateau is not principally a better stopping detector; it is the observation that
 a server which keeps its best cohort round does not have to detect the peak, only
 notice afterwards that it has passed.
 
 ### Is `k = 20`, `eps = 0` fitted to the extremes?
 
-It is the best of sixteen `(k, eps)` cells on the mean over all 81 arms, and the
+It is the best of sixteen `(k, eps)` cells on the mean over all 83 arms, and the
 two extreme arrangements are the arms with by far the most to gain, so the
 objection writes itself. The answer is in `plateau_grid.csv`, which carries the
-mean over the 79 non-extreme arms beside the mean over all of them:
+mean over the 81 non-extreme arms beside the mean over all of them:
 **choosing the setting on the non-extreme arms alone, with both extremes held
 out entirely, picks `k = 20`, `eps = 0` as well.** The grid is also flat around
-it - `eps` of 0.001 and 0.0025 give 8.92p and 8.93p - so the setting is a region
+it - `eps` of 0.001 and 0.0025 give 8.90p and 8.92p - so the setting is a region
 rather than a point. `tests/test_plateau.py` pins the hold-out result and the
 headline row, so a regenerated view that moved either is a failing test.
 
@@ -244,7 +252,7 @@ beside the kept round rather than folding the two together.
 
 The budget grid is shared across signals - nine budgets from 0.001 to 0.5 - which
 is deliberate: a budget tuned per signal is a budget fitted to the runs it is
-read on. But three signals are not on that scale, and over the 81 arms their
+read on. But three signals are not on that scale, and over the 83 arms their
 budgets do nothing. Distinct stop rounds produced by the nine budgets, averaged
 over arms:
 
@@ -253,11 +261,11 @@ over arms:
 | `dist_l2_to_global` | 1.00 | 2 | 2 - 2 |
 | `dist_fisher_to_global` | 1.00 | 100 | 100 - 100 |
 | `dist_fisher_norm_to_global` | 1.06 | 100 | 77 - 100 |
-| `retention_known` | 2.96 | 16 | 2 - 100 |
+| `retention_known` | 2.98 | 16 | 2 - 100 |
 | `agreement_with_global` | 3.04 | 2 | 2 - 100 |
-| `kl_global_to_current` | 3.38 | 2 | 2 - 100 |
-| `proxy_acc` | 3.73 | 4 | 2 - 100 |
-| `proxy_kl` | 5.10 | 2 | 2 - 100 |
+| `kl_global_to_current` | 3.39 | 2 | 2 - 100 |
+| `proxy_acc` | 3.72 | 4 | 2 - 100 |
+| `proxy_kl` | 5.11 | 2 | 2 - 100 |
 
 The L2 distance to the shipped model reaches order one within a single round, so
 every budget in the grid fires at round 2 and the rule degenerates to "never
@@ -312,9 +320,9 @@ current model still gets right, measured on data the clients hold. On the two
 extremes it never leaves 1.0 by more than **0.0080** while the source population
 falls by **15.79** and **6.14** points.
 
-It is not only the extremes. Over all 81 hundred-round arms, `retention_known`
+It is not only the extremes. Over all 83 hundred-round arms, `retention_known`
 at budgets 0.1, 0.2 and 0.5 **never fires on a single arm** - the mean score of
-those three rules is 7.73p, which is the fixed horizon to the last hundredth of
+those three rules is 7.74p, which is the fixed horizon to the last hundredth of
 a point. Only budgets an order of magnitude tighter move it at all.
 
 Per-run rank correlation against the source validation drop puts it last of the
@@ -330,6 +338,13 @@ population.
 `foa signals` correlates each signal with both definitions of true forgetting -
 the source validation drop and the source test drop - per run and pooled over
 every round of every run. Over 2,466 runs and 104,753 rounds:
+
+**That pass predates the blend's two stages**, so this section's correlations
+are read over the programme as it stood before them, while sections 3 to 5 are
+read over all 83 arms. The signal files are derived - one pass over the run
+records rewrites them - and re-running it moves the populations below and none
+of the rankings this section draws; it has not been re-run because nothing here
+turns on the two arms it would add. The command is in section 10.
 
 | signal | pooled Spearman (val) | per-run median Spearman (val) |
 |---|---|---|
@@ -352,20 +367,20 @@ forgetting in one arm means half a point in another, and a rule has to fix one
 threshold for all of them.
 
 So the strongest *correlate* is not the best *rule*. Each signal's best budget,
-scored as the mean over the 81 arms of the round it stops at:
+scored as the mean over the 83 arms of the round it stops at:
 
     proxy_acc                   0.05     8.20p
     proxy_kl                    0.5      8.12p
     agreement_with_global       0.2      7.99p
-    dist_fisher_norm_to_global  0.001    7.73p
-    dist_fisher_to_global       0.001    7.73p   (never fires: the horizon)
-    retention_known             0.1      7.73p   (never fires: the horizon)
-    kl_global_to_current        0.5      7.19p
-    dist_l2_to_global           0.001    1.48p   (always fires at round 2)
+    dist_fisher_norm_to_global  0.001    7.74p
+    dist_fisher_to_global       0.001    7.74p   (never fires: the horizon)
+    retention_known             0.1      7.74p   (never fires: the horizon)
+    kl_global_to_current        0.5      7.18p
+    dist_l2_to_global           0.001    1.46p   (always fires at round 2)
 
 `kl_global_to_current` has the best per-run correlation of the eight and the
 worst score of any rule that fires: at every budget in the grid it stops *too
-early*, below the 7.73p the horizon gives for free. `proxy_acc` is seventh of
+early*, below the 7.74p the horizon gives for free. `proxy_acc` is seventh of
 eight on correlation and first as a rule. Ranking signals by how well they track
 forgetting inside a run would have chosen the wrong one.
 

@@ -4,7 +4,7 @@ The stopping rule a server could actually have run: a plateau on its own cohort.
 
 `stopping_table.py` prices the fixed horizon against an oracle and against the
 eight forgetting signals, and its verdict is that one signal fixed in advance
-buys +0.47p over the horizon. This tool asks a smaller question that turns out
+buys +0.46p over the horizon. This tool asks a smaller question that turns out
 to be the better one. The eight signals are proxies for forgetting, and
 forgetting lives on data the server no longer has - but the *cohort's own*
 validation accuracy is not a proxy for anything. The clients hold it, the server
@@ -32,23 +32,23 @@ fixed for every arm of every stage. And it is not free of the horizon - a rule
 that fires late still spent the rounds it took to fire, which is why the fire
 round is reported beside the kept round rather than folded into it.
 
-WHAT IT DELIVERS, over the 81 hundred-round arms:
+WHAT IT DELIVERS, over the 83 hundred-round arms:
 
-    fixed horizon        7.73p
-    plateau, kept best   8.95p     +1.22p, fires on 50 arms
-    the one signal rule  8.20p     +0.47p
-    oracle (not a rule)  9.23p
+    fixed horizon        7.74p
+    plateau, kept best   8.93p     +1.19p, fires on 50 arms
+    the one signal rule  8.20p     +0.46p
+    oracle (not a rule)  9.22p
 
-so the plateau recovers 1.22 of the 1.50 points the oracle prices - four fifths
-of what stopping is worth at all - against the signals' 0.47. It gains where the
+so the plateau recovers 1.19 of the 1.48 points the oracle prices - four fifths
+of what stopping is worth at all - against the signals' 0.46. It gains where the
 horizon costs most: +11.57p on the two extreme arrangements, where `dual` fires
 at round 28 and keeps round 8 for 16.60p against the horizon's -0.59p. One arm
-of eighty-one is hurt, by half a point.
+of eighty-three is hurt, by half a point.
 
 WHY THE SETTING IS NOT FITTED TO THE EXTREMES. ``k = 20``, ``eps = 0`` is the
-best cell of the sixteen on the mean over all 81 arms, and the two extremes are
+best cell of the sixteen on the mean over all 83 arms, and the two extremes are
 the arms with by far the most to gain - so the obvious objection is that the
-setting was chosen by them. It was not: choosing the cell on the 79
+setting was chosen by them. It was not: choosing the cell on the 81
 NON-EXTREME arms alone, with the extremes held out entirely, picks ``k = 20``,
 ``eps = 0`` as well. `plateau_grid.csv` carries the column that check is made on,
 and `tests/test_plateau.py` pins it.

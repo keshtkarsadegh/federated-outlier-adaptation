@@ -1,9 +1,9 @@
 key,value
 study_runs,2471
 signal_runs_with_source_val,2444
-stopping_arms,81
-fixed_mean_score,0.07725477069928324
-oracle_mean_score,0.09233479568386918
+stopping_arms,83
+fixed_mean_score,0.07735811385860954
+oracle_mean_score,0.0921886501287759
 baseline_a0,0.8225200326521813
 baseline_p0,0.9985506551168347
 retention_dev_double,0.008000004291534468

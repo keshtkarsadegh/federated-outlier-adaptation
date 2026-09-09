@@ -14,8 +14,8 @@ it cleared both on every fold.
 
     python tools/export_combo_folds.py --root "$FOA_STUDY_DIR" --out paper/data
 
-WHY BOTH COLUMNS AND NOT THE BETTER ONE. Read on the means, eleven of the
-eighteen combinations beat both halves and the stage looks like a clean result.
+WHY BOTH COLUMNS AND NOT THE BETTER ONE. Read on the means, seven of the
+eighteen combinations beat both halves and seven rows look like a clean result.
 Paired by fold, the gains are smaller than the fold spread they came from and
 `beats_both_folds` is 1 on two rows of eighteen. A table that reported only the
 better half would have kept that finding out of the manuscript, which is the

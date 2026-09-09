@@ -254,7 +254,7 @@ def test_the_shipped_arms_are_the_arms_the_stopping_table_shipped():
 
 
 def test_the_shipped_stage_rows_add_up_to_the_shipped_all_row():
-    """The all row is a mean over the same 81 arms the stage rows are cut from."""
+    """The all row is a mean over the same 83 arms the stage rows are cut from."""
     stages = _rows("plateau_stages.csv")
     every = [row for row in stages if row["stage"] == plateau.ALL]
     assert len(every) == 1
@@ -277,10 +277,10 @@ def test_the_setting_is_not_the_one_the_extremes_would_have_chosen():
     """
     The honesty split, read off the shipped grid rather than asserted in prose.
 
-    k=20, eps=0 is the best of the sixteen cells on the mean over all 81 arms,
+    k=20, eps=0 is the best of the sixteen cells on the mean over all 83 arms,
     and the two extreme arrangements are the arms with by far the most to gain -
     so the objection is that the setting was fitted to them. Held out entirely,
-    the remaining 79 arms choose the same cell.
+    the remaining 81 arms choose the same cell.
     """
     grid = [{**row,
              "patience": int(row["patience"]),
@@ -299,17 +299,24 @@ def test_the_shipped_all_row_still_says_what_the_paper_says():
     The one pin on the values themselves, and it is here on purpose.
 
     Everything above says what the rule MEANS; nothing above would notice if a
-    regenerated view moved the headline by a point. These two numbers - 8.95p
-    against the horizon's 7.73p, +1.22p, firing on 50 of the 81 arms - are what
+    regenerated view moved the headline by a point. These two numbers - 8.93p
+    against the horizon's 7.74p, +1.19p, firing on 50 of the 83 arms - are what
     the manuscript prints, so a regeneration that changes them has to be a
     failing test rather than a diff nobody read.
+
+    THE POPULATION IS PART OF THE PIN. It was 81 arms at +1.22p until the
+    blend's own finals were run: those are two more reg-full arms, they belong
+    in every reg-full view, and neither of them fires. So the headline moved
+    because the study grew, which is a reason to re-pin the number and never to
+    exclude the arms - and the arm count is asserted first so that a future
+    change to it is read as a change of population rather than of arithmetic.
     """
     row = next(r for r in _rows("plateau_stages.csv") if r["stage"] == plateau.ALL)
-    assert int(row["arms"]) == 81 and int(row["fires"]) == 50
-    assert float(row["rule_mean"]) * 100 == pytest.approx(8.95, abs=0.005)
-    assert float(row["gain"]) * 100 == pytest.approx(1.22, abs=0.005)
-    assert float(row["fixed_mean"]) * 100 == pytest.approx(7.73, abs=0.005)
-    assert float(row["oracle_mean"]) * 100 == pytest.approx(9.23, abs=0.005)
+    assert int(row["arms"]) == 83 and int(row["fires"]) == 50
+    assert float(row["rule_mean"]) * 100 == pytest.approx(8.93, abs=0.005)
+    assert float(row["gain"]) * 100 == pytest.approx(1.19, abs=0.005)
+    assert float(row["fixed_mean"]) * 100 == pytest.approx(7.74, abs=0.005)
+    assert float(row["oracle_mean"]) * 100 == pytest.approx(9.22, abs=0.005)
     assert float(row["rule_mean"]) - float(row["fixed_mean"]) == pytest.approx(float(row["gain"]))
 
 

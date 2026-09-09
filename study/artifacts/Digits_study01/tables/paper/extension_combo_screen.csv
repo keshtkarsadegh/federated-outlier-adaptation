@@ -1,0 +1,11 @@
+family,rank,cell,c_ewc,c_kd,T,m,server_eta,lam,mix,folds,adaptation,preservation,score,dials_at_edge
+concurrent,1,ctune_ewc0p05_kd0p05_T0p25_mix0p75_eta0p9,0.05,0.05,0.25,0.75,0.9,0.05,0.75,5,0.890449,0.994908,0.0643,c_ewc=0.05:LOW c_kd=0.05:LOW T=0.25:LOW m=0.75:HIGH server_eta=0.9:LOW
+concurrent,2,ctune_ewc0p05_kd0p11_T0p25_mix0p75_eta1,0.05,0.11,0.25,0.75,1,0.095,0.868421,5,0.888423,0.995592,0.0629,c_ewc=0.05:LOW T=0.25:LOW m=0.75:HIGH server_eta=1:HIGH
+concurrent,3,ctune_ewc0p05_kd0p05_T2_mix0p75_eta0p95,0.05,0.05,2,0.75,0.95,0.05,0.75,5,0.887626,0.995631,0.0622,c_ewc=0.05:LOW c_kd=0.05:LOW T=2:HIGH m=0.75:HIGH
+concurrent,4,ctune_ewc0p1_kd0p05_T2_mix0p5_eta0p95,0.1,0.05,2,0.5,0.95,0.075,0.333333,5,0.887533,0.995668,0.0621,c_kd=0.05:LOW T=2:HIGH
+concurrent,5,ctune_ewc0p05_kd0p05_T2_mix0p75_eta1,0.05,0.05,2,0.75,1,0.05,0.75,5,0.887614,0.995441,0.0620,c_ewc=0.05:LOW c_kd=0.05:LOW T=2:HIGH m=0.75:HIGH server_eta=1:HIGH
+sequential,1,ctune_ewc0p05_kd0p05_T0p25_mix0p75,0.05,0.05,0.25,0.75,,0.05,0.75,5,0.889275,0.996087,0.0643,c_ewc=0.05:LOW c_kd=0.05:LOW T=0.25:LOW m=0.75:HIGH
+sequential,2,ctune_ewc0p05_kd0p05_T0p25_mix0p25,0.05,0.05,0.25,0.25,,0.05,0.25,5,0.888490,0.996049,0.0635,c_ewc=0.05:LOW c_kd=0.05:LOW T=0.25:LOW m=0.25:LOW
+sequential,3,ctune_ewc0p05_kd0p2_T0p25_mix0p5,0.05,0.2,0.25,0.5,,0.125,0.8,5,0.888529,0.995479,0.0629,c_ewc=0.05:LOW c_kd=0.2:HIGH T=0.25:LOW
+sequential,4,ctune_ewc0p05_kd0p11_T0p25_mix0p5,0.05,0.11,0.25,0.5,,0.08,0.6875,5,0.887656,0.996276,0.0629,c_ewc=0.05:LOW T=0.25:LOW
+sequential,5,ctune_ewc0p05_kd0p2_T0p25_mix0p25,0.05,0.2,0.25,0.25,,0.0875,0.571429,5,0.887440,0.995819,0.0622,c_ewc=0.05:LOW c_kd=0.2:HIGH T=0.25:LOW m=0.25:LOW
