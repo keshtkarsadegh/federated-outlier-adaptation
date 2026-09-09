@@ -6,6 +6,15 @@
 #SBATCH --time=24:00:00
 #SBATCH --output=%x_%A_%a.log
 #
+# WHERE THE LOGS GO.  The --output line above is a relative pattern, and Slurm
+# does not expand shell variables in it, so without an --output at submit time
+# the log lands in whatever directory you submitted from -- which every
+# documented workflow makes the repository checkout, one file per array
+# element.  Pass the flag instead, once, after
+# `mkdir -p "$FOA_PROJECT_DIR/logs"`:
+#
+#     --output="$FOA_PROJECT_DIR/logs/%x_%A_%a.log"
+#
 # Job array over the lines of a task file produced by `foa matrix`.
 #
 # Time limit: 24 h, the finals budget. A task file of sweeps needs the sweep
@@ -17,6 +26,7 @@
 #   foa matrix --plan e1_seeds --out $FOA_PROJECT_DIR/jobs/tasks_e1.txt
 #   N=$(wc -l < $FOA_PROJECT_DIR/jobs/tasks_e1.txt)
 #   sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT \
+#          --output="$FOA_PROJECT_DIR/logs/%x_%A_%a.log" \
 #          --array=1-$N%8 slurm/run_matrix.sbatch $FOA_PROJECT_DIR/jobs/tasks_e1.txt
 #
 # Arguments:

@@ -6,6 +6,15 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=%x_%j.log
 #
+# WHERE THE LOGS GO.  The --output line above is a relative pattern, and Slurm
+# does not expand shell variables in it, so without an --output at submit time
+# the log lands in whatever directory you submitted from -- which every
+# documented workflow makes the repository checkout, one file per job.
+# Pass the flag instead, once, after
+# `mkdir -p "$FOA_PROJECT_DIR/logs"`:
+#
+#     --output="$FOA_PROJECT_DIR/logs/%x_%j.log"
+#
 # Evaluation speed-up: the same configuration on both evaluation paths.
 #
 # Runs one configuration twice - once with `--eval-path loader`, the published
@@ -18,6 +27,7 @@
 # that the speed-up costs nothing. What differs is `round_seconds`.
 #
 #   sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT \
+#          --output="$FOA_PROJECT_DIR/logs/%x_%j.log" \
 #          slurm/run_speed_check.sbatch nist 20
 #
 # Arguments:

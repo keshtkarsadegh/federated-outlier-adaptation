@@ -66,9 +66,11 @@ Each stage is a **task file** - one `foa ...` command per line - run as a Slurm
 array where element *N* runs line *N*. One script runs every stage:
 
 ```bash
+mkdir -p "$FOA_STUDY_DIR/logs"
 sbatch --account=$FOA_ACCOUNT --partition=<gpu partition> --gres=gpu:1 \
        --array=1-<N>%<concurrency> \
        --export=ALL,FOA_PROJECT_DIR=$FOA_PROJECT_DIR,FOA_STUDY_DIR=$FOA_STUDY_DIR \
+       --output="$FOA_STUDY_DIR/logs/%x_%A_%a.log" \
        slurm/study_phase.sbatch $FOA_STUDY_DIR/jobs/<file>.txt
 ```
 

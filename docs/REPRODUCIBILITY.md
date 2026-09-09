@@ -27,7 +27,7 @@ Two conventions hold throughout:
 Python 3.12.
 
 ```bash
-git clone https://github.com/paymankeshtkaruni/federated-outlier-adaptation.git
+git clone https://github.com/keshtkarsadegh/federated-outlier-adaptation.git
 cd federated-outlier-adaptation
 
 # GPU (CUDA 12.1), the build used for the published runs
@@ -107,19 +107,28 @@ export FOA_CPU_PARTITION=<cpu partition>
 export FOA_GPU_PARTITION=<gpu partition>
 
 cd $FOA_REPO
-sbatch --partition=$FOA_CPU_PARTITION --account=$FOA_ACCOUNT \
+mkdir -p "$FOA_PROJECT_DIR/logs"          # --output below needs it to exist
+LOG=--output="$FOA_PROJECT_DIR/logs/%x_%j.log"
+sbatch --partition=$FOA_CPU_PARTITION --account=$FOA_ACCOUNT "$LOG" \
        slurm/prepare_data.sbatch /path/to/by_write.zip
-sbatch --partition=$FOA_CPU_PARTITION --account=$FOA_ACCOUNT slurm/run_tests.sbatch
-sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT slurm/run_grid.sbatch kd
-sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT \
+sbatch --partition=$FOA_CPU_PARTITION --account=$FOA_ACCOUNT "$LOG" slurm/run_tests.sbatch
+sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT "$LOG" slurm/run_grid.sbatch kd
+sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT "$LOG" \
        slurm/run_final.sbatch DistillationTrainer 1234
 
 # job array over a task file produced by `foa matrix`
 foa matrix --plan e1_seeds --out $FOA_PROJECT_DIR/jobs/tasks_e1.txt
 N=$(wc -l < $FOA_PROJECT_DIR/jobs/tasks_e1.txt)
 sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT \
+       --output="$FOA_PROJECT_DIR/logs/%x_%A_%a.log" \
        --array=1-$N%8 slurm/run_matrix.sbatch $FOA_PROJECT_DIR/jobs/tasks_e1.txt
 ```
+
+**`--output` is not optional either.** The `#SBATCH --output` line inside each
+template is a relative pattern and Slurm does not expand shell variables in it,
+so a submission without the flag writes its log into the directory you
+submitted from - which the `cd $FOA_REPO` above makes the checkout itself, one
+file per array element.
 
 Three array templates read the same task file: `run_matrix.sbatch` (one task per full
 GPU), `run_matrix_packed.sbatch` (`K = $FOA_TASKS_PER_JOB` tasks sharing one GPU) and

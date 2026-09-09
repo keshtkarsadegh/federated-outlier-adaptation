@@ -5,11 +5,21 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=%x_%j.log
 #
+# WHERE THE LOGS GO.  The --output line above is a relative pattern, and Slurm
+# does not expand shell variables in it, so without an --output at submit time
+# the log lands in whatever directory you submitted from -- which every
+# documented workflow makes the repository checkout, one file per job.
+# Pass the flag instead, once, after
+# `mkdir -p "$FOA_PROJECT_DIR/logs"`:
+#
+#     --output="$FOA_PROJECT_DIR/logs/%x_%j.log"
+#
 # Build the packed NIST cache directly from by_write.zip. The archive is read
 # in place with zipfile; nothing is ever extracted to disk.
 #
 # Submit with:
 #   sbatch --partition=$FOA_CPU_PARTITION --account=$FOA_ACCOUNT \
+#          --output="$FOA_PROJECT_DIR/logs/%x_%j.log" \
 #          slurm/prepare_data.sbatch /path/to/by_write.zip
 
 # Resolve the repository checkout: submit from the repo root, or export FOA_REPO.

@@ -117,6 +117,26 @@ def test_the_documented_checksums_are_the_ones_the_fetcher_enforces(tools):
         assert digest in data_doc
 
 
+def test_every_hash_printed_in_the_data_doc_is_in_the_manifest():
+    """
+    The test above pins the three upstream archives, which the fetcher knows
+    about.  It says nothing about the four DERIVED hashes DATA.md prints for
+    the packed cache, and those are the ones a reader checks their own build
+    against -- so a stale one there sends a reader hunting a corruption that
+    is really a typo in the prose.  study/UPSTREAM.sha256 is the manifest of
+    record; every ``<sha256>  <name>`` line in the doc has to appear in it.
+    """
+    manifest = (REPO / "study" / "UPSTREAM.sha256").read_text()
+    doc = (REPO / "docs" / "DATA.md").read_text()
+    printed = re.findall(r"^([0-9a-f]{64})  (\S+)$", doc, re.M)
+    assert printed, "DATA.md prints no checksum lines at all"
+    for digest, name in printed:
+        assert f"{digest}  {name}" in manifest, (
+            f"docs/DATA.md prints {digest[:12]}... for {name}, which is not "
+            f"what study/UPSTREAM.sha256 records for it"
+        )
+
+
 def test_only_the_official_host_is_built_in(tools):
     """
     A third-party mirror baked in would decide where a reader's data comes from,

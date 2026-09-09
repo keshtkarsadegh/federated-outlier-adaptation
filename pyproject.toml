@@ -8,7 +8,7 @@ authors = [
     "Julian M. Kunkel <julian.kunkel@gwdg.de>",
 ]
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 packages = [{ include = "federated_outlier_adaptation", from = "src" }]
 
 [tool.poetry.dependencies]

@@ -9,8 +9,8 @@ abstract: >-
   and regularisation on NIST SD19 by writer.
 type: software
 version: 0.3.0
-license: MIT
-repository-code: "https://github.com/paymankeshtkaruni/federated-outlier-adaptation"
+license: Apache-2.0
+repository-code: "https://github.com/keshtkarsadegh/federated-outlier-adaptation"
 keywords:
   - federated learning
   - catastrophic forgetting

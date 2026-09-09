@@ -99,6 +99,8 @@ foa prepare-data \
 On a scheduler: `sbatch slurm/prepare_nist28.sbatch` (4 CPUs, 32 GB, no GPU;
 it took **10.5 minutes** on our hardware, and it logs a projected total after
 its first 2,000 images so you know the real cost within the first minute).
+Pass `--output="$FOA_PROJECT_DIR/logs/%x_%j.log"` as well, or Slurm writes the
+job log into whatever directory you submitted from.
 
 > `--resolution 28` is not optional and is not the default. The conversion
 > defaults to 128 px, which is the setting of an earlier study. A 128 px cache
@@ -168,7 +170,7 @@ cd "$FOA_NIST28_DIR" && sha256sum nist28_*.npy nist28_index.json
 52ac9ac79a6149a69505eb7fad02309eedd7bf61437d1b30342f686d55d53b0f  nist28_images.npy
 66ed05d90aad2d31e01c94aadfc458fcf4ad3f4407bc3845ace8792cbf868aaf  nist28_labels.npy
 55a72acff7304b0c3c6f694e662254995092352c9fecfad15d8db2c45f04e943  nist28_writers.npy
-b9e8217362ee1227ed6c79bd742f71db84d9bbcaac2d0c2a9e21155b7ca27f6f  nist28_index.json
+00a12c6a51d89bb7e606069afb1c37db4f1e7935975f978857978d3d94b6edb3  nist28_index.json
 ```
 
 `nist28_index.json` records the source archive path and the conversion

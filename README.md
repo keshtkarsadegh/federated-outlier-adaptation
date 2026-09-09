@@ -58,7 +58,7 @@ prove your cache matches ours.
 ## Quickstart
 
 ```bash
-git clone <this repository> && cd federated-outlier-adaptation
+git clone https://github.com/keshtkarsadegh/federated-outlier-adaptation.git && cd federated-outlier-adaptation
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
@@ -140,8 +140,10 @@ reviewable before it costs anything.
 
 ```bash
 JOBS=study/artifacts/Digits_study01/jobs           # every task file that ran
+mkdir -p "$FOA_STUDY_DIR/logs"                     # --output needs it to exist
 sbatch --account=$FOA_ACCOUNT --partition=$FOA_GPU_PARTITION --gres=gpu:1 \
        --export=ALL,FOA_PROJECT_DIR=$FOA_PROJECT_DIR,FOA_STUDY_DIR=$FOA_STUDY_DIR \
+       --output="$FOA_STUDY_DIR/logs/%x_%A_%a.log" \
        --array=1-N slurm/study_phase.sbatch $JOBS/s20_combos4.txt
 slurm/run_tasks.sh $JOBS/s20_combos4.txt           # no scheduler
 FOA_DRY_RUN=1 slurm/run_tasks.sh $JOBS/...         # every check, no execution

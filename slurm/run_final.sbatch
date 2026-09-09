@@ -6,12 +6,22 @@
 #SBATCH --time=24:00:00
 #SBATCH --output=%x_%j.log
 #
+# WHERE THE LOGS GO.  The --output line above is a relative pattern, and Slurm
+# does not expand shell variables in it, so without an --output at submit time
+# the log lands in whatever directory you submitted from -- which every
+# documented workflow makes the repository checkout, one file per job.
+# Pass the flag instead, once, after
+# `mkdir -p "$FOA_PROJECT_DIR/logs"`:
+#
+#     --output="$FOA_PROJECT_DIR/logs/%x_%j.log"
+#
 # Final runs for one trainer.
 #
 # The 24 h limit is deliberately generous: the accounting charges the time a job
 # uses, not the time it asked for, so a limit that outlasts the slowest arm
 # costs nothing and saves a resubmission.
 #   sbatch --partition=$FOA_GPU_PARTITION --account=$FOA_ACCOUNT \
+#          --output="$FOA_PROJECT_DIR/logs/%x_%j.log" \
 #          slurm/run_final.sbatch DistillationTrainer 1234
 #
 # Arguments:
