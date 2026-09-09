@@ -162,17 +162,18 @@ cosmetic - see [§7](#7-things-that-look-like-bugs-and-are-not).
 
 ### Extension: joint tuning of the best pair
 
-**The stage below is not part of the programme above.** It is an extension,
-added after every stage in the table had run, and nothing the paper reports
-reads anything it produces: the shortlists, the combination cross, the crowning,
-the carry settings and the paper views are all unchanged and are not
-re-emitted. It is listed here - in its own table, deliberately outside the core
-one - because it runs under the same runner, draws from the same seed scheme and
-has to be reproducible on the same terms as everything else.
+**The two stages below are not part of the programme above.** They are an
+extension, added after every stage in the table had run, and nothing the paper
+reports reads anything they produce: the shortlists, the combination cross, the
+crowning, the carry settings and the paper views are all unchanged and are not
+re-emitted. They are listed here - in their own table, deliberately outside the
+core one - because they run under the same runner, draw from the same seed
+scheme and have to be reproducible on the same terms as everything else.
 
 | # | extension stage | generator | task file | tasks | rounds |
 |---|---|---|---|---|---|
 | E1 | **joint screen of the leading pair** | `tools/make_digits_p23.py` | `s23_combo_screen.txt` | 1080 | 25 |
+| E2 | **its winners at the full horizon** | `study_emit.py combo-tune-full` | `s24_combo_full.txt` | 10 | 100 |
 
 **What it asks.** Stage 12 crossed the top three server rules with the top three
 penalties per schedule, and every pair in it is a rule at the coefficients it
@@ -193,7 +194,13 @@ side, where the rule has a coefficient to move at all. `REG_GRID_RANGES.md`
 records the ranges and the mapping onto the two numbers `AnchoredTrainer`
 actually takes; `s23_combo_screen_README.md` records both again beside the file.
 
-E1 is a screen, so nothing it produces is a reported number.
+E2 applies the study's own selection rule - gain less spend at `w = 1`, on the
+validation columns, one winner per schedule, ties broken on the cell id - to
+E1's cells and re-runs the two it crowns at 100 rounds. Its record is
+`tables/p23_combo_tune_winners.json`, which says in its own text that it is not
+part of the core programme; its boundary report is on the owner's dials rather
+than on the two coefficients the trainer takes, because those are functions of
+all four dials and an edge in one of them would name a row nobody searched.
 
 ---
 
@@ -255,6 +262,10 @@ diff /tmp/check/s23_combo_screen.txt \
      study/artifacts/Digits_study01/jobs/s23_combo_screen.txt
 diff /tmp/check/s23_combo_screen_README.md \
      study/artifacts/Digits_study01/jobs/s23_combo_screen_README.md
+
+python tools/study_emit.py combo-tune-full --root $FOA_STUDY_DIR \
+    --out /tmp/x.txt --expect 10
+diff /tmp/x.txt study/artifacts/Digits_study01/jobs/s24_combo_full.txt
 ```
 
 ### The reference stages, which do take arguments

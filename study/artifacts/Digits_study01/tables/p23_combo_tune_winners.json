@@ -1,0 +1,47 @@
+{
+  "combo-tune/concurrent": {
+    "winner": "ctune_ewc0p05_kd0p05_T0p25_mix0p75_eta0p9",
+    "measured": true,
+    "adaptation": 0.8904487025862644,
+    "preservation": 0.9949076877278277,
+    "considered": 162,
+    "dials": {
+      "c_ewc": 0.05,
+      "c_kd": 0.05,
+      "T": 0.25,
+      "m": 0.75,
+      "server_eta": 0.9
+    },
+    "hypers": {
+      "lam": 0.05,
+      "T": 0.25,
+      "mix": 0.7500000000000001
+    },
+    "rule": "con_delta_eta"
+  },
+  "combo-tune/sequential": {
+    "winner": "ctune_ewc0p05_kd0p05_T0p25_mix0p75",
+    "measured": true,
+    "adaptation": 0.8892753541419572,
+    "preservation": 0.9960866959414822,
+    "considered": 54,
+    "dials": {
+      "c_ewc": 0.05,
+      "c_kd": 0.05,
+      "T": 0.25,
+      "m": 0.75
+    },
+    "hypers": {
+      "lam": 0.05,
+      "T": 0.25,
+      "mix": 0.7500000000000001
+    },
+    "rule": "seq_delta_capped"
+  },
+  "extension": {
+    "is_core_programme": false,
+    "note": "EXTENSION. The joint grid of the best rule and the best penalty per schedule, screened by s23_combo_screen.txt and finalised here. No table, shortlist or crossing the study reports reads this record; it is written to be read beside p13_reg_method_winners.json and p21_blend_winners.json, not in place of either.",
+    "screen": "s23_combo_screen.txt",
+    "cells_considered": 216
+  }
+}

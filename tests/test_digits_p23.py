@@ -35,6 +35,7 @@ TOOLS = str(REPO / "tools")
 JOBS = REPO / "study" / "artifacts" / "Digits_study01" / "jobs"
 
 SCREEN = "s23_combo_screen.txt"
+FULL = "s24_combo_full.txt"
 
 #: The retired study roots, as P13 and P21 list them.
 RETIRED = (
@@ -125,11 +126,13 @@ def test_the_counts_register_the_extension_and_say_that_it_is_one():
 
 def test_every_shipped_file_says_it_is_an_extension():
     """A stage that is not part of the study has to say so where it is read."""
-    for name in (SCREEN, "s23_combo_screen_README.md"):
+    for name in (SCREEN, FULL, "s23_combo_screen_README.md",
+                 "s24_combo_full_README.md"):
         text = (JOBS / name).read_text()
         assert "EXTENSION" in text or "extension" in text, name
-    chain = (REPO / "study" / "jobs" / "digits_s23_combo_screen.chain.toml")
-    assert "extension" in chain.read_text().lower()
+    for stem in ("digits_s23_combo_screen", "digits_s24_combo_full"):
+        chain = REPO / "study" / "jobs" / f"{stem}.chain.toml"
+        assert "extension" in chain.read_text().lower(), stem
 
 
 # --------------------------------------------------------------------------- #
@@ -400,7 +403,17 @@ def test_the_seed_window_is_wide_enough_and_outside_the_programmes(p23, parsed):
     assert p23.SEED_OFFSET == 60000
     assert min(seeds) == 760001 and max(seeds) == 762155
     assert max(seeds) - min(seeds) > 1000
-    assert min(seeds) > max(_shipped_seeds({SCREEN}))
+    assert min(seeds) > max(_shipped_seeds({SCREEN, FULL}))
+
+
+def test_the_screen_and_the_finals_do_not_share_a_seed():
+    screen = {int(v) for v in re.findall(
+        r"--sampler-seed (\d+)", (JOBS / SCREEN).read_text())}
+    finals = {int(v) for v in re.findall(
+        r"--sampler-seed (\d+)", (JOBS / FULL).read_text())}
+    assert len(screen) == 1080 and len(finals) == 10
+    assert not screen & finals
+    assert not finals & _shipped_seeds({FULL})
 
 
 # --------------------------------------------------------------------------- #
@@ -456,5 +469,241 @@ def test_the_readme_states_the_mapping_the_pair_and_the_horizon(p23):
     assert "seq_delta_capped_hybrid_mix0p5" in text
     assert "25 rounds, not 100" in text
     assert "extension" in text.lower()
+    for dead in RETIRED:
+        assert dead not in text, dead
+# --------------------------------------------------------------------------- #
+# P24: the finals the screen feeds
+# --------------------------------------------------------------------------- #
+@pytest.fixture(autouse=True)
+def _shipped_baselines(tmp_path):
+    """
+    Every synthetic study root carries g-0's own two accuracies.
+
+    The score is what a run ADDED on the cohort less the source knowledge it
+    SPENT, so a root without them is not a study root and the emitter refuses it
+    rather than guess.
+    """
+    for name, accuracy in (("g0_perfold_evaluations.json", 0.8225),
+                           ("g0_evaluations.json", 0.9986)):
+        (tmp_path / name).write_text(json.dumps({
+            str(fold): {"fold": fold, "part": "test", "accuracy": accuracy}
+            for fold in SL.FOLDS
+        }))
+
+
+def _screen_result(root: Path, cell_id: str, fold: int, family: str,
+                   adaptation: float, preservation: float = 0.99):
+    """One (cell, fold) result where the driver writes it."""
+    run = (root / f"d01_ctune_{cell_id}_fold{fold}_x_grid_search"
+           / "fold1_seed_1" / f"{family}_delta" / f"base_agg_x_{family}")
+    run.mkdir(parents=True, exist_ok=True)
+    (run / "accuracies_0.json").write_text(json.dumps({
+        "scenario": family,
+        "accuracies": [[adaptation, 0.5]] * 25,
+        "pool_val_accuracies": [adaptation] * 25,
+        "final_evaluation": {
+            "clients": {"accuracy": adaptation - 0.01},
+            "old": {"mean": preservation, "sd": 0.0},
+        },
+    }))
+
+
+def _screened(root: Path, scores=None):
+    """The whole extension screen on disk, at scores that separate the cells."""
+    for index, cell in enumerate(reg_cells.combo_tune_cells()):
+        family = cell["family"]
+        for fold in (1, 2):
+            _screen_result(root, cell["id"], fold, family,
+                           (scores or {}).get(cell["id"], 0.5 + index * 1e-4))
+
+
+def test_the_finals_are_one_winner_per_schedule(emit, tmp_path):
+    _screened(tmp_path)
+    out = tmp_path / "p24.txt"
+    expect = SL.counts(DIGITS_STUDY01)["combo_tune_full"]
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path, out, expect) == 0
+
+    lines = [l for l in out.read_text().splitlines()
+             if l and not l.startswith("#")]
+    assert len(lines) == expect == 10
+    record = json.loads(
+        (tmp_path / "tables" / "p23_combo_tune_winners.json").read_text()
+    )
+    assert record["extension"]["is_core_programme"] is False
+    winners = {k: v for k, v in record.items() if k != "extension"}
+    assert set(winners) == {f"combo-tune/{f}" for f in SL.FAMILIES}
+    assert all(entry["measured"] for entry in winners.values())
+    assert winners["combo-tune/concurrent"]["considered"] == 162
+    assert winners["combo-tune/sequential"]["considered"] == 54
+
+
+def test_a_schedule_is_ranked_only_against_its_own_cells(emit, tmp_path):
+    """
+    The cyclic half is 54 cells and the parallel one 162, and they are different
+    arms - a cyclic cell has no server step to move. Ranking them together would
+    let one schedule's grid crown the other's winner.
+    """
+    best_cyclic = reg_cells.combo_tune_by_family()["sequential"][7]["id"]
+    _screened(tmp_path, {best_cyclic: 0.99})
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path,
+                                tmp_path / "p24.txt", 10) == 0
+    record = json.loads(
+        (tmp_path / "tables" / "p23_combo_tune_winners.json").read_text()
+    )
+    assert record["combo-tune/sequential"]["winner"] == best_cyclic
+    assert record["combo-tune/concurrent"]["winner"] != best_cyclic
+    assert "_eta" in record["combo-tune/concurrent"]["winner"]
+
+
+def test_the_selection_is_the_score_every_other_final_selects_on(emit, tmp_path):
+    """
+    Not adaptation, and not preservation: the trade, at w = 1.
+
+    An extension exists to be read against the programme, so a winner chosen by
+    a different rule could not be. The greedy cell here gives away more
+    preservation than it buys, so it wins on adaptation and must lose the rule.
+    """
+    by_family = reg_cells.combo_tune_by_family()
+    _screened(tmp_path)
+    pairs = {}
+    for family in SL.FAMILIES:
+        greedy, traded = by_family[family][0]["id"], by_family[family][1]["id"]
+        pairs[family] = traded
+        for fold in (1, 2):
+            _screen_result(tmp_path, greedy, fold, family, 0.90,
+                           preservation=0.95)
+            _screen_result(tmp_path, traded, fold, family, 0.89,
+                           preservation=0.99)
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path,
+                                tmp_path / "p24.txt", 10) == 0
+    record = json.loads(
+        (tmp_path / "tables" / "p23_combo_tune_winners.json").read_text()
+    )
+    for family, traded in pairs.items():
+        assert record[f"combo-tune/{family}"]["winner"] == traded
+
+
+def test_a_selection_over_nothing_is_refused(emit, tmp_path):
+    """A screen that never ran would make both winners a row's first cell."""
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path,
+                                tmp_path / "p24.txt", 10) == 1
+    assert not (tmp_path / "p24.txt").is_file()
+
+
+def test_a_miscount_halts(emit, tmp_path):
+    _screened(tmp_path)
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path,
+                                tmp_path / "p24.txt", 999) == 1
+
+
+def test_the_finals_are_the_full_horizon_at_the_search_rate(emit, tmp_path):
+    """The winners must be re-run under the conditions they were chosen under."""
+    from federated_outlier_adaptation.cli import build_parser
+
+    _screened(tmp_path)
+    out = tmp_path / "p24.txt"
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path, out, 10) == 0
+    parser = build_parser()
+    seeds, parents = set(), []
+    for line in out.read_text().splitlines():
+        if not line.startswith("foa "):
+            continue
+        args = parser.parse_args(shlex.split(line)[1:])
+        assert args.rounds == SL.FULL_ROUNDS == 100
+        assert args.clients_per_round == DIGITS_STUDY01.search_clients_per_round
+        assert args.aggregation in ("con_delta_eta", "seq_delta_capped")
+        assert args.trainer == "AnchoredTrainer" and args.old_fold == "all"
+        seeds.add(args.sampler_seed)
+        parents.append(args.parent)
+    assert len(seeds) == 10
+    assert len(set(parents)) == 10
+    for family in SL.FAMILIES:
+        assert sum(f"d01_ctunefull_{family}_" in p for p in parents) == 5
+
+
+def test_the_finals_draw_a_block_of_their_own(emit):
+    assert emit.COMBO_TUNE_BLOCK == 64000
+    mine = {int(v) for v in re.findall(
+        r"--sampler-seed (\d+)", (JOBS / FULL).read_text())}
+    assert mine == set(range(764001, 764006)) | set(range(764011, 764016))
+
+
+def test_the_boundary_report_is_on_the_dials_not_the_coefficients(emit,
+                                                                  tmp_path):
+    """
+    lam and mix are functions of all four dials, so a boundary report on them
+    would answer a question nobody asked and miss the four that were.
+    """
+    _screened(tmp_path)
+    assert emit.combo_tune_full(DIGITS_STUDY01, tmp_path,
+                                tmp_path / "p24.txt", 10) == 0
+    hits = (tmp_path / "tables" / "BOUNDARY_HITS.txt").read_text()
+    reported = [l for l in hits.splitlines() if "combo-tune-full" in l]
+    for line in reported:
+        assert re.search(r": (c_ewc|c_kd|T|m|server_eta)=", line), line
+        assert " lam=" not in line and " mix=" not in line
+
+
+def test_the_shipped_finals_are_ten_runnable_lines_that_parse():
+    from federated_outlier_adaptation.cli import build_parser
+
+    parser = build_parser()
+    lines = [l for l in (JOBS / FULL).read_text().splitlines()
+             if l.strip() and not l.strip().startswith("#")]
+    assert len(lines) == 10
+    for line in lines:
+        assert line.startswith("foa ")
+        parser.parse_args(shlex.split(
+            line.replace("$FOA_STUDY_DIR", "/study").replace("$G0_FOLD", "4")
+        )[1:])
+
+
+def test_the_shipped_finals_run_the_cells_the_record_names():
+    """
+    The file and the record are one selection or they are two claims.
+
+    A task file that named a cell the record does not is a stage reporting a
+    result under a selection that did not produce it.
+    """
+    record = json.loads(
+        (REPO / "study" / "artifacts" / "Digits_study01" / "tables"
+         / "p23_combo_tune_winners.json").read_text()
+    )
+    assert record["extension"]["is_core_programme"] is False
+    text = (JOBS / FULL).read_text()
+    cells = {c["id"]: c for c in reg_cells.combo_tune_cells()}
+    for key, entry in record.items():
+        if key == "extension":
+            continue
+        family = key.split("/")[1]
+        assert entry["winner"] in cells
+        assert cells[entry["winner"]]["family"] == family
+        assert f"d01_ctunefull_{family}_{entry['winner']}_fold1" in text
+        assert f"#   {family:<11} {entry['winner']}" in text
+
+
+def test_the_shipped_finals_are_not_the_combinations_already_on_disk():
+    """
+    s20 crossed two shortlists at one setting each. These are new arms, and
+    their folders have to say so or a selector would read one for the other.
+    """
+    text = (JOBS / FULL).read_text()
+    assert "d01_combo_" not in text
+    assert "d01_ctunefull_concurrent_ctune_" in text
+    assert "d01_ctunefull_sequential_ctune_" in text
+
+
+def test_the_finals_readme_states_the_rule_and_what_it_chose():
+    text = (JOBS / "s24_combo_full_README.md").read_text()
+    assert "(adaptation - A_0) - (P_0 - preservation)" in text
+    assert "p23_combo_tune_winners.json" in text
+    assert "extension" in text.lower()
+    record = json.loads(
+        (REPO / "study" / "artifacts" / "Digits_study01" / "tables"
+         / "p23_combo_tune_winners.json").read_text()
+    )
+    for key, entry in record.items():
+        if key != "extension":
+            assert entry["winner"] in text
     for dead in RETIRED:
         assert dead not in text, dead

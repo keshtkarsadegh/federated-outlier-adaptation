@@ -1,0 +1,46 @@
+# Digits_study01 - AN EXTENSION: the jointly-tuned pair at the full horizon.
+#
+#   foa submit study/jobs/digits_s24_combo_full.chain.toml --go
+#
+# NOT A STAGE OF THE PROGRAMME. It is the finals of the extension screened by
+# s23_combo_screen.txt, and nothing the paper reports reads what it produces.
+# Its selection record, tables/p23_combo_tune_winners.json, says the same thing
+# in its own text.
+#
+# One stage, no chain. The selection it runs on was made before submission by
+# `study_emit.py combo-tune-full`, which wrote that record and the task file
+# from it - so nothing here reads what another element writes, and the array is
+# a fan-out ten elements wide.
+#
+# It requires the shipped model's Fisher, which the g-0 stage wrote next to the
+# winning fold's checkpoint: both cells are kd+fisher blends and every one of
+# them reads it. The runner resolves $G0_FOLD from the study's own
+# g0_selection.json, so the requirement is stated here at the fold the selection
+# recorded rather than as a pattern.
+#
+# jobs_dir is the STUDY's jobs directory, as every other manifest here names it -
+# it resolves against $FOA_PROJECT_DIR, so the copy under study/artifacts is the
+# shipped record and this is the one the preflight counts lines in.
+
+study    = "Digits_study01"
+jobs_dir = "results/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "01:00:00"
+
+[[stage]]
+name     = "s24_combo_full"
+tasks    = "s24_combo_full.txt"
+count    = 10
+array    = "1-10%20"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/g0_selection.json",
+    "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+    "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz",
+    "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz",
+    "$FOA_STUDY_DIR/g0_fold1/global_results/fisher",
+    "$FOA_STUDY_DIR/tables/p23_combo_tune_winners.json",
+]
