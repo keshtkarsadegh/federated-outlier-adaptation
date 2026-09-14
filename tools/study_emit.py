@@ -2042,11 +2042,11 @@ def c10d10(cfg, root: Path, out: Path, expect: int) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# EXTENSION - the joint tuning of a schedule's leading pair
+# EXTENSION - the joint tuning of a schedule's leading and selected pairs
 # --------------------------------------------------------------------------- #
 # NOT PART OF THE CORE PROGRAMME.  Everything above emits or selects a stage the
-# study reports.  This one mode is an extension added afterwards: it reads the
-# core's records and writes a record of its own, and nothing in the core -
+# study reports.  These two modes are extensions added afterwards: each reads
+# the core's records and writes a record of its own, and nothing in the core -
 # ``reg_top3``, ``combos``, ``stage_winner``, the size stages - reads it back.
 # The separation is physical as well as documented, so that a later reader can
 # see at a glance which side of the line a generator sits on.
@@ -2058,22 +2058,31 @@ def c10d10(cfg, root: Path, out: Path, expect: int) -> int:
 #: interleaved with them.
 COMBO_TUNE_BLOCK = 64000
 
+#: And the SECOND joint grid's finals.  P25's screen opens at 70000 and runs to
+#: 772155, so these sit clear of it at 74000 and clear of both of P23's blocks,
+#: which now run to 764015.
+COMBO_TUNE_SEL_BLOCK = 74000
+
 #: The method the extension's cells carry in its record.  Not ``kd+fisher``: the
 #: cells ARE kd+fisher blends, but an entry read beside P13's and P21's records
 #: under that name would look like a third selection of the same penalty, and it
 #: is not - it is a selection over a penalty AND the server rule beside it.
 COMBO_TUNE_METHOD = "combo-tune"
 
+#: And the second grid's, which is a selection over a DIFFERENT rule beside the
+#: same penalty.  Its own name for the same reason: two entries under one key
+#: would read as one selection made twice.
+COMBO_TUNE_SEL_METHOD = "combo-tune-selected"
 
-def combo_tune_full(cfg, root: Path, out: Path, expect: int,
-                    allow_unmeasured: bool = False) -> int:
+
+def _combo_tune_select(cfg, root: Path, cells: list, by_family: dict,
+                       screen_tag: str, method: str, allow_unmeasured: bool):
     """
-    The jointly-tuned pair's best cell **per schedule**, at the full horizon.
+    Reg-full's selection rule over ONE joint grid's catalogue.  Extension only.
 
-    Reg-full's rule applied to the extension's catalogue and to nothing else.
     Same score, same weight at w = 1, same validation basis, same argmax and its
-    tie-break, same per-family selection, same refusal to emit over a screen that
-    measured nothing: only the catalogue and the seed block differ, because only
+    tie-break, same per-family selection, same refusal to emit over a screen
+    that measured nothing: only the catalogue and the stem differ, because only
     they can.  A different rule here would make the arm it crowns incomparable
     with every other winner in the study, which is the one thing an extension
     must not do - it is added to be read *against* the programme.
@@ -2086,16 +2095,18 @@ def combo_tune_full(cfg, root: Path, out: Path, expect: int,
     ``T``, and the first two are functions of all four dials - asking whether
     ``lam`` sat at the end of its row would answer a question nobody asked and
     miss the four that were.
+
+    Returns ``(winners, record, hits)``, or ``None`` when the screen measured
+    too little to select from.  It does not write: the record's NAME is a string
+    literal in each caller so that ``table_io`` can read this module's own
+    syntax tree and say which artefact a mode writes - a computed name is
+    invisible to it, and the ordering check downstream is built on what it sees.
     """
-    cfg = searched_at(cfg)
     # No with_extensions(): the boundary-extension records belong to the agg and
     # reg grids, and a cell of another grid ranked in here would put a row that
     # is not in this catalogue against cells that are.
-    cells = reg_cells.combo_tune_cells()
-    by_family = reg_cells.combo_tune_by_family()
-
     rows = reg_selector.summarise(
-        reg_selector.collect(root, cells, f"{cfg.tag}_{SL.CTUNE_SCREEN_TAG}_")
+        reg_selector.collect(root, cells, f"{cfg.tag}_{screen_tag}_")
     )
     by_id = {cell["id"]: cell for cell in cells}
 
@@ -2112,15 +2123,14 @@ def combo_tune_full(cfg, root: Path, out: Path, expect: int,
             and row["adaptation"]["mean"] is not None
         ]
         if not scored:
-            print(f"  {COMBO_TUNE_METHOD}/{family}: nothing measured; "
-                  "first cell used")
+            print(f"  {method}/{family}: nothing measured; first cell used")
             best = siblings[0]
-            record[f"{COMBO_TUNE_METHOD}/{family}"] = {"winner": best["id"],
-                                                       "measured": False}
+            record[f"{method}/{family}"] = {"winner": best["id"],
+                                            "measured": False}
         else:
             top = max(scored, key=lambda r: trade_score(r, a0, p0))
             best = by_id[top["id"]]
-            record[f"{COMBO_TUNE_METHOD}/{family}"] = {
+            record[f"{method}/{family}"] = {
                 "winner": best["id"], "measured": True,
                 "adaptation": top["adaptation"]["mean"],
                 "preservation": top["preservation"]["mean"],
@@ -2135,9 +2145,65 @@ def combo_tune_full(cfg, root: Path, out: Path, expect: int,
         winners.append((family, best))
 
     measured = sum(1 for entry in record.values() if entry.get("measured"))
-    if not check_measured("combo-tune-full", measured, len(record),
-                          allow_unmeasured):
+    if not check_measured(method, measured, len(record), allow_unmeasured):
+        return None
+    return winners, record, hits
+
+
+def _combo_tune_emit(cfg, root: Path, out: Path, expect: int, winners: list,
+                     cells: list, tags: tuple, block: int, label: str,
+                     screen: str, why: list) -> int:
+    """One joint grid's two winners at the full horizon, and its task file."""
+    lines = []
+    for index, (family, cell) in enumerate(winners):
+        for fold in SL.folds_of(cfg):
+            lines.append(SL.combo_tune_line(
+                cfg, cell, fold, SL.FULL_ROUNDS,
+                cfg.seed_base + block + index * 10 + fold,
+                family=family, tags=tags,
+            ))
+    return emit(lines, out, expect, label, [
+        "# AN EXTENSION, NOT A STAGE OF THE PROGRAMME. The study is complete",
+        "# without it and nothing the paper reports reads what it produces.",
+        "#",
+        f"# The jointly-tuned pair's best cell PER SCHEDULE from the"
+        f" {len(cells)}-cell",
+        f"# screen {screen}, re-run at the full {SL.FULL_ROUNDS}-round horizon:"
+        f" {len(SL.FAMILIES)} schedules x"
+        f" {len(SL.folds_of(cfg))} folds.",
+        "#",
+    ] + [
+        f"#   {family:<11} {cell['id']}"
+        for family, cell in winners
+    ] + why + [
+        "#",
+        "# THE SCHEDULE IS IN THE PARENT, as it is in P14's and P22's. The cell",
+        "# ids already carry it - only the parallel rule has a coefficient to",
+        "# name - but a folder that says which schedule's finals it belongs to",
+        "# cannot be misread by a selector that does not know that.",
+        "#",
+    ])
+
+
+def combo_tune_full(cfg, root: Path, out: Path, expect: int,
+                    allow_unmeasured: bool = False) -> int:
+    """
+    The jointly-tuned pair's best cell **per schedule**, at the full horizon.
+
+    The pair is the one that leads each schedule by TEST score; P25's grid is
+    the one the study selected, and :func:`combo_tune_full_selected` finalises
+    that.  The two are separate modes over separate catalogues because they are
+    separate selections: one record, one task file and one seed block each.
+    """
+    cfg = searched_at(cfg)
+    cells = reg_cells.combo_tune_cells()
+    chosen = _combo_tune_select(cfg, root, cells,
+                                reg_cells.combo_tune_by_family(),
+                                SL.CTUNE_SCREEN_TAG, COMBO_TUNE_METHOD,
+                                allow_unmeasured)
+    if chosen is None:
         return 1
+    winners, record, hits = chosen
 
     write_table(dict(record, extension={
         "is_core_programme": False,
@@ -2153,42 +2219,78 @@ def combo_tune_full(cfg, root: Path, out: Path, expect: int,
     }), root, "p23_combo_tune_winners.json")
     note_boundaries(root, "p24/combo-tune-full", hits)
 
-    lines = []
-    for index, (family, cell) in enumerate(winners):
-        for fold in SL.folds_of(cfg):
-            lines.append(SL.combo_tune_line(
-                cfg, cell, fold, SL.FULL_ROUNDS,
-                cfg.seed_base + COMBO_TUNE_BLOCK + index * 10 + fold,
-                family=family,
-            ))
-    return emit(lines, out, expect, "p24/combo-tune-full", [
-        "# AN EXTENSION, NOT A STAGE OF THE PROGRAMME. The study is complete",
-        "# without it and nothing the paper reports reads what it produces.",
-        "#",
-        f"# The jointly-tuned pair's best cell PER SCHEDULE from the"
-        f" {len(cells)}-cell",
-        f"# screen, re-run at the full {SL.FULL_ROUNDS}-round horizon:"
-        f" {len(SL.FAMILIES)} schedules x"
-        f" {len(SL.folds_of(cfg))} folds.",
-        "#",
-    ] + [
-        f"#   {family:<11} {cell['id']}"
-        for family, cell in winners
-    ] + [
-        "#",
-        "# THESE ARE NOT THE COMBINATIONS ALREADY ON DISK. s20 crossed two",
-        "# shortlists at one setting each - a rule at the coefficients it won on",
-        "# alone beside a penalty at the coefficients it won on alone. These",
-        "# carry the coefficients a joint screen measured. They are new arms,",
-        "# not a re-run of the old ones, and they keep their own folders and",
-        "# seeds; s20's eighteen combinations are untouched.",
-        "#",
-        "# THE SCHEDULE IS IN THE PARENT, as it is in P14's and P22's. The cell",
-        "# ids already carry it - only the parallel rule has a coefficient to",
-        "# name - but a folder that says which schedule's finals it belongs to",
-        "# cannot be misread by a selector that does not know that.",
-        "#",
-    ])
+    return _combo_tune_emit(
+        cfg, root, out, expect, winners, cells, SL.CTUNE_TAGS,
+        COMBO_TUNE_BLOCK, "p24/combo-tune-full", "s23_combo_screen.txt",
+        [
+            "#",
+            "# THESE ARE NOT THE COMBINATIONS ALREADY ON DISK. s20 crossed two",
+            "# shortlists at one setting each - a rule at the coefficients it",
+            "# won on alone beside a penalty at the coefficients it won on",
+            "# alone. These carry the coefficients a joint screen measured.",
+            "# They are new arms, not a re-run of the old ones, and they keep",
+            "# their own folders and seeds; s20's eighteen combinations are",
+            "# untouched.",
+        ])
+
+
+def combo_tune_full_selected(cfg, root: Path, out: Path, expect: int,
+                             allow_unmeasured: bool = False) -> int:
+    """
+    The SELECTED pair's best cell **per schedule**, at the full horizon.
+
+    The same rule, applied to the second joint grid's catalogue: the pair whose
+    rule half is the head of ``p12_agg_top3.json``'s own ranking on the basis
+    that record names, rather than the pair its test order leads with.
+
+    ITS OWN RECORD, TASK FILE, STEM AND SEED BLOCK.  Everything that identifies
+    a selection is separate from P24's, because this is a different selection
+    over a different catalogue - two entries written under one key, or two
+    stages writing under one stem, would read as one selection made twice and
+    no reader could say which arm came from which grid.
+    """
+    cfg = searched_at(cfg)
+    cells = reg_cells.combo_tune_selected_cells()
+    chosen = _combo_tune_select(cfg, root, cells,
+                                reg_cells.combo_tune_selected_by_family(),
+                                SL.CTUNE_SEL_SCREEN_TAG, COMBO_TUNE_SEL_METHOD,
+                                allow_unmeasured)
+    if chosen is None:
+        return 1
+    winners, record, hits = chosen
+
+    write_table(dict(record, extension={
+        "is_core_programme": False,
+        "note": (
+            "EXTENSION. The joint grid of the SELECTED rule and the best "
+            "penalty per schedule, screened by s25_combo_screen_selected.txt "
+            "and finalised here. The rule half is the head of "
+            "p12_agg_top3.json's own ranking, on the basis that record names; "
+            "P23's grid tuned the pair the TEST order leads with instead. No "
+            "table, shortlist or crossing the study reports reads this record, "
+            "and it does not supersede p23_combo_tune_winners.json - the two "
+            "are two selections over two catalogues and are read beside each "
+            "other."
+        ),
+        "screen": "s25_combo_screen_selected.txt",
+        "cells_considered": len(cells),
+    }), root, "p25_combo_tune_selected_winners.json")
+    note_boundaries(root, "p26/combo-tune-full-selected", hits)
+
+    return _combo_tune_emit(
+        cfg, root, out, expect, winners, cells, SL.CTUNE_SEL_TAGS,
+        COMBO_TUNE_SEL_BLOCK, "p26/combo-tune-full-selected",
+        "s25_combo_screen_selected.txt",
+        [
+            "#",
+            "# THE RULE HALF IS THE ONE THE STUDY SELECTED. p12_agg_top3.json",
+            "# was cut on VALIDATION and says so in its own rank_by; on the",
+            "# parallel schedule its test order leads with a different rule,",
+            "# which is the pair s23/s24 tuned. These are new arms again: not",
+            "# s20's combinations, and not s24's either. Their folders, seeds",
+            "# and record are their own and neither of the other two stages is",
+            "# touched.",
+        ])
 
 
 WHAT = {
@@ -2211,6 +2313,7 @@ WHAT = {
     # `study_emit.py --help` puts the extension beside the stages it is
     # read against rather than hiding it among them.
     "combo-tune-full": combo_tune_full,
+    "combo-tune-full-selected": combo_tune_full_selected,
 }
 
 

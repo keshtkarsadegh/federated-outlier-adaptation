@@ -1171,3 +1171,25 @@ axis that cannot collide with itself.
 | the pair as `s20` ran it, per schedule | 1 | 5 |
 | this screen, parallel | 162 | 810 |
 | this screen, cyclic | 54 | 270 |
+
+### What the row found
+
+The screen ran all 1,080 elements and `study_emit.py combo-tune-full-selected`
+crowned one cell per schedule on the study's own rule:
+
+| schedule | cell | `c_ewc` | `c_kd` | `T` | `m` | `h` | score |
+|---|---|---|---|---|---|---|---|
+| parallel | `ctunesel_ewc0p1_kd0p05_T2_mix0p75_h4` | 0.1 | 0.05 | 2 | 0.75 | **4R** | +0.0670 |
+| cyclic | `ctunesel_ewc0p05_kd0p11_T0p25_mix0p75` | 0.05 | 0.11 | 0.25 | 0.75 | - | +0.0652 |
+
+**The parallel schedule chose the half-life that is outside the screened row.**
+That is the answer to the question the row was drawn to ask: once the penalty
+beside it moves, the selected server rule is wanted *weaker* than anything the
+aggregation screen offered - the anchor is asked to act less inside the run, not
+more. Eight of the two winners' nine dials sit at an end of a row, `c_ewc = 0.1`
+on the parallel side being the only one that does not. The direction is the same
+one section 8's screen found for the blend, where both schedules chose the floor
+of the EWC row, and the same one section 9's grid found on the other pair.
+
+Unlike section 9's grid, the two schedules here did **not** land on one setting
+of all four penalty dials; the only dial they agree on is `m = 0.75`.

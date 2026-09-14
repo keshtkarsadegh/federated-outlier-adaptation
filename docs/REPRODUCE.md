@@ -175,6 +175,7 @@ scheme and have to be reproducible on the same terms as everything else.
 | E1 | **joint screen of the leading pair** | `tools/make_digits_p23.py` | `s23_combo_screen.txt` | 1080 | 25 |
 | E2 | **its winners at the full horizon** | `study_emit.py combo-tune-full` | `s24_combo_full.txt` | 10 | 100 |
 | E3 | **joint screen of the SELECTED pair** | `tools/make_digits_p25.py` | `s25_combo_screen_selected.txt` | 1080 | 25 |
+| E4 | **its winners at the full horizon** | `study_emit.py combo-tune-full-selected` | `s26_combo_full_selected.txt` | 10 | 100 |
 
 **What it asks.** Stage 12 crossed the top three server rules with the top three
 penalties per schedule, and every pair in it is a rule at the coefficients it
@@ -227,6 +228,21 @@ neighbour above inside the screened range. `REG_GRID_RANGES.md` section 10
 records that and what it costs; `s25_combo_screen_selected_README.md` records it
 again beside the file. `seq_fedavg` has no coefficient at all, so the cyclic half
 of this grid is a third the size, exactly as E1's is.
+
+E4 applies the same selection rule E2 does - gain less spend at `w = 1`, on the
+validation columns, one winner per schedule, ties broken on the cell id - to E3's
+cells, and re-runs the two it crowns at 100 rounds. It is the same function over
+a different catalogue and a different folder stem, and it writes a record of its
+own: `tables/p25_combo_tune_selected_winners.json`, keyed
+`combo-tune-selected/<schedule>` so it cannot be merged with E2's by accident.
+Nothing it produces supersedes E1 or E2, and neither of those is re-emitted.
+
+**What E3 chose is worth reading beside the note above.** The parallel schedule's
+winner takes `h = 4R` - the half-life outside the screened row - so once the
+penalty beside it moves, the selected server rule is wanted *weaker* than
+anything the aggregation screen offered. Eight of the two winners' nine dials sit
+at an end of their row; `s26_combo_full_selected_README.md` lists them and says
+what they do and do not settle.
 
 ---
 
@@ -298,6 +314,10 @@ diff /tmp/check/s25_combo_screen_selected.txt \
      study/artifacts/Digits_study01/jobs/s25_combo_screen_selected.txt
 diff /tmp/check/s25_combo_screen_selected_README.md \
      study/artifacts/Digits_study01/jobs/s25_combo_screen_selected_README.md
+
+python tools/study_emit.py combo-tune-full-selected --root $FOA_STUDY_DIR \
+    --out /tmp/y.txt --expect 10
+diff /tmp/y.txt study/artifacts/Digits_study01/jobs/s26_combo_full_selected.txt
 ```
 
 ### The reference stages, which do take arguments

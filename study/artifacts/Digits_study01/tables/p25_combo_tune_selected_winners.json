@@ -1,0 +1,47 @@
+{
+  "combo-tune-selected/concurrent": {
+    "winner": "ctunesel_ewc0p1_kd0p05_T2_mix0p75_h4",
+    "measured": true,
+    "adaptation": 0.8921399321023232,
+    "preservation": 0.9959720122964248,
+    "considered": 162,
+    "dials": {
+      "c_ewc": 0.1,
+      "c_kd": 0.05,
+      "T": 2.0,
+      "m": 0.75,
+      "anchor_halflife_r": 4.0
+    },
+    "hypers": {
+      "lam": 0.0625,
+      "T": 2.0,
+      "mix": 0.6000000000000001
+    },
+    "rule": "con_delta_anchor_lam"
+  },
+  "combo-tune-selected/sequential": {
+    "winner": "ctunesel_ewc0p05_kd0p11_T0p25_mix0p75",
+    "measured": true,
+    "adaptation": 0.8902918740570821,
+    "preservation": 0.9959332368407362,
+    "considered": 54,
+    "dials": {
+      "c_ewc": 0.05,
+      "c_kd": 0.11,
+      "T": 0.25,
+      "m": 0.75
+    },
+    "hypers": {
+      "lam": 0.095,
+      "T": 0.25,
+      "mix": 0.868421052631579
+    },
+    "rule": "seq_fedavg_update"
+  },
+  "extension": {
+    "is_core_programme": false,
+    "note": "EXTENSION. The joint grid of the SELECTED rule and the best penalty per schedule, screened by s25_combo_screen_selected.txt and finalised here. The rule half is the head of p12_agg_top3.json's own ranking, on the basis that record names; P23's grid tuned the pair the TEST order leads with instead. No table, shortlist or crossing the study reports reads this record, and it does not supersede p23_combo_tune_winners.json - the two are two selections over two catalogues and are read beside each other.",
+    "screen": "s25_combo_screen_selected.txt",
+    "cells_considered": 216
+  }
+}
