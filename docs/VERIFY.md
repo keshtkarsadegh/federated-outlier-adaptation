@@ -46,7 +46,7 @@ cd study/artifacts && sha256sum -c SHA256SUMS
 cd ../jobs        && sha256sum -c SHA256SUMS
 ```
 
-156 derived artefacts and 17 submission chains - no model checkpoint among
+165 derived artefacts and 19 submission chains - no model checkpoint among
 them, because this study ships no weights (`study/UPSTREAM.sha256` says so, and
 the metadata core's own README names them as the one thing it excludes). This
 proves you hold the fold assignments, writer lists, selection records, task

@@ -3,10 +3,10 @@
 This directory is the study's **metadata core**: the records that say what was
 selected, what was run, against which rows, and what came out - everything a
 reader needs to check a claim in the manuscript against something other than the
-manuscript. It is 7.4 MB and 157 files besides this one, which is small enough
+manuscript. It is 8.8 MB and 164 files besides this one, which is small enough
 to live in git and be diffed like source.
 
-It is not the study. The study is 3,855 run folders and about 4 million files.
+It is not the study. The study is 4,945 run folders and about 40,000 files.
 What is here is the part of it that is *evidence* rather than *bulk*, plus the
 exact commands that reproduce the bulk. Everything excluded is named below with
 the reason it is excluded and the way to get it back; nothing has been left out
@@ -90,15 +90,15 @@ figures. Nothing about them is a judgement call, which is why they are the first
 thing to drop.
 
 **The per-run records - a release asset.** Every `accuracies_*.json` and
-`summary_0.json` under the 3,855 `d01_*` run folders, plus the 380 JSONs of the
-`centralized_c*` and `isolated_c*` reference rungs: 12,210 files, 1.0 GB raw.
+`summary_0.json` under the 4,945 `d01_*` run folders, plus the 380 JSONs of the
+`centralized_c*` and `isolated_c*` reference rungs: 14,390 files, 1.3 GB raw.
 These are the numbers every table in the study is computed from, so they are
 published - but as a release asset rather than in the tree, because git is the
 wrong place for half a gigabyte of machine output that no one will diff.
 
     Digits_study01_records.tar.gz
-    sha256 f0ed575ddd7bdadeadb35b2553f5115378058978901fb7228a92b5542dacf911
-    130,058,517 bytes
+    sha256 11456ca21081aa553ef6d12f1630916c45c86182d8700a6a18b394baed56cc88
+    151,177,192 bytes
 
 Paths inside it are relative to the study root, so it unpacks over
 `$FOA_STUDY_DIR` - but the asset is only half of a study root and this directory

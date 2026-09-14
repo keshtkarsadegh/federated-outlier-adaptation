@@ -236,7 +236,7 @@ def test_the_shipped_views_regenerate_byte_for_byte():
     """
     The regression this file exists for, and the one that needs the runs.
 
-    Skipped without them: a clone holds the three views but not the 3,855 run
+    Skipped without them: a clone holds the three views but not the 4,945 run
     folders they were computed from. Against an assembled root
     (`docs/REPRODUCE.md` section 10) the tool has to write these exact bytes,
     which is what makes the seeded halves and the fold labels a contract rather

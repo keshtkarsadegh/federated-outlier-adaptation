@@ -856,7 +856,7 @@ either, so they are priced in `s23_combo_screen_README.md` and
 
 ## 10. The published records
 
-**In git - `study/artifacts/Digits_study01/`, 7.4 MB.** The metadata core: the
+**In git - `study/artifacts/Digits_study01/`, 8.8 MB.** The metadata core: the
 frozen cohort, the g-0 evaluation books both baselines are measured against, the
 fold books, the outlier and cohort records, every shipped table and CSV - the ten
 views the manuscript's figures are drawn on among them - every task file that was
@@ -867,11 +867,11 @@ the command that regenerates it. Absolute machine paths are rewritten to
 `$FOA_STUDY_DIR` and friends by `tools/sanitize_artifacts.py`; that this stayed
 true is asserted by `tests/test_release_artifacts.py`.
 
-**A release asset - `Digits_study01_records.tar.gz`, 130,058,517 bytes.** Every
-`accuracies_*.json` and `summary_0.json` under the 3,855 `d01_*` run folders plus
-the 380 reference-rung JSONs: 12,210 files, 1.0 GB unpacked. The blend's two
-stages and the extension's two are in it with the rest: the extension's views
-are computed from its records, so an asset that carried only the core would
+**A release asset - `Digits_study01_records.tar.gz`, 151,177,192 bytes.** Every
+`accuracies_*.json` and `summary_0.json` under the 4,945 `d01_*` run folders plus
+the 380 reference-rung JSONs: 14,390 files, 1.3 GB unpacked. The blend's two
+stages and the extensions' four are in it with the rest: the extensions' views
+are computed from their records, so an asset that carried only the core would
 publish a table nobody could rebuild. These are the numbers
 every table is computed from. They are an asset rather than a tracked directory
 because git is the wrong place for half a gigabyte of machine output nobody will
@@ -881,11 +881,15 @@ membership with the same predicate every reader uses, and packs deterministicall
 so the checksum is a property of the records rather than of the day they were
 packed.
 
-    sha256 f0ed575ddd7bdadeadb35b2553f5115378058978901fb7228a92b5542dacf911
+    sha256 11456ca21081aa553ef6d12f1630916c45c86182d8700a6a18b394baed56cc88
 
 published beside the archive as `Digits_study01_records.tar.gz.sha256`. Both are
-attached to the repository's `v0.3.1` release:
-<https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/tag/v0.3.1>.
+attached to the repository's records release, which carries no version number:
+<https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/tag/records>.
+The records are not the source and do not move with it: whenever a stage adds
+records, the archive is replaced in place and its checksum with it. So the
+sha256 above is the one to verify against, and a copy that fails it was fetched
+before the last stage landed.
 Paths inside are relative to the study root, so the asset unpacks straight over
 one -
 but the asset is only half of a study root. The other half is the metadata core
@@ -894,7 +898,7 @@ study root on its own, and nothing runs until the two are brought together.
 
 ### Assembling the reviewer tree
 
-The asset carries the 3,855 `d01_*` run folders and the reference rungs and
+The asset carries the 4,945 `d01_*` run folders and the reference rungs and
 nothing else; the core carries the selection records, fold books, task files and
 tables that every tool reads alongside them. Both are laid out relative to the
 study root, so assembling one is two copies into an empty directory:
@@ -903,13 +907,15 @@ study root, so assembling one is two copies into an empty directory:
 export FOA_STUDY_DIR=/path/to/Digits_study01        # any empty directory
 mkdir -p "$FOA_STUDY_DIR"
 
-sha256sum -c Digits_study01_records.tar.gz.sha256   # 130,058,517 bytes
+curl -fLO https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/download/records/Digits_study01_records.tar.gz
+curl -fLO https://github.com/keshtkarsadegh/federated-outlier-adaptation/releases/download/records/Digits_study01_records.tar.gz.sha256
+sha256sum -c Digits_study01_records.tar.gz.sha256   # 151,177,192 bytes
 tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
 cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
 ```
 
-The result is 12,366 files - the asset's 12,210 plus this directory's 156 -
-across 3,880 top-level entries, and every row of
+The result is 14,555 files - the asset's 14,390 plus this directory's 165 -
+across 4,970 top-level entries, and every row of
 [§6](#6-which-command-produces-which-claim) runs against it from the repository
 root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
 for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`,
