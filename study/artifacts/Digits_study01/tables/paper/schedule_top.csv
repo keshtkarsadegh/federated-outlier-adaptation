@@ -1,0 +1,9 @@
+rank,cell,schedule,stage,folds,adaptation,preservation,score
+1,hybrid_seq_mix0p75,cyclic,regfull,5,0.935489,0.992456,10.6874
+2,logit_l2_lam0p003,cyclic,regfull,5,0.937450,0.990315,10.6694
+3,seq_delta_capped_ntd_b0p01_t2,cyclic,combo,5,0.937499,0.990186,10.6614
+4,seq_mix_r0p3_logit_l2_lam0p003,cyclic,combo,5,0.936583,0.991054,10.6566
+5,seq_fedavg_logit_l2_lam0p003,cyclic,combo,5,0.936524,0.990887,10.6340
+6,seq_fedavg_ntd_b0p01_t2,cyclic,combo,5,0.935616,0.990704,10.5249
+7,hybrid_seq_mix0p75,parallel,regfull,5,0.933655,0.992395,10.4980
+8,seq_delta_capped_logit_l2_lam0p003,cyclic,combo,5,0.935576,0.990163,10.4668

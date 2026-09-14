@@ -462,6 +462,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | the six per-round views, and the two rounds the extreme figure marks | `export_traces.py --root $FOA_STUDY_DIR --out <dir>` |
 | g-0's own training history, and the isolated clients | `export_baseline_views.py --root $FOA_STUDY_DIR --out <dir>` |
 | each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
+| does the schedule matter? seven pairs, each schedule's own selected arm against the other's, cyclic minus parallel and paired by fold | `export_schedule_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `schedule_pairs.csv` |
+| the study's eight strongest arms across the three reporting stages, and which schedule ran each | the same command -> `schedule_top.csv` |
 | the two extracts the forgetting-signals section is written on | `export_signals_summary.py --root $FOA_STUDY_DIR --out <dir>` |
 | the five writers the two selection rankings disagree about | `export_decouple_example.py --root $FOA_STUDY_DIR --out <dir>` |
 | every figure in the manuscript | [below](#and-which-command-produces-which-figure) - two commands per figure |
@@ -469,6 +471,20 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | every table the manuscript sets | `paper_figures/make_paper_tables.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
+
+The two schedule views are **core**, which is why they are in the table above
+rather than beside it. Every stage of the programme selected and reported the two
+schedules separately - correctly, because a rule that exists on only one of them
+cannot be ranked against a rule that exists on only the other - and the cost is
+that the comparison a reader makes first is spread across three files sorted by
+score. `schedule_pairs.csv` pairs it arm by arm, and which arm each schedule
+contributes is read and not typed: the rule and the blend from
+`make_digits_p23.THE_PAIR`, the logit and NTD cells from
+`tables/p13_reg_method_winners.json`, which crowns per method AND per schedule,
+the best combination out of `tables/p15_combination_grid.json` under the same
+score, the crowned pair and the arm carried beside it out of
+`tables/p15_stage_winner.json`, and the control out of `agg_cells`. Both views
+are TEST, because both report.
 
 ### The extension's own views
 

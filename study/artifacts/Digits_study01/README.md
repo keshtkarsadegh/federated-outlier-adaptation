@@ -3,7 +3,7 @@
 This directory is the study's **metadata core**: the records that say what was
 selected, what was run, against which rows, and what came out - everything a
 reader needs to check a claim in the manuscript against something other than the
-manuscript. It is 7.3 MB and 152 files besides this one, which is small enough
+manuscript. It is 7.3 MB and 154 files besides this one, which is small enough
 to live in git and be diffed like source.
 
 It is not the study. The study is 3,855 run folders and about 4 million files.
@@ -40,6 +40,7 @@ paths and were not touched; only these copies were rewritten.
 | `tables/cohort_table.*`, `tables/cohort_composition.csv` | who is in the cohort and what they hold | `describe_cohort.py` |
 | `tables/clients_acc_on_g0.json` | the shipped model per cohort client | `study_emit.py`, `analyse_signals_fairness_cost.py` |
 | `tables/paper/*.csv` | the manuscript bundle, one CSV per view | `report_tables.py --what all --csv` |
+| `tables/paper/schedule_pairs.csv`, `schedule_top.csv` | the axis every stage selected on and no stage compared across: each schedule's own selected arm against the other schedule's, paired by fold, and the study's eight strongest arms with the schedule that ran them | `export_schedule_views.py` |
 | `tables/paper/extension_combo_tune.csv`, `extension_combo_screen.csv` | **the extension**, in the same directory and under a name that says so: the tuned pair against the four arms it is offered against, and the screen that chose it. Read by no figure and no generator | `export_extension_views.py` |
 | `tables/paper_figures/traces_*.csv`, `extreme_stop_rounds.csv` | the per-round views the figures are drawn on | `export_traces.py`, then `tools/paper_figures/fig_*.py` |
 | `tables/paper_figures/g0_training.csv`, `isolated_clients.csv` | the two baseline views | `export_baseline_views.py`, `fig_baselines.py` |

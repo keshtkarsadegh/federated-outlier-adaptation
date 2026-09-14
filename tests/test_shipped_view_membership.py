@@ -45,6 +45,17 @@ EXTENSION_STEM = "ctune"
 #: later and quietly excuse itself from the check below.
 EXTENSION_VIEWS = ("extension_combo_tune.csv", "extension_combo_screen.csv")
 
+#: The two views `export_schedule_views.py` writes. They are CORE and are named
+#: here for the opposite reason to the pair above: the schedule is an axis of
+#: the programme, so these have to be inside `core_views()` - and a core view
+#: that quietly stopped being one would be a table nobody checks for extension
+#: arms.
+SCHEDULE_VIEWS = ("schedule_pairs.csv", "schedule_top.csv")
+
+#: The seven pairs `schedule_pairs.csv` states, in the order it states them.
+SCHEDULE_PAIRS = ("control", "rule_alone", "blend", "logit", "ntd",
+                  "best_combo", "crowned")
+
 
 def _rows(path: Path) -> list:
     with open(path, newline="") as handle:
@@ -231,3 +242,145 @@ def test_the_screen_summary_reports_the_dials_and_where_they_sit():
         assert bool(row["server_eta"]) == (row["family"] == "concurrent")
     crowned = [row for row in rows if row["rank"] == "1"]
     assert all(row["dials_at_edge"] for row in crowned)
+
+
+# ------------------------------------------------ the schedule views are core
+def test_the_schedule_views_are_inside_the_core_bundle():
+    """
+    They report the programme, so the extension check above has to cover them.
+
+    `core_views()` globs `tables/paper/` and subtracts the extension by name.
+    That is the right default and it is also how a new view joins the core
+    without anyone deciding it should: this says these two did.
+    """
+    names = {path.name for path in core_views()}
+    assert set(SCHEDULE_VIEWS) <= names
+    assert not set(SCHEDULE_VIEWS) & set(EXTENSION_VIEWS)
+
+
+def test_the_schedule_views_carry_the_columns_their_tool_declares():
+    """A renamed column reaches a reader as a missing key, one build later."""
+    import export_schedule_views as schedule
+
+    for name, columns in (("schedule_pairs.csv", schedule.PAIR_COLUMNS),
+                          ("schedule_top.csv", schedule.TOP_COLUMNS)):
+        with open(TABLES / "paper" / name, newline="") as handle:
+            header = next(csv.reader(handle))
+        assert header == list(columns), f"{name}: header is not what its tool writes"
+
+
+def test_the_pairs_view_is_one_row_per_pair_and_both_arms_are_five_fold():
+    """
+    Seven pairs and no eighth. A pair that fell out of this table would take a
+    comparison with it and leave a table that still renders - and the row most
+    likely to fall out is the one whose two arms are two different cells,
+    because that is the row a reader would have to build by hand.
+    """
+    rows = _rows(TABLES / "paper" / "schedule_pairs.csv")
+    assert tuple(row["pair"] for row in rows) == SCHEDULE_PAIRS
+    for row in rows:
+        assert row["parallel_cell"] and row["cyclic_cell"]
+        assert row["cyclic_wins"].endswith("/5")
+        diffs = [float(row[f"diff_f{fold}"]) for fold in range(1, 6)]
+        # the mean is the mean of the five that are printed beside it, and the
+        # count is the count of those five: a summary computed off a different
+        # population than the one it is printed next to is the failure this
+        # whole file is about.
+        # to within what the five printed differences can say: they are
+        # rounded and the mean beside them is not, so the check is that they
+        # are the same five numbers, not that one was computed from the other.
+        assert abs(sum(diffs) / 5 - float(row["diff_mean"])) < 1e-3
+        assert int(row["cyclic_wins"].split("/")[0]) == sum(1 for d in diffs if d > 0)
+
+
+def test_every_arm_of_the_pairs_view_is_named_by_a_selection_record():
+    """
+    Not one cell id in that table is typed into the tool that writes it.
+
+    Each row is resolved here from the record it is supposed to come from, and
+    the shipped file is checked against the answer. A view that started naming
+    its own arms would outlive the selection that put them in it - which is the
+    failure `compare_arms.py` documents at length for the blends.
+    """
+    import export_schedule_views as schedule
+    from make_digits_p23 import THE_PAIR
+
+    rows = {row["pair"]: row for row in _rows(TABLES / "paper" / "schedule_pairs.csv")}
+    control = schedule.control_arm()
+    crowned = schedule.crowned_pair(STUDY)
+    expected = {
+        "control": (control, control),
+        "rule_alone": (THE_PAIR["concurrent"][0], THE_PAIR["sequential"][0]),
+        "blend": (THE_PAIR["concurrent"][1], THE_PAIR["sequential"][1]),
+        "logit": (schedule.method_winner(STUDY, "logit_l2", "concurrent"),
+                  schedule.method_winner(STUDY, "logit_l2", "sequential")),
+        "ntd": (schedule.method_winner(STUDY, "ntd", "concurrent"),
+                schedule.method_winner(STUDY, "ntd", "sequential")),
+        "crowned": (crowned["concurrent"], crowned["sequential"]),
+    }
+    for pair, (parallel, cyclic) in expected.items():
+        row = rows[pair]
+        assert (row["parallel_cell"], row["cyclic_cell"]) == (parallel, cyclic), pair
+
+
+def test_the_best_combination_row_is_the_top_row_of_the_shipped_combination_view():
+    """
+    The tool ranks the cross itself, out of the grid record, so that it does not
+    depend on `combos.csv` having been regenerated first. That independence is
+    only worth having if the two agree, and this is where they are made to.
+    """
+    rows = {row["pair"]: row for row in _rows(TABLES / "paper" / "schedule_pairs.csv")}
+    combos = _rows(TABLES / "paper" / "combos.csv")
+    for column, family in (("parallel_cell", "parallel"), ("cyclic_cell", "cyclic")):
+        best = max((row for row in combos if row["family"] == family),
+                   key=lambda row: (float(row["score"]), row["cell"]))
+        assert rows["best_combo"][column] == best["cell"], family
+
+
+def test_every_arm_of_the_pairs_view_agrees_with_the_view_it_is_quoted_from():
+    """
+    Every one of the fourteen arms is already a row of a table the manuscript
+    quotes, so this view is a rearrangement of numbers that exist and not a
+    second measurement of them. Scored by its own reader over its own folds,
+    it has to come back with what those tables say.
+    """
+    shipped = {}
+    for name in ("agg-winners.csv", "reg-winners.csv", "combos.csv"):
+        for row in _rows(TABLES / "paper" / name):
+            shipped[(row["cell"], row["family"])] = row
+
+    for row in _rows(TABLES / "paper" / "schedule_pairs.csv"):
+        for column, stem, family in (("parallel_cell", "par", "parallel"),
+                                     ("cyclic_cell", "cyc", "cyclic")):
+            quoted = shipped[(row[column], family)]
+            assert round(float(quoted["adaptation"]), 6) == float(row[f"{stem}_adapt"])
+            assert round(float(quoted["preservation"]), 6) == float(row[f"{stem}_presv"])
+            # the views state the score as a fraction; this one states points
+            assert round(float(quoted["score"]) * 100, 4) == float(row[f"{stem}_score"])
+
+
+def test_the_top_view_ranks_the_three_reporting_stages_together():
+    """
+    The one ranking in this repository that crosses stages, which is only fair
+    because all three ran the same folds at the same horizon - so the stage is
+    printed beside every row and the ranking cannot be read as a ranking of
+    stages. Its rows are rows of the shipped views, same as the pairs above.
+    """
+    import export_schedule_views as schedule
+
+    shipped = {}
+    for name, stage in (("agg-winners.csv", "aggfull"), ("reg-winners.csv", "regfull"),
+                        ("combos.csv", "combo")):
+        for row in _rows(TABLES / "paper" / name):
+            shipped[(row["cell"], row["family"])] = (stage, row)
+
+    rows = _rows(TABLES / "paper" / "schedule_top.csv")
+    assert len(rows) == schedule.TOP_N
+    assert [int(row["rank"]) for row in rows] == list(range(1, schedule.TOP_N + 1))
+    scores = [float(row["score"]) for row in rows]
+    assert scores == sorted(scores, reverse=True)
+    for row in rows:
+        stage, quoted = shipped[(row["cell"], row["schedule"])]
+        assert row["stage"] == stage, row["cell"]
+        assert round(float(quoted["score"]) * 100, 4) == float(row["score"])
+        assert int(row["folds"]) == 5
