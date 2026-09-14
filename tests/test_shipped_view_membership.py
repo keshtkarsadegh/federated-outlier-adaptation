@@ -6,9 +6,10 @@ directions. The blend's finals (`s22_blend_full.txt`) are **core** regularisatio
 arms: they run the same penalty family under the same rule at the same horizon,
 they are selected by reg-full's own rule, and a reg-full view that did not carry
 them would be reporting a stage that no longer exists. The joint-tuning stages
-(`s23`, `s24`) are an **extension**: nothing the manuscript reports may read
-them, and a core view that quietly grew two `ctune_` rows would put an arm the
-programme never selected into a table the paper quotes.
+(`s23`, `s24`, and the second grid's `s25`, `s26`) are an **extension**: nothing
+the manuscript reports may read them, and a core view that quietly grew a
+`ctune` row would put an arm the programme never selected into a table the paper
+quotes.
 
 Both failures are silent. A membership predicate is a prefix or a cell list,
 never an announcement, so a stage that walks into the wrong glob does it without
@@ -43,7 +44,9 @@ EXTENSION_STEM = "ctune"
 #: Every shipped view that reports the programme. The two extension views are
 #: named beside them rather than globbed away, so a third one cannot be added
 #: later and quietly excuse itself from the check below.
-EXTENSION_VIEWS = ("extension_combo_tune.csv", "extension_combo_screen.csv")
+EXTENSION_VIEWS = ("extension_combo_tune.csv", "extension_combo_screen.csv",
+                   "extension_combo_tune_selected.csv",
+                   "extension_combo_screen_selected.csv")
 
 #: The two views `export_schedule_views.py` writes. They are CORE and are named
 #: here for the opposite reason to the pair above: the schedule is an axis of
@@ -175,57 +178,115 @@ def test_every_stage_of_the_blend_and_the_extension_has_a_stem_of_its_own():
 
     for stage in ("s21_blend_screen", "s22_blend_full",
                   "s23_combo_screen", "s24_combo_full",
-                  "s25_combo_screen_selected"):
+                  "s25_combo_screen_selected", "s26_combo_full_selected"):
         assert stage in study_record.PREFIXES, stage
         assert (STUDY / "jobs" / f"{stage}.txt").is_file(), stage
 
 
 # -------------------------------------------------- the extension's own views
+def test_the_extension_views_are_the_four_its_tool_writes():
+    """
+    Four files, two grids, and no fifth that nothing subtracts.
+
+    `core_views()` removes the extension by NAME, so a view this list does not
+    carry is a view the core bundle silently adopts - and the check below that
+    no core view holds a `ctune` row would then be asserting something about a
+    file that is no longer in the set it scans.
+    """
+    import export_extension_views as extension
+
+    assert set(extension.VIEWS) == set(EXTENSION_VIEWS)
+    assert len(EXTENSION_VIEWS) == 2 * len(extension.GRIDS) == 4
+    for name in EXTENSION_VIEWS:
+        assert (TABLES / "paper" / name).is_file(), name
+
+
 def test_the_extension_views_carry_the_columns_their_tool_declares():
     """A renamed column reaches a reader as a missing key, one build later."""
     import export_extension_views as extension
 
-    for name, columns in (("extension_combo_tune.csv", extension.COLUMNS),
-                          ("extension_combo_screen.csv", extension.SCREEN_COLUMNS)):
+    for name, columns in (
+            ("extension_combo_tune.csv", extension.COLUMNS),
+            ("extension_combo_screen.csv", extension.SCREEN_COLUMNS),
+            ("extension_combo_tune_selected.csv", extension.COLUMNS),
+            ("extension_combo_screen_selected.csv",
+             extension.SCREEN_COLUMNS_SELECTED)):
         with open(TABLES / "paper" / name, newline="") as handle:
             header = next(csv.reader(handle))
         assert header == list(columns), f"{name}: header is not what its tool writes"
+    # the two screens name DIFFERENT rule dials, because two grids move two
+    # knobs and a column named for one of them in the other file would be a
+    # header that says what was swept and is wrong
+    assert "server_eta" in extension.SCREEN_COLUMNS
+    assert "anchor_halflife_r" in extension.SCREEN_COLUMNS_SELECTED
+    assert "server_eta" not in extension.SCREEN_COLUMNS_SELECTED
 
 
-def test_the_horizon_view_is_five_arms_per_schedule():
+def test_each_horizon_view_is_five_arms_per_schedule():
     """
     A tuned pair is only worth reporting against what it is supposed to beat, so
     the row that would be quietly dropped is a baseline rather than the winner.
     """
     import export_extension_views as extension
 
-    rows = _rows(TABLES / "paper" / "extension_combo_tune.csv")
+    for name in ("extension_combo_tune.csv",
+                 "extension_combo_tune_selected.csv"):
+        rows = _rows(TABLES / "paper" / name)
+        for family in ("concurrent", "sequential"):
+            here = [row["role"] for row in rows if row["family"] == family]
+            assert here == list(extension.ROLES), (name, family)
+        assert all(int(row["folds"]) == 5 for row in rows), name
+
+
+def test_the_two_horizon_views_report_two_different_pairs():
+    """
+    They exist to be read against each other, so the halves that are supposed to
+    differ must differ and the halves that are supposed to match must match.
+
+    The rule alone and the untuned pair are the grid's own pair and change; the
+    penalty alone and the crowned pair are the same arms in both, because the
+    second grid moves the rule half and nothing else.
+    """
+    first = {(r["family"], r["role"]): r["arm"]
+             for r in _rows(TABLES / "paper" / "extension_combo_tune.csv")}
+    second = {(r["family"], r["role"]): r["arm"]
+              for r in _rows(TABLES / "paper"
+                             / "extension_combo_tune_selected.csv")}
     for family in ("concurrent", "sequential"):
-        here = [row["role"] for row in rows if row["family"] == family]
-        assert here == list(extension.ROLES), family
-    assert all(int(row["folds"]) == 5 for row in rows)
+        for role in ("rule alone", "untuned pair", "tuned pair"):
+            assert first[(family, role)] != second[(family, role)], (family, role)
+        for role in ("penalty alone", "crowned pair"):
+            assert first[(family, role)] == second[(family, role)], (family, role)
+        assert second[(family, "tuned pair")].startswith("ctunesel_")
+        assert first[(family, "tuned pair")].startswith("ctune_")
 
 
 def test_the_tuned_row_and_the_screens_first_rank_are_the_crowned_cell():
     """
-    Both views are ranked by the rule that wrote
-    `tables/p23_combo_tune_winners.json`, so the cell it names has to be the
-    tuned row of one and rank 1 of the other. If it is not, one of the two is
-    reporting a selection the record never made.
+    Each pair of views is ranked by the rule that wrote its own record, so the
+    cell that record names has to be the tuned row of one and rank 1 of the
+    other. If it is not, one of the two is reporting a selection the record
+    never made. Checked for both grids, against their own records.
     """
-    record = json.loads((TABLES / "p23_combo_tune_winners.json").read_text())
-    crowned = {family: record[f"combo-tune/{family}"]["winner"]
-               for family in ("concurrent", "sequential")}
+    for record_name, key, tune, screen in (
+            ("p23_combo_tune_winners.json", "combo-tune",
+             "extension_combo_tune.csv", "extension_combo_screen.csv"),
+            ("p25_combo_tune_selected_winners.json", "combo-tune-selected",
+             "extension_combo_tune_selected.csv",
+             "extension_combo_screen_selected.csv")):
+        record = json.loads((TABLES / record_name).read_text())
+        crowned = {family: record[f"{key}/{family}"]["winner"]
+                   for family in ("concurrent", "sequential")}
 
-    tuned = {row["family"]: row["arm"]
-             for row in _rows(TABLES / "paper" / "extension_combo_tune.csv")
-             if row["role"] == "tuned pair"}
-    assert tuned == crowned
+        tuned = {row["family"]: row["arm"]
+                 for row in _rows(TABLES / "paper" / tune)
+                 if row["role"] == "tuned pair"}
+        assert tuned == crowned, record_name
 
-    top = {row["family"]: row["cell"]
-           for row in _rows(TABLES / "paper" / "extension_combo_screen.csv")
-           if row["rank"] == "1"}
-    assert top == crowned
+        top = {row["family"]: row["cell"]
+               for row in _rows(TABLES / "paper" / screen)
+               if row["rank"] == "1"}
+        assert top == crowned, record_name
 
 
 def test_the_extensions_baseline_is_the_crowned_pair_and_not_a_test_leader():
@@ -242,31 +303,34 @@ def test_the_extensions_baseline_is_the_crowned_pair_and_not_a_test_leader():
 
     record = json.loads((TABLES / "p15_stage_winner.json").read_text())
     families = schedule.combination_families(STUDY)
-    rows = {row["family"]: row["arm"]
-            for row in _rows(TABLES / "paper" / "extension_combo_tune.csv")
-            if row["role"] == "crowned pair"}
-
     crowned = record["family"]
     other = next(family for family in ("concurrent", "sequential") if family != crowned)
-    assert rows[crowned] == record["winner"]
-    assert rows[other] == next(entry["id"] for entry in record["ranked"]
-                               if families[entry["id"]] == other)
+    for name in ("extension_combo_tune.csv",
+                 "extension_combo_tune_selected.csv"):
+        rows = {row["family"]: row["arm"]
+                for row in _rows(TABLES / "paper" / name)
+                if row["role"] == "crowned pair"}
+        assert rows[crowned] == record["winner"], name
+        assert rows[other] == next(entry["id"] for entry in record["ranked"]
+                                   if families[entry["id"]] == other), name
 
 
-def test_the_screen_summary_reports_the_dials_and_where_they_sit():
+def test_each_screen_summary_reports_the_dials_and_where_they_sit():
     """
-    Every winner of this grid sits at an edge in every dial but one, which is
-    the finding to read first - so the boundary column is part of the view
-    rather than a line of prose beside it.
+    Where a winner's dials sit in their rows is the finding to read first on
+    either grid, so the boundary column is part of the view rather than a line
+    of prose beside it. Only the parallel cells carry a rule dial, in both.
     """
-    rows = _rows(TABLES / "paper" / "extension_combo_screen.csv")
-    assert len(rows) == 10
-    for row in rows:
-        assert row["c_ewc"] and row["c_kd"] and row["T"] and row["m"]
-        # only the parallel cells have a server step to move
-        assert bool(row["server_eta"]) == (row["family"] == "concurrent")
-    crowned = [row for row in rows if row["rank"] == "1"]
-    assert all(row["dials_at_edge"] for row in crowned)
+    for name, knob in (("extension_combo_screen.csv", "server_eta"),
+                       ("extension_combo_screen_selected.csv",
+                        "anchor_halflife_r")):
+        rows = _rows(TABLES / "paper" / name)
+        assert len(rows) == 10, name
+        for row in rows:
+            assert row["c_ewc"] and row["c_kd"] and row["T"] and row["m"]
+            assert bool(row[knob]) == (row["family"] == "concurrent"), name
+        crowned = [row for row in rows if row["rank"] == "1"]
+        assert all(row["dials_at_edge"] for row in crowned), name
 
 
 # ------------------------------------------------ the schedule views are core

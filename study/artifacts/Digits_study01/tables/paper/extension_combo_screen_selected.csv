@@ -1,0 +1,11 @@
+family,rank,cell,c_ewc,c_kd,T,m,anchor_halflife_r,lam,mix,folds,adaptation,preservation,score,dials_at_edge
+concurrent,1,ctunesel_ewc0p1_kd0p05_T2_mix0p75_h4,0.1,0.05,2,0.75,4,0.0625,0.6,5,0.892140,0.995972,0.0670,c_kd=0.05:LOW T=2:HIGH m=0.75:HIGH anchor_halflife_r=4:HIGH
+concurrent,2,ctunesel_ewc0p05_kd0p2_T0p25_mix0p75_h4,0.05,0.2,0.25,0.75,4,0.1625,0.923077,5,0.886543,0.995782,0.0613,c_ewc=0.05:LOW c_kd=0.2:HIGH T=0.25:LOW m=0.75:HIGH anchor_halflife_r=4:HIGH
+concurrent,3,ctunesel_ewc0p05_kd0p05_T2_mix0p5_h2,0.05,0.05,2,0.5,2,0.05,0.5,5,0.885930,0.996390,0.0612,c_ewc=0.05:LOW c_kd=0.05:LOW T=2:HIGH
+concurrent,4,ctunesel_ewc0p1_kd0p05_T2_mix0p75_h2,0.1,0.05,2,0.75,2,0.0625,0.6,5,0.885609,0.996122,0.0607,c_kd=0.05:LOW T=2:HIGH m=0.75:HIGH
+concurrent,5,ctunesel_ewc0p05_kd0p05_T2_mix0p25_h4,0.05,0.05,2,0.25,4,0.05,0.25,5,0.885660,0.995782,0.0604,c_ewc=0.05:LOW c_kd=0.05:LOW T=2:HIGH m=0.25:LOW anchor_halflife_r=4:HIGH
+sequential,1,ctunesel_ewc0p05_kd0p11_T0p25_mix0p75,0.05,0.11,0.25,0.75,,0.095,0.868421,5,0.890292,0.995933,0.0652,c_ewc=0.05:LOW T=0.25:LOW m=0.75:HIGH
+sequential,2,ctunesel_ewc0p05_kd0p05_T2_mix0p75,0.05,0.05,2,0.75,,0.05,0.75,5,0.887554,0.996428,0.0629,c_ewc=0.05:LOW c_kd=0.05:LOW T=2:HIGH m=0.75:HIGH
+sequential,3,ctunesel_ewc0p1_kd0p2_T0p25_mix0p5,0.1,0.2,0.25,0.5,,0.15,0.666667,5,0.887544,0.995554,0.0620,c_kd=0.2:HIGH T=0.25:LOW
+sequential,4,ctunesel_ewc0p05_kd0p11_T2_mix0p75,0.05,0.11,2,0.75,,0.095,0.868421,5,0.886599,0.996428,0.0620,c_ewc=0.05:LOW T=2:HIGH m=0.75:HIGH
+sequential,5,ctunesel_ewc0p1_kd0p05_T2_mix0p5,0.1,0.05,2,0.5,,0.075,0.333333,5,0.885675,0.996161,0.0608,c_kd=0.05:LOW T=2:HIGH

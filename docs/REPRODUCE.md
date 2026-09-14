@@ -541,28 +541,36 @@ an arm a selection record names - the control is the fixed control, which is
 what the selecting is measured against - and no row is ranked into the table by
 the numbers the table then prints. Both views are TEST, because both report.
 
-### The extension's own views
+### The extensions' own views
 
-**Nothing above reads these two, and nothing the manuscript reports does
-either.** They exist so that the extension of [§3](#extension-joint-tuning-of-the-best-pair)
-can be read on the basis the tables of §6 are measured on rather than off its
-task file's README, and they are written into `tables/paper/` beside the
-manuscript bundle under names that begin `extension_` - so a reader sorting that
-directory can see at a glance which two of its files are not the programme.
+**Nothing above reads these four, and nothing the manuscript reports does
+either.** They exist so that the two extensions of
+[§3](#extension-joint-tuning-of-the-best-pair) can be read on the basis the
+tables of §6 are measured on - and against each other - rather than off their
+task files' READMEs, and they are written into `tables/paper/` beside the
+manuscript bundle under names that begin `extension_`, so a reader sorting that
+directory can see at a glance which four of its files are not the programme.
+They are cut by one reader over a `Grid` per extension, because two copies of
+that reading could drift apart in a way that looks like a result.
 
 | the claim | the command |
 |---|---|
 | the jointly-tuned pair against the rule alone, the penalty alone, the untuned pair of those same halves and the pair the cross crowned, per schedule | `export_extension_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `extension_combo_tune.csv` |
 | what the joint screen ranked: its top five cells per schedule, their dials, and which of those dials sit at the end of a row | the same command -> `extension_combo_screen.csv` |
+| the same two claims for the pair the study SELECTED, whose rule half is the head of `p12_agg_top3.json`'s own validation ranking | the same command -> `extension_combo_tune_selected.csv`, `extension_combo_screen_selected.csv` |
 
-Which arms either view carries is read and not typed: the pair comes from
-`make_digits_p23.THE_PAIR`, the untuned line from `THE_SHIPPED_LINES` beside it,
-the tuned cell from `tables/p23_combo_tune_winners.json`, and the crowned pair
-from `tables/p15_stage_winner.json`, through the one reader this repository has
-of that record. The first view
-is on TEST because it reports; the second is on VALIDATION because a screen is a
-selection, and it is ranked by `study_emit`'s own rule so that its first row is
-the cell the record crowned.
+Which arms any of them carries is read and not typed: the pair comes from the
+grid's own generator - `make_digits_p23.THE_PAIR` or `make_digits_p25.THE_PAIR` -
+the untuned line from `THE_SHIPPED_LINES` beside it, the tuned cell from that
+grid's own record (`p23_combo_tune_winners.json`,
+`p25_combo_tune_selected_winners.json`), and the crowned pair from
+`tables/p15_stage_winner.json`, through the one reader this repository has of
+that record. The horizon views are on TEST because they report; the screen views
+are on VALIDATION because a screen is a selection, and each is ranked by
+`study_emit`'s own rule so that its first row is the cell its record crowned.
+The penalty-alone and crowned-pair rows are the same arms in both horizon views
+and the rule, untuned and tuned rows are not, because the second grid moves the
+rule half and nothing else.
 
 The reporting tools all take `--root $FOA_STUDY_DIR` and all accept
 `--csv <dir>`. `check_seeds.py`, `check_programme.py` and

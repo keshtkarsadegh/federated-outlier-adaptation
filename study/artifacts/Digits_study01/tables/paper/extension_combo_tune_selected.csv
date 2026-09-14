@@ -1,0 +1,11 @@
+family,role,arm,folds,adaptation,adaptation_sd,preservation,preservation_sd,score,score_sd,mean_vs_rule,folds_won_vs_rule,mean_vs_penalty,folds_won_vs_penalty,mean_vs_untuned,folds_won_vs_untuned,mean_vs_crowned,folds_won_vs_crowned
+concurrent,rule alone,anchor_h2,5,0.918806,0.019367,0.976961,0.002877,7.4697,1.7141,,,-3.0284,0,-2.8727,0,-2.7453,0
+concurrent,penalty alone,hybrid_seq_mix0p75,5,0.933655,0.014523,0.992395,0.001744,10.4980,1.4768,3.0284,5,,,0.1557,3,0.2830,2
+concurrent,untuned pair,anchor_h2_hybrid_seq_mix0p5,5,0.930857,0.011142,0.993637,0.001201,10.3424,1.0614,2.8727,5,-0.1557,2,,,0.1274,2
+concurrent,tuned pair,ctunesel_ewc0p1_kd0p05_T2_mix0p75_h4,5,0.922641,0.023966,0.993994,0.002583,9.5565,2.4546,2.0868,5,-0.9416,1,-0.7859,1,-0.6585,1
+concurrent,crowned pair,anchor_h2_ntd_b0p01_t0p5,5,0.934680,0.016632,0.988540,0.002456,10.2150,1.4477,2.7453,5,-0.2830,3,-0.1274,3,,
+sequential,rule alone,seq_fedavg,5,0.919633,0.011126,0.971413,0.002307,6.9976,0.9369,,,-3.6898,0,-1.7319,1,-3.5273,0
+sequential,penalty alone,hybrid_seq_mix0p75,5,0.935489,0.012312,0.992456,0.000912,10.6874,1.2832,3.6898,5,,,1.9579,5,0.1625,2
+sequential,untuned pair,seq_fedavg_hybrid_mix0p5,5,0.917761,0.013506,0.990604,0.002683,8.7295,1.1714,1.7319,4,-1.9579,0,,,-1.7954,0
+sequential,tuned pair,ctunesel_ewc0p05_kd0p11_T0p25_mix0p75,5,0.924214,0.017211,0.992006,0.002597,9.5150,1.8987,2.5174,4,-1.1724,1,0.7855,4,-1.0099,2
+sequential,crowned pair,seq_fedavg_ntd_b0p01_t2,5,0.935616,0.016127,0.990704,0.001783,10.5249,1.4912,3.5273,5,-0.1625,3,1.7954,5,,

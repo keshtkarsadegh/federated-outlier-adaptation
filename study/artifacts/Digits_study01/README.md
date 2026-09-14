@@ -37,11 +37,13 @@ paths and were not touched; only these copies were rewritten.
 | `tables/p18_*.json`, `tables/p20_*.json`, `tables/p21_c10_d10.json` | the carried arms at each federation size | `report_tables.py --what sizes` |
 | `tables/p21_blend_winners.json` | which blend cell each schedule's own screen crowned, and how many it ranked | `study_emit.py blend-full`, `study_record.py` |
 | `tables/p23_combo_tune_winners.json` | **the extension**: the jointly-tuned cell per schedule, its dials and the rule it runs | `study_emit.py combo-tune-full`, `export_extension_views.py` |
+| `tables/p25_combo_tune_selected_winners.json` | **the second extension**: the same, for the pair the study SELECTED rather than the one its test order leads with | `study_emit.py combo-tune-full-selected`, `export_extension_views.py` |
 | `tables/cohort_table.*`, `tables/cohort_composition.csv` | who is in the cohort and what they hold | `describe_cohort.py` |
 | `tables/clients_acc_on_g0.json` | the shipped model per cohort client | `study_emit.py`, `analyse_signals_fairness_cost.py` |
 | `tables/paper/*.csv` | the manuscript bundle, one CSV per view | `report_tables.py --what all --csv` |
 | `tables/paper/schedule_pairs.csv`, `schedule_top.csv` | the axis every stage selected on and no stage compared across: each schedule's own selected arm against the other schedule's, paired by fold, and the study's eight strongest arms with the schedule that ran them | `export_schedule_views.py` |
 | `tables/paper/extension_combo_tune.csv`, `extension_combo_screen.csv` | **the extension**, in the same directory and under a name that says so: the tuned pair against the four arms it is offered against, and the screen that chose it. Read by no figure and no generator | `export_extension_views.py` |
+| `tables/paper/extension_combo_tune_selected.csv`, `extension_combo_screen_selected.csv` | **the second extension**, the same two views for the pair the study selected - the rule half read from `p12_agg_top3.json`'s own validation ranking. Read by no figure and no generator | `export_extension_views.py` |
 | `tables/paper_figures/traces_*.csv`, `extreme_stop_rounds.csv` | the per-round views the figures are drawn on | `export_traces.py`, then `tools/paper_figures/fig_*.py` |
 | `tables/paper_figures/g0_training.csv`, `isolated_clients.csv` | the two baseline views | `export_baseline_views.py`, `fig_baselines.py` |
 | `tables/paper_figures/combos_folds.csv` | each combination against BOTH of its halves | `export_combo_folds.py` |

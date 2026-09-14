@@ -14,7 +14,7 @@ pip install -e ".[dev]"    # or: pip install -r requirements.txt
 pytest -q tests
 ```
 
-1,959 tests, on synthetic fixtures. They pin the study's invariants, not just
+1,961 tests, on synthetic fixtures. They pin the study's invariants, not just
 the plumbing. The ones that matter most to a reader of the paper:
 
 | Test file | What it pins |
@@ -217,7 +217,7 @@ file and its task count, and §9 the GPU-hours quoted here.
 
 ## What a reviewer can verify without a GPU
 
-- Every test in the suite (1,959).
+- Every test in the suite (1,961).
 - Every task file parses and passes the runner's guard.
 - Every derived artefact matches its checksum.
 - The cohort chain: worst-5 ⊂ worst-10 ⊂ worst-20, all cut from one ranking.

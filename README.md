@@ -23,7 +23,7 @@ two hundred retained writers, five-fold cross-validation throughout.
 | `tools/` | task-file generators, screen selectors, the SD19 fetcher, the table generator, the figure-view exporters |
 | `tools/paper_figures/` | the manuscript's seven figures, its `numbers.tex` and its twelve tables: render only, from the shipped CSV views |
 | `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
-| `tests/` | 1,959 tests, no GPU and no dataset required |
+| `tests/` | 1,961 tests, no GPU and no dataset required |
 | `study/jobs/` | the submission chains, one TOML per wave, with a `SHA256SUMS` |
 | `study/artifacts/` | the derived artefacts needed to *check* results, every task file the study ran among them, with a `SHA256SUMS` |
 | `study/UPSTREAM.sha256` | checksums of the source data and the packed cache |
@@ -62,7 +62,7 @@ git clone https://github.com/keshtkarsadegh/federated-outlier-adaptation.git && 
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 
-pytest -q tests                              # 1,959 tests, ~2 minutes, no GPU
+pytest -q tests                              # 1,961 tests, ~2 minutes, no GPU
 cd study/artifacts && sha256sum -c SHA256SUMS && cd ../..
 ```
 
