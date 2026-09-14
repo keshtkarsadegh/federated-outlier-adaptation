@@ -246,6 +246,40 @@ of every stage. And it is not free of the horizon: an arm that fires at round 56
 still ran 56 rounds, which is why `plateau_arms.csv` reports the fire round
 beside the kept round rather than folding the two together.
 
+### And chosen where it is not then measured?
+
+Holding the two extremes out is the weakest form of that question: it removes
+two arms. `tools/plateau_holdout.py` asks the strong one - choose `(k, eps)` on
+a designated subset and evaluate it, unchanged, on a disjoint one - in three
+directions, over **28 protocols**: by fold, by stage, and by ten seeded random
+halves of the arms. A fold split is the one that needs care, because the
+published rule runs on the fold MEAN of an arm's five folds: there is one trace
+per arm and cutting it in half would not be a fold split at all. So the arm is
+**re-averaged over the selected folds alone**, which is the trace a study run on
+those folds alone would have had, and the five-fold filter is applied to the
+full five so that a protocol changes the traces and never which arms are in the
+table.
+
+**All 28 protocols choose `k = 20`.** Eleven of them pick a positive margin
+beside it, and `held_gain_at_primary` prices what that cost: nothing, to a
+hundredth of a point. **And no protocol loses on the set it did not see** - the
+worst held-out gain of the 28 is zero, on the two federations where the rule
+never fires at all. Leave one fold out, choose on the other four and evaluate
+on the fold the setting never saw: **+1.83p, sd 0.49p** over the five folds. Cut
+the arms in half at random, ten times: **+1.33p, sd 0.23p** on the half held
+out. Both sit above the in-sample +1.19p rather than below it, which is not a
+stronger result but a different one - a single fold is a noisier trace than the
+five-fold mean, and a noisier trace is one the fixed horizon costs more on.
+
+The two extreme arrangements are read off the full five-fold traces whatever
+the setting was chosen on, because that is what the rounds above are quoted
+from: **`dual` keeps round 8 and `double` round 36, at the same scores, under
+all 28 protocols.** `plateau_holdout_protocols.csv` carries the rows,
+`plateau_holdout_extremes.csv` the 56 extreme checks and
+`plateau_holdout_grids.csv` the thirteen fold sets against all sixteen cells;
+`tests/test_plateau_holdout.py` pins the count, the patience, the sign of every
+held-out gain and both extreme rounds.
+
 ---
 
 ## 6. Only five of the eight signals can be steered at all
@@ -425,6 +459,11 @@ python tools/stopping_table.py --root $FOA_STUDY_DIR \
 # the plateau on the cohort's own accuracy, section 5
 #     -> $FOA_STUDY_DIR/tables/stopping/plateau_*.csv
 python tools/plateau_rule.py --root $FOA_STUDY_DIR \
+       --out $FOA_STUDY_DIR/tables/stopping
+
+# is that setting an artefact of the arms it was chosen on? section 5
+#     -> $FOA_STUDY_DIR/tables/stopping/plateau_holdout_*.csv
+python tools/plateau_holdout.py --root $FOA_STUDY_DIR \
        --out $FOA_STUDY_DIR/tables/stopping
 
 # the extremes on their own, and the figure in section 7

@@ -3,7 +3,7 @@
 This directory is the study's **metadata core**: the records that say what was
 selected, what was run, against which rows, and what came out - everything a
 reader needs to check a claim in the manuscript against something other than the
-manuscript. It is 7.3 MB and 154 files besides this one, which is small enough
+manuscript. It is 7.4 MB and 157 files besides this one, which is small enough
 to live in git and be diffed like source.
 
 It is not the study. The study is 3,855 run folders and about 4 million files.
@@ -46,7 +46,8 @@ paths and were not touched; only these copies were rewritten.
 | `tables/paper_figures/g0_training.csv`, `isolated_clients.csv` | the two baseline views | `export_baseline_views.py`, `fig_baselines.py` |
 | `tables/paper_figures/combos_folds.csv` | each combination against BOTH of its halves | `export_combo_folds.py` |
 | `tables/stopping/stopping_*.csv` | what the fixed horizon cost every arm | `stopping_table.py --csv` |
-| `tables/stopping/plateau_*.csv` | what a plateau on the cohort's own accuracy would have delivered instead | `plateau_rule.py --out` |
+| `tables/stopping/plateau_arms.csv` and the three views beside it | what a plateau on the cohort's own accuracy would have delivered instead | `plateau_rule.py --out` |
+| `tables/stopping/plateau_holdout_*.csv` | whether that plateau's setting survives being chosen on folds, stages or arms it is not then measured on | `plateau_holdout.py --out` |
 | `tables/combos.csv`, `composition.csv`, `blends.csv` | the paired differences, folds expanded | `compare_arms.py --csv` |
 | `tables/weight_sensitivity_*.csv` | do the winners survive a different `w`? | `weight_sensitivity.py` |
 | `tables/BOUNDARY_HITS.txt` | winners sitting at the edge of their grid row | written by `study_emit.py`, read by hand |
