@@ -20,20 +20,18 @@ keywords:
 authors:
   - family-names: Keshtkar
     given-names: Sadegh
-    email: sadegh.keshtkar@gwdg.de
-    affiliation: >-
-      Gesellschaft fuer wissenschaftliche Datenverarbeitung mbH Goettingen
-      (GWDG)
+    email: sadegh.keshtkar@uni-goettingen.de
+    affiliation: Georg-August-Universitaet Goettingen
   - family-names: Bidollahkhani
     given-names: Michael
     email: michael.bkhani@uni-goettingen.de
-    affiliation: University of Goettingen
+    affiliation: Georg-August-Universitaet Goettingen
   - family-names: Kunkel
     given-names: Julian M.
     email: julian.kunkel@gwdg.de
     affiliation: >-
-      Gesellschaft fuer wissenschaftliche Datenverarbeitung mbH Goettingen
-      (GWDG) and University of Goettingen
+      Georg-August-Universitaet Goettingen and Gesellschaft fuer
+      wissenschaftliche Datenverarbeitung mbH Goettingen (GWDG)
 preferred-citation:
   type: unpublished
   title: >-
