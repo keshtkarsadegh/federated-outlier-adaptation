@@ -16,8 +16,11 @@ tell at a glance which rows are the programme and which are the extension.
 WHAT THE FIRST VIEW ANSWERS. A tuned pair is only worth reporting against the
 things it is supposed to beat, so each schedule contributes five arms - the
 rule alone, the penalty alone, the untuned pair of those same two halves, the
-tuned pair, and the best of the eighteen shipped combinations - and every arm
-carries its paired difference against the other four. A mean is not enough:
+tuned pair, and the pair the combination stage crowned - and every arm carries
+its paired difference against the other four. THE CROWNED PAIR IS THE BASELINE,
+not whichever of the eighteen combinations leads the column it would be read
+in: the study shipped the crowned one, and an arm picked at report time for
+topping a column is not an arm anybody was ever offered. A mean is not enough:
 the combination stage's whole finding is that gains of this size sit inside the
 fold spread, so the difference columns say how many of the five folds the row
 actually won as well as by how much on average.
@@ -27,9 +30,10 @@ actually won as well as by how much on average.
 
 WHICH ARMS ARE READ, NOT TYPED. The pair is `make_digits_p23.THE_PAIR`, the
 untuned line is `make_digits_p23.THE_SHIPPED_LINES`, the tuned cell is read out
-of `tables/p23_combo_tune_winners.json`, and the best shipped combination is
-the highest-scoring pair of the cross `tables/p12_agg_top3.json` x
-`tables/p13_reg_top3.json` under this file's own score. Naming any of them here
+of `tables/p23_combo_tune_winners.json`, and the crowned pair comes through
+`export_schedule_views.crowned_pair`, this repository's one reader of
+`tables/p15_stage_winner.json` - the cell that record crowned, and for the other
+schedule the first of its cells in the crowning's own order. Naming any of them here
 would let this view outlive the selection that put the arm in it - the failure
 `compare_arms.py` documents at length for the blends.
 
@@ -58,12 +62,12 @@ sys.path.insert(0, str(REPO / "src"))
 import report_tables  # noqa: E402
 from compare_arms import (  # noqa: E402
     FAMILIES,
-    _top_lists,
     baselines,
     paired,
     penalties,
     per_fold,
 )
+from export_schedule_views import crowned_pair  # noqa: E402
 
 from federated_outlier_adaptation.training import reg_cells  # noqa: E402
 from federated_outlier_adaptation.training import study_lines as SL  # noqa: E402
@@ -76,14 +80,14 @@ SCHEDULE = {"concurrent": "parallel", "sequential": "cyclic"}
 
 #: The five arms of one schedule, in the order the table argues them: what you
 #: had, what you had instead, what the cross ran, what the joint screen chose,
-#: and the best thing the programme itself shipped.
+#: and the pair the programme itself crowned.
 ROLES = ("rule alone", "penalty alone", "untuned pair", "tuned pair",
-         "best shipped combination")
+         "crowned pair")
 
 #: The four rows every row is differenced against, and the column stem each
 #: difference is written under.
 AGAINST = (("rule alone", "rule"), ("penalty alone", "penalty"),
-           ("untuned pair", "untuned"), ("best shipped combination", "best_combo"))
+           ("untuned pair", "untuned"), ("crowned pair", "crowned"))
 
 COLUMNS = (("family", "role", "arm", "folds",
             "adaptation", "adaptation_sd", "preservation", "preservation_sd",
@@ -117,27 +121,7 @@ def tuned_winners(root: Path) -> Dict[str, str]:
             if f"combo-tune/{family}" in record}
 
 
-def best_combination(root: Path, family: str, a0: float, p0: float) -> Optional[str]:
-    """
-    The highest-scoring pair of the cross, under this file's own score.
-
-    Read off the two shortlists the cross was emitted from rather than off
-    `tables/paper/combos.csv`, so this view does not depend on another view
-    having been regenerated first. Ties go to the id, because a table whose top
-    row moves with dictionary order is a table nobody can diff.
-    """
-    agg_top, reg_top = _top_lists(root)
-    scored = per_fold(root, "d01_combo_", family, a0, p0)
-    pairs = [f"{agg_id}_{reg_id}"
-             for agg_id in agg_top.get(family, [])
-             for reg_id in reg_top.get(family, [])
-             if scored.get(f"{agg_id}_{reg_id}")]
-    if not pairs:
-        return None
-    return max(pairs, key=lambda cell: (st.mean(scored[cell].values()), cell))
-
-
-def arm_sources(root: Path, family: str, a0: float, p0: float) -> List[Tuple[str, str, str]]:
+def arm_sources(root: Path, family: str) -> List[Tuple[str, str, str]]:
     """``(role, arm id, run-folder prefix)`` for one schedule's five arms."""
     # make_digits_p23 is what named the pair and the line it copies; naming
     # them a second time here is how a view starts reporting a pair the screen
@@ -152,14 +136,15 @@ def arm_sources(root: Path, family: str, a0: float, p0: float) -> List[Tuple[str
             f"FATAL: the joint screen crowned no {family} cell. The tuned row "
             "is the point of this view and is not left out silently."
         )
-    best = best_combination(root, family, a0, p0)
-    found = [("rule alone", rule, "d01_aggfull_"),
-             ("penalty alone", penalty, "d01_regfull_"),
-             ("untuned pair", THE_SHIPPED_LINES[family], "d01_combo_"),
-             ("tuned pair", winner, f"d01_ctunefull_{family}_")]
-    if best is not None:
-        found.append(("best shipped combination", best, "d01_combo_"))
-    return found
+    # The crowned pair is a combination cell whatever schedule crowned it, so
+    # both halves ran under the cross's own stem; `crowned_pair` is what decides
+    # which cell belongs to which schedule, and deciding that a second way here
+    # is how two views of one selection begin to disagree without failing.
+    return [("rule alone", rule, "d01_aggfull_"),
+            ("penalty alone", penalty, "d01_regfull_"),
+            ("untuned pair", THE_SHIPPED_LINES[family], "d01_combo_"),
+            ("tuned pair", winner, f"d01_ctunefull_{family}_"),
+            ("crowned pair", crowned_pair(root)[family], "d01_combo_")]
 
 
 # --------------------------------------------------------------- the rows
@@ -184,7 +169,7 @@ def rows_of(root: Path, a0: float, p0: float) -> List[dict]:
     """The five arms of each schedule, each against the other four."""
     out: List[dict] = []
     for family in FAMILIES:
-        sources = arm_sources(root, family, a0, p0)
+        sources = arm_sources(root, family)
         # THE FOLD SCORES ARE READ ONCE PER PREFIX. The difference columns are
         # paired within a fold, so every arm of a schedule has to be scored by
         # one reader on one basis or the pairing is between two conventions.

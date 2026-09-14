@@ -183,16 +183,20 @@ into it.
 The two cells it crowned were re-run at the reporting horizon and are in
 `tables/paper/extension_combo_tune.csv`, five arms per schedule on the test
 basis: the rule alone, the penalty alone, the untuned pair of those same two
-halves, the tuned pair, and the best of the eighteen combinations above.
+halves, the tuned pair, and the pair the stage above crowned - the arm the
+programme shipped, rather than whichever of the eighteen leads the column it
+would be read in.
 
     concurrent  tuned pair  9.34p   vs untuned -0.75 (2 of 5 folds)
                                     vs penalty alone -1.16 (1 of 5)
+                                    vs crowned pair -0.88 (1 of 5)
     sequential  tuned pair  9.14p   vs untuned +0.03 (3 of 5 folds)
                                     vs penalty alone -1.55 (0 of 5)
+                                    vs crowned pair -1.38 (0 of 5)
 
 **Moving the two halves together did not find a pair that beats the point where
 each half is best alone.** On neither schedule does the tuned pair clear the
-penalty on its own, and on neither does it clear the best shipped combination;
+penalty on its own, and on neither does it clear the pair the stage crowned;
 the one difference that is even positive is +0.03 on three folds of five, which
 is the same shape of non-result as every row of the paired table above. So the
 sentence this document draws - that the two halves do not measurably compose -

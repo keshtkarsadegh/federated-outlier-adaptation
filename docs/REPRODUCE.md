@@ -462,7 +462,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | the six per-round views, and the two rounds the extreme figure marks | `export_traces.py --root $FOA_STUDY_DIR --out <dir>` |
 | g-0's own training history, and the isolated clients | `export_baseline_views.py --root $FOA_STUDY_DIR --out <dir>` |
 | each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
-| does the schedule matter? seven pairs, each schedule's own selected arm against the other's, cyclic minus parallel and paired by fold | `export_schedule_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `schedule_pairs.csv` |
+| does the schedule matter? six pairs, each schedule's own selected arm against the other's, cyclic minus parallel and paired by fold | `export_schedule_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `schedule_pairs.csv` |
 | the study's eight strongest arms across the three reporting stages, and which schedule ran each | the same command -> `schedule_top.csv` |
 | the two extracts the forgetting-signals section is written on | `export_signals_summary.py --root $FOA_STUDY_DIR --out <dir>` |
 | the five writers the two selection rankings disagree about | `export_decouple_example.py --root $FOA_STUDY_DIR --out <dir>` |
@@ -478,13 +478,15 @@ schedules separately - correctly, because a rule that exists on only one of them
 cannot be ranked against a rule that exists on only the other - and the cost is
 that the comparison a reader makes first is spread across three files sorted by
 score. `schedule_pairs.csv` pairs it arm by arm, and which arm each schedule
-contributes is read and not typed: the rule and the blend from
-`make_digits_p23.THE_PAIR`, the logit and NTD cells from
-`tables/p13_reg_method_winners.json`, which crowns per method AND per schedule,
-the best combination out of `tables/p15_combination_grid.json` under the same
-score, the crowned pair and the arm carried beside it out of
-`tables/p15_stage_winner.json`, and the control out of `agg_cells`. Both views
-are TEST, because both report.
+contributes is read and not typed: the rule from the head of
+`tables/p12_agg_top3.json`'s own ranking, under the basis that record says it
+selected on, the blend from `make_digits_p23.THE_PAIR`, the logit and NTD cells
+from `tables/p13_reg_method_winners.json`, which crowns per method AND per
+schedule, the crowned pair and the arm carried beside it out of
+`tables/p15_stage_winner.json`, and the control out of `agg_cells`. Every row is
+an arm a selection record names - the control is the fixed control, which is
+what the selecting is measured against - and no row is ranked into the table by
+the numbers the table then prints. Both views are TEST, because both report.
 
 ### The extension's own views
 
@@ -497,13 +499,14 @@ directory can see at a glance which two of its files are not the programme.
 
 | the claim | the command |
 |---|---|
-| the jointly-tuned pair against the rule alone, the penalty alone, the untuned pair of those same halves and the best shipped combination, per schedule | `export_extension_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `extension_combo_tune.csv` |
+| the jointly-tuned pair against the rule alone, the penalty alone, the untuned pair of those same halves and the pair the cross crowned, per schedule | `export_extension_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `extension_combo_tune.csv` |
 | what the joint screen ranked: its top five cells per schedule, their dials, and which of those dials sit at the end of a row | the same command -> `extension_combo_screen.csv` |
 
 Which arms either view carries is read and not typed: the pair comes from
 `make_digits_p23.THE_PAIR`, the untuned line from `THE_SHIPPED_LINES` beside it,
-the tuned cell from `tables/p23_combo_tune_winners.json`, and the best shipped
-combination from the two shortlists the cross was emitted from. The first view
+the tuned cell from `tables/p23_combo_tune_winners.json`, and the crowned pair
+from `tables/p15_stage_winner.json`, through the one reader this repository has
+of that record. The first view
 is on TEST because it reports; the second is on VALIDATION because a screen is a
 selection, and it is ranked by `study_emit`'s own rule so that its first row is
 the cell the record crowned.

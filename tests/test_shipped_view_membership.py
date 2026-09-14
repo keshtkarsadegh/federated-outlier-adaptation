@@ -52,9 +52,8 @@ EXTENSION_VIEWS = ("extension_combo_tune.csv", "extension_combo_screen.csv")
 #: arms.
 SCHEDULE_VIEWS = ("schedule_pairs.csv", "schedule_top.csv")
 
-#: The seven pairs `schedule_pairs.csv` states, in the order it states them.
-SCHEDULE_PAIRS = ("control", "rule_alone", "blend", "logit", "ntd",
-                  "best_combo", "crowned")
+#: The six pairs `schedule_pairs.csv` states, in the order it states them.
+SCHEDULE_PAIRS = ("control", "rule_selected", "blend", "logit", "ntd", "crowned")
 
 
 def _rows(path: Path) -> list:
@@ -228,6 +227,31 @@ def test_the_tuned_row_and_the_screens_first_rank_are_the_crowned_cell():
     assert top == crowned
 
 
+def test_the_extensions_baseline_is_the_crowned_pair_and_not_a_test_leader():
+    """
+    The arm the tuned pair is offered against is the one the programme shipped.
+
+    It is read through `export_schedule_views.crowned_pair`, so this checks the
+    shipped view against `p15_stage_winner.json` read here: the crowned cell for
+    the schedule that won it, and for the other schedule the first of its cells
+    in the crowning's own order. A baseline re-ranked at report time would drift
+    off both, and it would do it silently - the row would still be there.
+    """
+    import export_schedule_views as schedule
+
+    record = json.loads((TABLES / "p15_stage_winner.json").read_text())
+    families = schedule.combination_families(STUDY)
+    rows = {row["family"]: row["arm"]
+            for row in _rows(TABLES / "paper" / "extension_combo_tune.csv")
+            if row["role"] == "crowned pair"}
+
+    crowned = record["family"]
+    other = next(family for family in ("concurrent", "sequential") if family != crowned)
+    assert rows[crowned] == record["winner"]
+    assert rows[other] == next(entry["id"] for entry in record["ranked"]
+                               if families[entry["id"]] == other)
+
+
 def test_the_screen_summary_reports_the_dials_and_where_they_sit():
     """
     Every winner of this grid sits at an edge in every dial but one, which is
@@ -271,7 +295,7 @@ def test_the_schedule_views_carry_the_columns_their_tool_declares():
 
 def test_the_pairs_view_is_one_row_per_pair_and_both_arms_are_five_fold():
     """
-    Seven pairs and no eighth. A pair that fell out of this table would take a
+    Six pairs and no seventh. A pair that fell out of this table would take a
     comparison with it and leave a table that still renders - and the row most
     likely to fall out is the one whose two arms are two different cells,
     because that is the row a reader would have to build by hand.
@@ -310,7 +334,8 @@ def test_every_arm_of_the_pairs_view_is_named_by_a_selection_record():
     crowned = schedule.crowned_pair(STUDY)
     expected = {
         "control": (control, control),
-        "rule_alone": (THE_PAIR["concurrent"][0], THE_PAIR["sequential"][0]),
+        "rule_selected": (schedule.selected_rule(STUDY, "concurrent"),
+                          schedule.selected_rule(STUDY, "sequential")),
         "blend": (THE_PAIR["concurrent"][1], THE_PAIR["sequential"][1]),
         "logit": (schedule.method_winner(STUDY, "logit_l2", "concurrent"),
                   schedule.method_winner(STUDY, "logit_l2", "sequential")),
@@ -323,18 +348,27 @@ def test_every_arm_of_the_pairs_view_is_named_by_a_selection_record():
         assert (row["parallel_cell"], row["cyclic_cell"]) == (parallel, cyclic), pair
 
 
-def test_the_best_combination_row_is_the_top_row_of_the_shipped_combination_view():
+def test_the_rule_row_is_the_head_of_the_screens_own_validation_ranking():
     """
-    The tool ranks the cross itself, out of the grid record, so that it does not
-    depend on `combos.csv` having been regenerated first. That independence is
-    only worth having if the two agree, and this is where they are made to.
+    The row that replaced a test leader, checked against the record itself.
+
+    `selected_rule` reads `p12_agg_top3.json` through the basis that record
+    says it was ranked on; this reads the same file here, so the two have to
+    agree on which rule each schedule selected. That the basis is VALIDATION is
+    the whole point of the row and is asserted rather than assumed: the same
+    record's test order puts a DIFFERENT parallel rule first, and a view that
+    quietly read that one would be reporting an arm chosen after the fact.
     """
+    record = json.loads((TABLES / "p12_agg_top3.json").read_text())
+    assert record["rank_by"] == "val"
+
     rows = {row["pair"]: row for row in _rows(TABLES / "paper" / "schedule_pairs.csv")}
-    combos = _rows(TABLES / "paper" / "combos.csv")
-    for column, family in (("parallel_cell", "parallel"), ("cyclic_cell", "cyclic")):
-        best = max((row for row in combos if row["family"] == family),
-                   key=lambda row: (float(row["score"]), row["cell"]))
-        assert rows["best_combo"][column] == best["cell"], family
+    for family, column in (("concurrent", "parallel_cell"),
+                           ("sequential", "cyclic_cell")):
+        assert (rows["rule_selected"][column]
+                == record["rankings"][family]["val"][0]["id"]), family
+    assert (rows["rule_selected"]["parallel_cell"]
+            != record["rankings"]["concurrent"]["test"][0]["id"])
 
 
 def test_every_arm_of_the_pairs_view_agrees_with_the_view_it_is_quoted_from():

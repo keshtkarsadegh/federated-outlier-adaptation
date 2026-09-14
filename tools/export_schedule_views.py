@@ -18,12 +18,18 @@ rather than something screened beside it: every arm below is an arm a shipped
 table already reports, read at the reporting horizon on the basis those tables
 are measured on, and no `ctune_` folder is read anywhere here.
 
-WHAT THE FIRST VIEW ANSWERS. Seven pairs, each the same thing run both ways -
-the control, the best rule alone, the best penalty alone, each schedule's own
-selected logit and NTD cell, the best combination of the cross, and the crowned
-pair against the cyclic arm that was carried beside it. A pair is only worth
-stating if both halves are the arm that schedule actually selected, which is why
-five of the seven are two DIFFERENT cells: the cyclic grid crowned
+WHAT THE FIRST VIEW ANSWERS. Six pairs, each the same thing run both ways -
+the control, each schedule's selected rule, the penalty that rule is paired
+with, each schedule's own selected logit and NTD cell, and the crowned pair
+against the cyclic arm that was carried beside it. EVERY ROW IS AN ARM A
+SELECTION RECORD NAMES, and the control is the one row nothing selected because
+it is what the selecting is measured against. Nothing is ranked into this table
+by the numbers this table then prints: a row that led the test column at report
+time would be a row the study never shipped, which is what the two rows that
+have left this view were - the rule that led on test, now the rule its schedule
+selected, and the best combination of the cross, which is gone. A pair is only
+worth stating if both halves are the arm that schedule actually selected, which
+is why four of the six are two DIFFERENT cells: the cyclic grid crowned
 `ntd_b0p01_t2` where the parallel one crowned `ntd_b0p01_t0p5`, and forcing one
 cell across both schedules would report a setting one of them never chose.
 
@@ -36,18 +42,18 @@ differences and how many of the five the cyclic half won, beside the mean -
 its spread did to the combination stage, and this table is the same size of
 effect.
 
-    schedule_pairs.csv   seven pairs, cyclic minus parallel, TEST, full horizon
+    schedule_pairs.csv   six pairs, cyclic minus parallel, TEST, full horizon
     schedule_top.csv     the study's eight strongest arms, with their schedule
 
-WHICH ARMS ARE READ, NOT TYPED. The rule and the blend are the two halves of
-`make_digits_p23.THE_PAIR`, which is where this repository records the best rule
-and the best penalty of each schedule by TEST score - the very two rows this
-table wants - so they are read from there rather than re-derived from two views
-that may not have been regenerated. The logit and NTD cells come from
-`tables/p13_reg_method_winners.json`, which crowns per method AND per schedule.
-The best combination is ranked out of `tables/p15_combination_grid.json` under
-this file's own score, and the crowned pair and the arm carried beside it out of
-`tables/p15_stage_winner.json`. The control is the one unflagged cell of
+WHICH ARMS ARE READ, NOT TYPED. The rule is the head of the aggregation
+screen's own ranking in `tables/p12_agg_top3.json`, read under the basis that
+record says it was ranked on - which is the cell each schedule selected, and on
+the parallel side is NOT the cell that record's test order puts first. The blend
+is the penalty half of `make_digits_p23.THE_PAIR`, which is where this
+repository records the penalty each schedule's rule was paired with. The logit
+and NTD cells come from `tables/p13_reg_method_winners.json`, which crowns per
+method AND per schedule, and the crowned pair and the arm carried beside it out
+of `tables/p15_stage_winner.json`. The control is the one unflagged cell of
 `agg_cells.control_cells()`. Naming any of them here would let this view outlive
 the selection that put the arm in it.
 
@@ -107,6 +113,7 @@ TOP_COLUMNS = ("rank", "cell", "schedule", "stage", "folds",
                "adaptation", "preservation", "score")
 
 #: The selection records each row's two arms are read out of.
+AGG_SHORTLIST = "p12_agg_top3.json"
 REG_METHOD_WINNERS = "p13_reg_method_winners.json"
 COMBINATION_GRID = "p15_combination_grid.json"
 STAGE_WINNER = "p15_stage_winner.json"
@@ -229,6 +236,30 @@ def control_arm() -> str:
     return plain[0]
 
 
+def selected_rule(root: Path, family: str) -> str:
+    """
+    The server rule one schedule's screen selected, from the head of its own
+    ranking.
+
+    The record holds both orderings and names the one it selected on in
+    `rank_by`, so the list is chosen by that field rather than by naming a basis
+    here: a shortlist re-cut on the other basis would move this row without
+    anything failing, and on the parallel side the two orderings disagree about
+    which rule comes first. The record's `top` is the same shortlist as a set
+    and carries no order, which is why the head of `rankings` is what is read.
+    """
+    record = _record(root, AGG_SHORTLIST)
+    basis = record.get("rank_by")
+    ranking = ((record.get("rankings") or {}).get(family) or {}).get(basis) or []
+    if not ranking:
+        raise SystemExit(
+            f"FATAL: {AGG_SHORTLIST} ranks no {family} rule under {basis!r}. "
+            "The rule each schedule selected is a row of this table, and the "
+            "other schedule's is not a substitute for it."
+        )
+    return ranking[0]["id"]
+
+
 def method_winner(root: Path, method: str, family: str) -> str:
     """The cell one penalty's grid crowned for ONE schedule, from its record."""
     entry = _record(root, REG_METHOD_WINNERS).get(f"{method}/{family}") or {}
@@ -255,27 +286,6 @@ def combination_families(root: Path) -> Dict[str, str]:
             "ran nothing for this table to report."
         )
     return found
-
-
-def best_combination(root: Path, family: str, scored: dict, a0: float, p0: float) -> str:
-    """
-    The highest-scoring pair of the cross, under this file's own score.
-
-    Ranked out of the grid record the cross was emitted from rather than off
-    `tables/paper/combos.csv`, so this view does not depend on another view
-    having been regenerated first. Ties go to the id, because a table whose top
-    row moves with dictionary order is a table nobody can diff.
-    """
-    schedule = SCHEDULE[family]
-    pairs = [cell for cell, ran in combination_families(root).items()
-             if ran == family and len(scored.get((cell, schedule), {})) >= len(SL.FOLDS)]
-    if not pairs:
-        raise SystemExit(
-            f"FATAL: the cross ran no complete {family} pair under {root}. "
-            "The best combination is a row of this table and is not left out "
-            "silently."
-        )
-    return max(pairs, key=lambda cell: (st.mean(means(scored[(cell, schedule)], a0, p0)[2]), cell))
 
 
 def crowned_pair(root: Path) -> Dict[str, str]:
@@ -311,22 +321,20 @@ def crowned_pair(root: Path) -> Dict[str, str]:
     return found
 
 
-def pair_arms(root: Path, scored: dict, a0: float, p0: float) -> List[Tuple[str, Dict[str, str]]]:
+def pair_arms(root: Path) -> List[Tuple[str, Dict[str, str]]]:
     """``(pair name, {family: arm id})`` for every row of the first view."""
-    # make_digits_p23 is where this repository records the best rule and the
-    # best penalty of each schedule by TEST score. Imported inside the call
-    # because it reads a study record of its own at import time.
+    # make_digits_p23 is where this repository records which penalty each
+    # schedule's rule was paired with. Imported inside the call because it reads
+    # a study record of its own at import time.
     from make_digits_p23 import THE_PAIR
 
     control = control_arm()
     return [
         ("control", {family: control for family in FAMILIES}),
-        ("rule_alone", {family: THE_PAIR[family][0] for family in FAMILIES}),
+        ("rule_selected", {family: selected_rule(root, family) for family in FAMILIES}),
         ("blend", {family: THE_PAIR[family][1] for family in FAMILIES}),
         ("logit", {family: method_winner(root, "logit_l2", family) for family in FAMILIES}),
         ("ntd", {family: method_winner(root, "ntd", family) for family in FAMILIES}),
-        ("best_combo", {family: best_combination(root, family, scored, a0, p0)
-                        for family in FAMILIES}),
         ("crowned", crowned_pair(root)),
     ]
 
@@ -335,7 +343,7 @@ def pair_arms(root: Path, scored: dict, a0: float, p0: float) -> List[Tuple[str,
 def pair_rows(root: Path, scored: dict, a0: float, p0: float) -> List[dict]:
     """Each pair's two arms, and the cyclic half's per-fold lead over the other."""
     out: List[dict] = []
-    for name, arms in pair_arms(root, scored, a0, p0):
+    for name, arms in pair_arms(root):
         row = {"pair": name,
                "parallel_cell": arms["concurrent"], "cyclic_cell": arms["sequential"]}
         scores: Dict[str, List[float]] = {}
