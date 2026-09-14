@@ -45,6 +45,11 @@ CROWNED = "seq_delta_capped_hybrid_mix0p5"
 
 TOOLS = str(Path(__file__).resolve().parents[1] / "tools")
 
+#: The aggregation screen's own shortlist record, as it ships in the tree. The
+#: stage-8 cell list this stage looks its winner up in is built from it.
+SHORTLIST_RECORD = (Path(__file__).resolve().parents[1] / "study" / "artifacts"
+                    / "Digits_study01" / "tables" / "p12_agg_top3.json")
+
 
 @pytest.fixture()
 def tools_path():
@@ -329,13 +334,22 @@ def stage10(tools_path):
 
 @pytest.fixture()
 def crowned(tmp_path):
-    """A study root carrying nothing but the crowning this stage reads."""
+    """
+    A study root carrying the two records this stage reads and nothing else.
+
+    The crowning, and the aggregation shortlist the cell list the crowning is
+    looked up in is built from. The second is copied out of the shipped
+    artefact rather than restated here, for the same reason the stage reads it
+    rather than holding a copy: a shortlist written down in a test goes stale
+    the same way one written down in source does.
+    """
     tables = tmp_path / "tables"
     tables.mkdir(parents=True, exist_ok=True)
     (tables / "p15_stage_winner.json").write_text(json.dumps({
         "rank_by": "test", "winner": CROWNED, "family": "sequential",
         "aggregation": "seq_delta_capped", "regulariser": "hybrid_mix0p5",
     }))
+    (tables / "p12_agg_top3.json").write_text(SHORTLIST_RECORD.read_text())
     return tmp_path
 
 

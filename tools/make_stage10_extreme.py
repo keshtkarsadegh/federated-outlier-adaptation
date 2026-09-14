@@ -69,7 +69,7 @@ def winning_combo(root) -> dict:
     second statement of them.
     """
     winner = winning_combo_id(root)
-    by_id = {cell["id"]: cell for cell in combo_cells()}
+    by_id = {cell["id"]: cell for cell in combo_cells(root)}
     if winner not in by_id:
         raise SystemExit(
             f"FATAL: the crowning names {winner!r}, which is not a stage-8 "

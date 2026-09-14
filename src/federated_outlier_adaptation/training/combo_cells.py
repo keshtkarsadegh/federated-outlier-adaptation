@@ -31,11 +31,30 @@ uses, from the same two winners, so the blend in this table and the blend in
 The blends differ between the schedules on purpose: ``mix`` weights the KD half
 against the Fisher half, and the two schedules chose differently, so the
 concurrent half of the cross carries 0.75 and the sequential half 0.5.
+
+The shortlist is read, not written down
+---------------------------------------
+Which three server rules a schedule contributes is a **selection result**, and
+this module reads it from the screen's own record - ``tables/p12_agg_top3.json``
+under a study root - rather than holding a copy of it.  A hardcoded shortlist is
+correct only until the screen is re-run, and when it stops being correct nothing
+says so: the stage still emits, still trains, and reports a cross the current
+selection never chose.  This module held one for exactly that long, and two of
+its three ``sequential`` ids - ``seq_mix_r0p7`` and ``seq_delta_scaled`` - were
+not in the shortlist the study went on to run.  With no record to read it
+refuses by name, because a guessed shortlist emits a task file indistinguishable
+from a real one and the mistake surfaces only as a table nobody can reproduce.
+
+Every entry point therefore takes a study root, and reads it at call time rather
+than at import, so this module can be imported without a study and a generator
+pointed at one study cannot carry another's shortlist.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 from federated_outlier_adaptation.training import agg_cells, reg_cells
 
@@ -44,26 +63,20 @@ FULL_ROUNDS = 100
 
 #: The two winners the kd+fisher hybrid is built from, by stage-7 cell id.
 #: Repointed with the re-ranged reg grid: T=16 left the kd row when the top of
-#: that row was dropped as measured-saturated.  Same caveat as AGG_CELLS below -
-#: this should be read from the selection record, not written down here.
+#: that row was dropped as measured-saturated.  Same caveat as the aggregation
+#: shortlist below, which is now read from its screen's record - this one is
+#: still written down, and should be read from the stage-7 record too.
 HYBRID_KD_CELL = "kd_T8_a0p7"
 HYBRID_FISHER_CELL = "fisher_lam0p1"
 
 #: Blend weight of the hybrid on each schedule; see the module docstring.
 HYBRID_MIX = {"concurrent": 0.75, "sequential": 0.5}
 
-#: The three server rules of each schedule, by stage-6 cell id.
-#: WRITTEN DOWN, AND THEY SHOULD BE READ. These are the shortlists a previous
-#: cross was built from. A hardcoded shortlist is correct only until the screen
-#: is re-run, and when it is wrong it is wrong silently: the stage still emits,
-#: still trains, and reports a cross the current selection never chose. The ids
-#: below have been repointed to cells that exist under the reparameterised grid,
-#: which keeps the stage runnable; the proper fix is to read
-#: tables/p12_agg_top3.json and refuse rather than guess when it is absent.
-AGG_CELLS = {
-    "concurrent": ("anchor_h0p125", "eta_0p1", "fedadam_lr0p001_tau0p001"),
-    "sequential": ("seq_delta_capped", "seq_mix_r0p7", "seq_delta_scaled"),
-}
+#: The record the three server rules of each schedule are read from, under a
+#: study root's ``tables/``.  ``compare_arms.py`` and ``study_emit.py`` read the
+#: same file for the same shortlist, so the cross this stage describes and the
+#: cross the study ran cannot come apart.
+AGG_SHORTLIST_RECORD = "p12_agg_top3.json"
 
 #: The two non-hybrid penalties, by stage-7 cell id.  The hybrid is built rather
 #: than looked up, because it was never a screening cell.
@@ -71,6 +84,31 @@ AGG_CELLS = {
 #: earlier work's own sweep shows the live region; 0.1 is its nearest survivor
 #: and is also that study's reported setting.
 REG_CELLS = (HYBRID_KD_CELL, "logit_l2_lam0p1")
+
+
+def agg_shortlist(root, schedule: str) -> Tuple[str, ...]:
+    """
+    The three stage-6 cell ids one schedule contributes, read from ``root``.
+
+    Raises:
+        SystemExit: the record is absent, or names no shortlist for this
+            schedule.  Refusing is the point; see the module docstring.
+    """
+    path = Path(root) / "tables" / AGG_SHORTLIST_RECORD
+    if not path.is_file():
+        raise SystemExit(
+            f"FATAL: no {path}. The three server rules this cross runs are the "
+            "ones the aggregation screen crowned, and with the record absent "
+            "they would have to be guessed - which emits, trains and reports "
+            "exactly like a real selection. Crown the aggregation screen first."
+        )
+    top = (json.loads(path.read_text()).get("top") or {}).get(schedule)
+    if not top:
+        raise SystemExit(
+            f"FATAL: {path} shortlists no {schedule!r} rule. That half of the "
+            "cross has nothing to run and is not filled in from the other."
+        )
+    return tuple(top)
 
 
 def _hybrid_cell(mix: float) -> Dict[str, Any]:
@@ -105,17 +143,34 @@ def regularisers(schedule: str) -> List[Dict[str, Any]]:
     return cells
 
 
-def aggregations(schedule: str) -> List[Dict[str, Any]]:
-    """The three server rules of one schedule."""
+def aggregations(schedule: str, root) -> List[Dict[str, Any]]:
+    """
+    The three server rules of one schedule: shortlisted by ``root``, described
+    by the stage-6 cell table.
+
+    Two steps, and both matter.  WHICH rules ran is a selection result and is
+    read from the screen's record; WHAT each of them is - its rule, its server
+    coefficients - is looked up in the cell table, so the flags this stage
+    crosses are the ones that stage measured rather than a second statement of
+    them.
+    """
     by_id = {cell["id"]: cell for cell in agg_cells.screen_cells()}
-    return [by_id[cell_id] for cell_id in AGG_CELLS[schedule]]
+    shortlist = agg_shortlist(root, schedule)
+    missing = [cell_id for cell_id in shortlist if cell_id not in by_id]
+    if missing:
+        raise SystemExit(
+            f"FATAL: {AGG_SHORTLIST_RECORD} shortlists {missing}, which the "
+            "stage-6 cell table does not hold. The record and the grid describe "
+            "different screens."
+        )
+    return [by_id[cell_id] for cell_id in shortlist]
 
 
-def combo_cells() -> List[Dict[str, Any]]:
+def combo_cells(root) -> List[Dict[str, Any]]:
     """Every combination, concurrent first.  Ids are unique by construction."""
     combos: List[Dict[str, Any]] = []
     for schedule in ("concurrent", "sequential"):
-        for agg in aggregations(schedule):
+        for agg in aggregations(schedule, root):
             for reg in regularisers(schedule):
                 combos.append({
                     "id": f"{agg['id']}_{reg['id']}",
@@ -132,8 +187,8 @@ def combo_cells() -> List[Dict[str, Any]]:
     return combos
 
 
-def combos_by_schedule() -> Dict[str, List[Dict[str, Any]]]:
+def combos_by_schedule(root) -> Dict[str, List[Dict[str, Any]]]:
     grouped: Dict[str, List[Dict[str, Any]]] = {"concurrent": [], "sequential": []}
-    for combo in combo_cells():
+    for combo in combo_cells(root):
         grouped[combo["schedule"]].append(combo)
     return grouped

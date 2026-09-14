@@ -16,12 +16,13 @@ moving a seed. Kept as a record.
 
 Emit the stage-8 combination task file and the README that decodes it.
 
-    python tools/make_stage8_combos.py [--out PATH] [--readme PATH] [--folds 1 2 3 4 5]
+    python tools/make_stage8_combos.py --root RESULTS_ROOT \\
+        [--out PATH] [--readme PATH] [--folds 1 2 3 4 5]
 
-Reads nothing but the combination table in
+Reads the combination table in
 :mod:`federated_outlier_adaptation.training.combo_cells`, which in turn reads the
-stage-6 and stage-7 cell tables.  Two text files, no data touched: a login-node
-job.
+stage-6 and stage-7 cell tables and, from ``--root``, the aggregation screen's
+own shortlist record.  Two text files, no data touched: a login-node job.
 
 Every coefficient is inherited from those tables by cell id and formatted by the
 same helpers stages 6 and 7 use, so a number in this file is the same double as
@@ -40,12 +41,12 @@ from make_stage6_screen import flag_tokens
 from make_stage7_screen import set_tokens
 
 from federated_outlier_adaptation.training.combo_cells import (
-    AGG_CELLS,
     FULL_ROUNDS,
     HYBRID_FISHER_CELL,
     HYBRID_KD_CELL,
     HYBRID_MIX,
     REG_CELLS,
+    agg_shortlist,
     combo_cells,
     combos_by_schedule,
 )
@@ -100,8 +101,8 @@ def task_line(combo: dict, fold: int, rounds: int, sampler_seed: int) -> str:
     )
 
 
-def header(combos, folds, rounds) -> list[str]:
-    grouped = combos_by_schedule()
+def header(combos, folds, rounds, root) -> list[str]:
+    grouped = combos_by_schedule(root)
     fisher = sum(1 for c in combos if c["reg"]["needs_fisher"])
     return [
         "# stage8_combos.txt - STAGE 8 of plan v6: DO THE TWO HALVES COMPOSE?",
@@ -172,8 +173,8 @@ def header(combos, folds, rounds) -> list[str]:
     ]
 
 
-def readme(combos, folds, rounds) -> str:
-    grouped = combos_by_schedule()
+def readme(combos, folds, rounds, root) -> str:
+    grouped = combos_by_schedule(root)
     lines = [
         "# Stage 8 combinations",
         "",
@@ -206,7 +207,7 @@ def readme(combos, folds, rounds) -> str:
         "|---|---|---|",
     ]
     for schedule in ("concurrent", "sequential"):
-        aggs = ", ".join(f"`{name}`" for name in AGG_CELLS[schedule])
+        aggs = ", ".join(f"`{name}`" for name in agg_shortlist(root, schedule))
         regs = ", ".join(
             [f"`hybrid_mix{HYBRID_MIX[schedule]:g}`"]
             + [f"`{name}`" for name in REG_CELLS]
@@ -239,21 +240,23 @@ def readme(combos, folds, rounds) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", required=True,
+                        help="Study root, for tables/p12_agg_top3.json.")
     parser.add_argument("--out", default="stage8_combos.txt")
     parser.add_argument("--readme", default="stage8_combos_README.md")
     parser.add_argument("--folds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
     parser.add_argument("--rounds", type=int, default=FULL_ROUNDS)
     args = parser.parse_args()
 
-    combos = combo_cells()
-    lines = header(combos, args.folds, args.rounds)
+    combos = combo_cells(args.root)
+    lines = header(combos, args.folds, args.rounds, args.root)
     for index, combo in enumerate(combos):
         lines.append(f"# --- {combo['id']}: {combo['note']}")
         for fold in args.folds:
             lines.append(task_line(combo, fold, args.rounds, 82000 + index * 10 + fold))
 
     Path(args.out).write_text("\n".join(lines) + "\n")
-    Path(args.readme).write_text(readme(combos, args.folds, args.rounds))
+    Path(args.readme).write_text(readme(combos, args.folds, args.rounds, args.root))
     runnable = [line for line in lines if line and not line.startswith("#")]
     print(f"wrote {args.out}: {len(runnable)} task lines "
           f"({len(combos)} combinations x {len(args.folds)} folds)")

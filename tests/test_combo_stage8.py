@@ -7,10 +7,16 @@ trainer and every stage-7 penalty was screened under plain FedAvg, so no run in
 the study had ever put an extended aggregation rule and an anchored trainer in
 the same loop at the same time.  Those pairings are turned here, through both
 runners, before ninety array elements find out on the cluster.
+
+The three rules each schedule contributes are a selection result and are read
+from the aggregation screen's own record, so the table under test moves with the
+screen.  What is pinned here is that it does - not a second copy of the
+shortlist, which is the thing that went stale.
 """
 
 from __future__ import annotations
 
+import json
 import shlex
 import sys
 from pathlib import Path
@@ -26,17 +32,21 @@ from federated_outlier_adaptation.aggregation.selector import (
     select_class,
 )
 from federated_outlier_adaptation.training.combo_cells import (
-    AGG_CELLS,
     FULL_ROUNDS,
     HYBRID_FISHER_CELL,
     HYBRID_KD_CELL,
     HYBRID_MIX,
     REG_CELLS,
+    agg_shortlist,
     combo_cells,
     combos_by_schedule,
 )
 
 TOOLS = str(Path(__file__).resolve().parents[1] / "tools")
+
+#: The study whose records this cross is read against: the metadata core that
+#: ships in the tree, so the test needs no machine and no study root.
+STUDY = Path(__file__).resolve().parents[1] / "study" / "artifacts" / "Digits_study01"
 
 MAX_ROUND = 2
 EPOCHS = 1
@@ -54,28 +64,28 @@ def tools_path():
 # The table
 # --------------------------------------------------------------------------- #
 def test_the_cross_is_three_by_three_on_each_schedule():
-    grouped = combos_by_schedule()
-    assert len(combo_cells()) == 18
+    grouped = combos_by_schedule(STUDY)
+    assert len(combo_cells(STUDY)) == 18
     assert len(grouped["concurrent"]) == 9
     assert len(grouped["sequential"]) == 9
     assert FULL_ROUNDS == 100
 
 
 def test_every_combination_id_is_unique():
-    ids = [combo["id"] for combo in combo_cells()]
+    ids = [combo["id"] for combo in combo_cells(STUDY)]
     assert len(ids) == len(set(ids))
 
 
 def test_each_schedule_crosses_its_own_three_rules_with_its_own_three_penalties():
-    for schedule, group in combos_by_schedule().items():
-        assert {c["agg"]["id"] for c in group} == set(AGG_CELLS[schedule])
+    for schedule, group in combos_by_schedule(STUDY).items():
+        assert {c["agg"]["id"] for c in group} == set(agg_shortlist(STUDY, schedule))
         assert len({c["reg"]["id"] for c in group}) == 3
         assert all(c["agg"]["path"] == schedule for c in group)
 
 
 def test_the_hybrid_mix_differs_between_the_schedules():
     """mix weights KD against Fisher, and the two schedules chose differently."""
-    for schedule, group in combos_by_schedule().items():
+    for schedule, group in combos_by_schedule(STUDY).items():
         hybrids = [c["reg"] for c in group if c["reg"]["space"] == "kd+fisher"]
         assert len(hybrids) == 3
         assert {h["hypers"]["mix"] for h in hybrids} == {HYBRID_MIX[schedule]}
@@ -94,7 +104,7 @@ def test_the_coefficients_are_the_stage_six_and_seven_doubles_exactly():
     aggs = {cell["id"]: cell for cell in agg_cells.screen_cells()}
     regs = {cell["id"]: cell for cell in reg_cells.screen_cells()}
 
-    for combo in combo_cells():
+    for combo in combo_cells(STUDY):
         assert combo["agg"]["flags"] == aggs[combo["agg"]["id"]]["flags"]
         if combo["reg"]["space"] == "kd+fisher":
             kd = regs[HYBRID_KD_CELL]
@@ -110,7 +120,7 @@ def test_the_hybrid_is_what_stage_seven_s_emitter_builds(tools_path):
 
     built, _, _ = hybrid_cells(HYBRID_KD_CELL, HYBRID_FISHER_CELL)
     by_mix = {cell["hypers"]["mix"]: cell for cell in built}
-    for schedule, group in combos_by_schedule().items():
+    for schedule, group in combos_by_schedule(STUDY).items():
         mine = next(c["reg"] for c in group if c["reg"]["space"] == "kd+fisher")
         theirs = by_mix[HYBRID_MIX[schedule]]
         assert mine["hypers"] == theirs["hypers"]
@@ -119,7 +129,7 @@ def test_the_hybrid_is_what_stage_seven_s_emitter_builds(tools_path):
 
 
 def test_only_the_hybrid_asks_for_a_fisher():
-    fisher = [c for c in combo_cells() if c["reg"]["needs_fisher"]]
+    fisher = [c for c in combo_cells(STUDY) if c["reg"]["needs_fisher"]]
     assert len(fisher) == 6
     assert {c["reg"]["space"] for c in fisher} == {"kd+fisher"}
 
@@ -134,7 +144,7 @@ def test_every_combination_resolves_to_exactly_one_family():
     Each rule lives in one (scenario, metadata) family, so a task produces one
     result and the two halves of the cross stay separate experiments.
     """
-    for combo in combo_cells():
+    for combo in combo_cells(STUDY):
         families = [
             (scenario, metadata)
             for scenario in ("concurrent", "sequential")
@@ -155,7 +165,7 @@ def test_every_line_parses_and_carries_the_protocol(tools_path):
     from federated_outlier_adaptation.cli import build_parser
 
     parser = build_parser()
-    for combo in combo_cells():
+    for combo in combo_cells(STUDY):
         args = parser.parse_args(shlex.split(task_line(combo, 3, 100, 1))[1:])
         assert args.func.__name__ == "cmd_final"
         assert args.rounds == 100 and args.epochs == 5 and args.batch_size == 64
@@ -174,7 +184,7 @@ def test_the_penalty_reaches_the_trainer_keywords(tools_path):
     from federated_outlier_adaptation.cli import _trainer_overrides, build_parser
 
     parser = build_parser()
-    for combo in combo_cells():
+    for combo in combo_cells(STUDY):
         args = parser.parse_args(shlex.split(task_line(combo, 1, 100, 1))[1:])
         overrides = _trainer_overrides(args)
         assert overrides["space"] == combo["reg"]["space"]
@@ -191,7 +201,7 @@ def test_the_server_coefficients_reach_the_server_state(tools_path):
     from federated_outlier_adaptation.cli import _server_kwargs, build_parser
 
     parser = build_parser()
-    for combo in combos_by_schedule()["concurrent"]:
+    for combo in combos_by_schedule(STUDY)["concurrent"]:
         args = parser.parse_args(shlex.split(task_line(combo, 1, 100, 1))[1:])
         state = ServerState(eta=args.server_eta, **_server_kwargs(args))
         flags = combo["agg"]["flags"]
@@ -212,7 +222,7 @@ def test_the_sequential_mixing_weight_reaches_the_command_line(tools_path):
 
     parser = build_parser()
     mixing = [
-        c for c in combos_by_schedule()["sequential"]
+        c for c in combos_by_schedule(STUDY)["sequential"]
         if c["agg"]["rule"] == "seq_mix_alpha"
     ]
     assert mixing
@@ -267,6 +277,7 @@ CONCURRENT_PAIRINGS = [
 
 SEQUENTIAL_PAIRINGS = [
     ("seq_delta_capped", {}),
+    ("seq_fedavg_update", {}),
     ("seq_mix_alpha", {"seq_mix_alpha": 0.05}),
     ("seq_delta_scaled", {}),
 ]
@@ -351,3 +362,56 @@ def test_the_server_anchor_still_pulls_when_a_penalty_is_also_running(
         if value.dtype.is_floating_point and not torch.allclose(value, none[key])
     ]
     assert moved, "the server anchor made no difference to the final model"
+
+
+# --------------------------------------------------------------------------- #
+# The shortlist is read, not written down
+# --------------------------------------------------------------------------- #
+def test_each_schedules_three_rules_are_the_ones_its_screen_crowned():
+    """
+    The shortlist is the record's, read at call time, and not a copy beside it.
+
+    This module held a copy for long enough to go stale: two of the three
+    sequential ids it carried - `seq_mix_r0p7` and `seq_delta_scaled` - are not
+    in the shortlist the study went on to run, and nothing failed. The stage
+    would have emitted, trained and reported a cross the current selection never
+    chose. So the record is what this asserts against; a second list here would
+    go stale the same way.
+    """
+    record = json.loads((STUDY / "tables" / "p12_agg_top3.json").read_text())["top"]
+    for schedule, group in combos_by_schedule(STUDY).items():
+        assert list(agg_shortlist(STUDY, schedule)) == record[schedule]
+        assert {combo["agg"]["id"] for combo in group} == set(record[schedule])
+    assert "seq_mix_r0p7" not in record["sequential"]
+
+
+def test_a_study_that_has_not_crowned_its_screen_is_refused_by_name(tmp_path):
+    """
+    Refusing is the point. A guessed shortlist emits a task file that looks
+    exactly like a real one, and the mistake surfaces only as a table nobody
+    can reproduce - so the absent record is named and neither half of the cross
+    is filled in from the other.
+    """
+    with pytest.raises(SystemExit) as absent:
+        combo_cells(tmp_path)
+    assert "p12_agg_top3.json" in str(absent.value)
+
+    (tmp_path / "tables").mkdir()
+    (tmp_path / "tables" / "p12_agg_top3.json").write_text(
+        json.dumps({"top": {"concurrent": ["eta_0p95", "weight_q0", "anchor_h2"]}})
+    )
+    with pytest.raises(SystemExit) as half:
+        agg_shortlist(tmp_path, "sequential")
+    assert "sequential" in str(half.value)
+
+
+def test_every_rule_the_cross_runs_is_turned_against_an_anchored_trainer():
+    """
+    The pairing lists above are why this file exists, and the shortlist that
+    decides which rules reach them now moves with the screen. A rule that enters
+    the cross without entering them is a rule whose first meeting with an
+    anchored client objective is ninety array elements deep.
+    """
+    covered = {rule for rule, _ in CONCURRENT_PAIRINGS + SEQUENTIAL_PAIRINGS}
+    running = {combo["agg"]["rule"] for combo in combo_cells(STUDY)}
+    assert running <= covered, sorted(running - covered)
