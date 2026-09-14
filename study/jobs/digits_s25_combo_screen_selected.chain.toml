@@ -1,0 +1,54 @@
+# Digits_study01 - AN EXTENSION: joint tuning of each schedule's SELECTED pair.
+#
+#   foa submit study/jobs/digits_s25_combo_screen_selected.chain.toml --go
+#
+# NOT A STAGE OF THE PROGRAMME, and not a correction to the first extension.
+# Every stage the paper reports has run, none of them reads anything this
+# produces, and s23_combo_screen.txt and its finals stand exactly as they are.
+#
+# WHY A SECOND JOINT SCREEN. s23 screened the joint grid of the pair that leads
+# each schedule by TEST score - the owner's documented departure from ranking on
+# validation. That is not the pair the study SELECTED: tables/p12_agg_top3.json
+# says in its own rank_by that the aggregation shortlist was cut on validation,
+# and on the parallel schedule the two orderings disagree about which rule comes
+# first. So the first extension's finding was measured on a rule the programme
+# did not choose. This screens the joint grid of the pair it did - the same four
+# penalty dials, the same mapping, a different rule half and nothing else.
+#
+# One stage, no chain: nothing here reads what another element writes, so the
+# array is a fan-out and the width is the only thing to choose. It is held at
+# %20 because this is 1,080 elements of a grid whose winners are not reported -
+# a screen ranks, and a ranking that arrives slowly is still a ranking.
+#
+# It requires the shipped model's Fisher, which the g-0 stage wrote next to the
+# winning fold's checkpoint. Every cell of this grid is a kd+fisher blend and
+# reads it; the runner resolves $G0_FOLD from the study's own g0_selection.json,
+# so the requirement is stated here at the fold the selection recorded rather
+# than as a pattern.
+#
+# jobs_dir is the STUDY's jobs directory, as every other manifest here names it -
+# it resolves against $FOA_PROJECT_DIR, so the copy under study/artifacts is the
+# shipped record and this is the one the preflight counts lines in.
+
+study    = "Digits_study01"
+jobs_dir = "results/studies/Digits_study01/jobs"
+
+[defaults]
+partition = "$FOA_GPU_PARTITION"
+gres      = "gpu:A100:1"
+time      = "01:00:00"
+
+[[stage]]
+name     = "s25_combo_screen_selected"
+tasks    = "s25_combo_screen_selected.txt"
+count    = 1080
+array    = "1-1080%20"
+requires = [
+    "$FOA_STUDY_DIR/g0_model",
+    "$FOA_STUDY_DIR/g0_selection.json",
+    "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+    "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz",
+    "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz",
+    "$FOA_STUDY_DIR/g0_fold1/global_results/fisher",
+    "$FOA_STUDY_DIR/tables/p12_agg_top3.json",
+]

@@ -94,7 +94,7 @@ g-0 on the data g-0 was trained on - and it costs no recomputation.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 #: Rounds the screen runs for; the same ranking horizon stage 6 uses.
 SCREEN_ROUNDS = 25
@@ -456,17 +456,92 @@ CTUNE_MIXES = HYBRID_MIXES
 #: coefficient, which is why that half of the grid is a third the size.
 CTUNE_SERVER_ETAS = (0.9, 0.95, 1.0)
 
-#: Which server rule each schedule's leader is, and the flags it carries.  Read
-#: against ``agg_cells``: ``eta_*`` cells are ``con_delta_eta`` at a server step,
-#: ``seq_delta_capped`` is a rule with no coefficient at all.
+#: The parallel rule knob of the SELECTED pair: the server anchor's half-life,
+#: as a multiple of the run length R, which is what ``anchor_h2`` is a setting
+#: of.  ``agg_cells.ANCHOR_HALFLIVES_R`` sweeps it rather than the coefficient
+#: because lambda_s = 1 - 2 ** (-1/h) means a different intervention at 25
+#: rounds than at 100, and a half-life means the same thing at both.
+#:
+#: 2R IS THE TOP OF THE ROW THE PROGRAMME SCREENED, so the selection sat on the
+#: edge of its own grid and a bracket around it cannot be drawn inside what any
+#: stage searched.  1R is the neighbour below; 4R is a step OUTSIDE the screened
+#: row, and it is a weaker intervention than anything the screen tried rather
+#: than a stronger one - the anchor at 2R already never halves the displacement
+#: inside the run, and at 4R it acts less still.  That asymmetry is the finding
+#: the row is here to record, not a defect in it.
+CTUNE_SEL_ANCHOR_HALFLIVES_R = (1.0, 2.0, 4.0)
+
+
+class CtuneRule(NamedTuple):
+    """
+    One schedule's leading server rule, as a joint grid has to know it.
+
+    A joint grid moves the rule and the penalty together, so it needs more of
+    the rule than a ``--aggregation`` name: the identifier ``agg_cells`` knows
+    the rule by (which is what the cell id has to carry, so the two can be read
+    against each other), the knob the rule has if it has one, the row that knob
+    is swept over, and the server flags the rule carries at every cell of the
+    grid whether or not they move.
+
+    ``knob`` is the cell-level name resolved by
+    :func:`~.study_lines.resolve_agg_flags`, not the flag the line ends up
+    carrying: ``anchor_halflife_r`` becomes ``--server-anchor`` only once the
+    horizon is known, and a grid that stored the coefficient would be a
+    different intervention on the screen than at the full horizon.
+    """
+
+    rule: str
+    agg_id: str
+    knob: Optional[str]
+    token: str
+    dial: str
+    note: str
+    values: Tuple[float, ...]
+    flags: Dict[str, Any]
+
+
+#: Which server rule each schedule's TEST-leading pair runs, and the flags it
+#: carries.  Read against ``agg_cells``: ``eta_*`` cells are ``con_delta_eta``
+#: at a server step, ``seq_delta_capped`` is a rule with no coefficient at all.
 CTUNE_RULES = {
-    "concurrent": ("con_delta_eta", "eta"),
-    "sequential": ("seq_delta_capped", None),
+    "concurrent": CtuneRule("con_delta_eta", "eta_{}", "server_eta", "eta",
+                            "eta_s", "server step eta_s={}",
+                            CTUNE_SERVER_ETAS, {}),
+    "sequential": CtuneRule("seq_delta_capped", "seq_delta_capped", None, "",
+                            "", "cyclic capped delta form", (), {}),
 }
 
+#: Which server rule each schedule's VALIDATION-SELECTED pair runs.  These are
+#: the rules ``tables/p12_agg_top3.json`` puts at the head of its own ranking,
+#: on the basis that record says it selected on - and on the parallel side that
+#: is a DIFFERENT rule from the one its test order leads with, which is the
+#: whole reason this second grid exists.
+#:
+#: ``anchor_h2`` carries the plain full server step beside its half-life, as
+#: ``agg_cells`` emits it, so ``server_eta`` is a fixed flag here and not a
+#: knob.  ``seq_fedavg`` is cyclic FedAvg, which has no coefficient at all -
+#: so the cyclic half of this grid is a third the size, as it is in the other.
+CTUNE_SEL_RULES = {
+    "concurrent": CtuneRule("con_delta_anchor_lam", "anchor_h{}",
+                            "anchor_halflife_r", "h", "h",
+                            "server anchor to g-0, displacement halves every"
+                            " {}R rounds",
+                            CTUNE_SEL_ANCHOR_HALFLIVES_R, {"server_eta": 1.0}),
+    "sequential": CtuneRule("seq_fedavg_update", "seq_fedavg", None, "",
+                            "", "cyclic FedAvg", (), {}),
+}
 
-def combo_tune_id(family: str, c_ewc: float, c_kd: float, temperature: float,
-                  mix: float, server_eta: float = None) -> str:
+#: The stem every cell id of each joint grid opens with.  Their own, and not a
+#: shared one: the two grids tune two different pairs, their cells would
+#: otherwise collide in ``reg_selector``'s folder scan, and a reader of a run
+#: folder has to be able to say which pair it belongs to.
+CTUNE_PREFIX = "ctune"
+CTUNE_SEL_PREFIX = "ctunesel"
+
+
+def combo_tune_id(prefix: str, c_ewc: float, c_kd: float, temperature: float,
+                  mix: float, token: str = "",
+                  knob_value: Optional[float] = None) -> str:
     """
     A cell id that names the OWNER'S dials, not the trainer's coefficients.
 
@@ -475,21 +550,27 @@ def combo_tune_id(family: str, c_ewc: float, c_kd: float, temperature: float,
     from and two different dial settings could not be told apart by eye.  The id
     names what was swept; :func:`combo_tune_lam_mix` says what the trainer gets.
 
-    The schedule is in the id by construction rather than by a tag: the parallel
-    cells carry a server step and the cyclic ones cannot, because the rule they
-    run has no coefficient.  So an ``_eta`` suffix is exactly the parallel cells,
-    and no two schedules can name one folder.
+    The schedule is in the id by construction rather than by a tag: on either
+    joint grid exactly one of the two rules has a coefficient, so a cell that
+    carries the rule knob's token is a parallel cell and one that does not is a
+    cyclic one, and no two schedules can name one folder.
+
+    ``prefix`` is the grid's own stem, and it is a parameter rather than a
+    constant because there is more than one joint grid.  The cells are scanned
+    back out of one results root by prefix, so two grids sharing a stem would
+    hand each one's selector the other one's runs.
     """
-    identifier = (f"ctune_ewc{_fmt(c_ewc)}_kd{_fmt(c_kd)}"
+    identifier = (f"{prefix}_ewc{_fmt(c_ewc)}_kd{_fmt(c_kd)}"
                   f"_T{_fmt(temperature)}_mix{_fmt(mix)}")
-    if server_eta is not None:
-        identifier += f"_eta{_fmt(server_eta)}"
+    if knob_value is not None:
+        identifier += f"_{token}{_fmt(knob_value)}"
     return identifier
 
 
-def combo_tune_cells() -> List[Dict[str, Any]]:
+def _combo_tune_cells(prefix: str,
+                      rules: Dict[str, CtuneRule]) -> List[Dict[str, Any]]:
     """
-    The joint grid of the pair that leads each schedule.  **Extension only.**
+    The joint grid of ONE pair, per schedule.  **Extension only.**
 
     One cell is a whole arm - a server rule at a coefficient AND a penalty at
     three - so it carries the aggregation cell it runs under beside the penalty
@@ -504,37 +585,50 @@ def combo_tune_cells() -> List[Dict[str, Any]]:
     whether ``lam`` sat at the end of its row would answer a question nobody
     asked and miss the four that were.
 
+    ONE BUILDER, TWO GRIDS.  The pair a grid tunes is the only thing that
+    differs between them: the four penalty dials, the mapping onto the trainer's
+    coefficients and the deduplication are the same object screened twice, and
+    they are shared as code rather than as a copy so that a correction to the
+    mapping cannot reach one grid and miss the other.  What a caller supplies is
+    a stem and a :class:`CtuneRule` per schedule.
+
     DEDUPLICATION.  Two dial settings collide when they hand the trainer the
     same ``(lam, mix, T)`` under the same rule, and nothing in the run records
     would say so - two folders, two seeds, one experiment.  The check is on the
     coefficients rather than on the dials for exactly that reason.  It finds
-    nothing on this grid (see :func:`combo_tune_duplicates`), and it is here so
-    that a widened row cannot quietly pay twice for one cell.
+    nothing on either grid (see :func:`combo_tune_duplicates`), and it is here
+    so that a widened row cannot quietly pay twice for one cell.
     """
     cells: List[Dict[str, Any]] = []
     seen: Dict[tuple, str] = {}
     for family in FAMILIES:
-        rule, knob = CTUNE_RULES[family]
-        etas = CTUNE_SERVER_ETAS if knob == "eta" else (None,)
+        spec = rules[family]
+        # A rule without a coefficient has one setting and no axis, which is why
+        # the cyclic half of both grids is a third the size of the parallel one.
+        # ``None`` is that one setting, and it is what keeps the cell id, the
+        # dials and the flags free of a knob the rule does not have.
+        knob_values = spec.values if spec.knob is not None else (None,)
         for c_ewc in CTUNE_EWC_COEFFS:
             for c_kd in CTUNE_KD_COEFFS:
                 for temperature in CTUNE_TEMPERATURES:
                     for mix in CTUNE_MIXES:
                         lam, lam_mix = combo_tune_lam_mix(c_ewc, c_kd, mix)
-                        for eta in etas:
-                            key = (family, eta, round(lam, 12),
+                        for value in knob_values:
+                            key = (family, value, round(lam, 12),
                                    round(lam_mix, 12), temperature)
                             if key in seen:
                                 continue
-                            cell_id = combo_tune_id(family, c_ewc, c_kd,
-                                                    temperature, mix, eta)
+                            cell_id = combo_tune_id(prefix, c_ewc, c_kd,
+                                                    temperature, mix,
+                                                    spec.token, value)
                             seen[key] = cell_id
                             cell = _cell(
                                 cell_id, "kd+fisher", "kd+fisher",
                                 f"the {family} leader's rule and penalty tuned "
                                 f"together: c_ewc={c_ewc:g}, c_kd={c_kd:g}, "
                                 f"T={temperature:g}, m={mix:g}"
-                                + (f", eta_s={eta:g}" if eta is not None else "")
+                                + (f", {spec.dial}={value:g}"
+                                   if value is not None else "")
                                 + f" (lam={lam:.6g}, mix={lam_mix:.6g})",
                                 needs_fisher=True,
                                 lam=lam, T=temperature, mix=lam_mix,
@@ -544,22 +638,63 @@ def combo_tune_cells() -> List[Dict[str, Any]]:
                                 "c_ewc": c_ewc, "c_kd": c_kd,
                                 "T": temperature, "m": mix,
                             }
-                            flags: Dict[str, Any] = {}
-                            if eta is not None:
-                                cell["dials"]["server_eta"] = eta
-                                flags["server_eta"] = eta
+                            # The rule's own fixed flags first, then the knob:
+                            # anchor_h2 carries the plain full server step at
+                            # every cell it runs, and a grid that dropped it
+                            # because it does not move would emit a rule the
+                            # programme never ran.
+                            flags: Dict[str, Any] = dict(spec.flags)
+                            if value is not None:
+                                cell["dials"][spec.knob] = value
+                                flags[spec.knob] = value
                             cell["agg"] = {
-                                "id": ("eta_" + _fmt(eta)) if eta is not None
-                                      else rule,
+                                "id": (spec.agg_id.format(_fmt(value))
+                                       if value is not None else spec.agg_id),
                                 "path": family,
-                                "rule": rule,
+                                "rule": spec.rule,
                                 "flags": flags,
-                                "note": (f"server step eta_s={eta:g}"
-                                         if eta is not None
-                                         else "cyclic capped delta form"),
+                                "note": (spec.note.format(f"{value:g}")
+                                         if value is not None else spec.note),
                             }
                             cells.append(cell)
     return cells
+
+
+def combo_tune_cells() -> List[Dict[str, Any]]:
+    """
+    The joint grid of the TEST-LEADING pair of each schedule.  Extension only.
+
+    ``eta_0p95`` with the KD+EWC blend on the parallel schedule and
+    ``seq_delta_capped`` with the same blend on the cyclic one: the pair that
+    leads each schedule by TEST score of the two shipped winners views, which is
+    the owner's documented departure from ranking on validation.
+    """
+    return _combo_tune_cells(CTUNE_PREFIX, CTUNE_RULES)
+
+
+def combo_tune_selected_cells() -> List[Dict[str, Any]]:
+    """
+    The joint grid of the VALIDATION-SELECTED pair of each schedule.  Extension.
+
+    The second joint grid, and it exists because the first one answered the
+    question for a pair the study did not select.  The rule half here is the
+    head of ``tables/p12_agg_top3.json``'s own ranking on the basis that record
+    says it selected on - ``anchor_h2`` on the parallel schedule, where the test
+    order puts a different rule first, and ``seq_fedavg`` on the cyclic one,
+    which is parameter-free.  The penalty half is the same KD+EWC blend, because
+    that is the penalty both orders lead with.
+    """
+    return _combo_tune_cells(CTUNE_SEL_PREFIX, CTUNE_SEL_RULES)
+
+
+def _combo_tune_duplicates(prefix: str, rules: Dict[str, CtuneRule]) -> int:
+    """How many dial settings the deduplication removed from one joint grid."""
+    dials = (len(CTUNE_EWC_COEFFS) * len(CTUNE_KD_COEFFS)
+             * len(CTUNE_TEMPERATURES) * len(CTUNE_MIXES))
+    total = sum(dials * (len(rules[family].values)
+                         if rules[family].knob is not None else 1)
+                for family in FAMILIES)
+    return total - len(_combo_tune_cells(prefix, rules))
 
 
 def combo_tune_duplicates() -> int:
@@ -571,18 +706,35 @@ def combo_tune_duplicates() -> int:
     rows here manages.  A widened row could, and then the number in the README
     would move with the grid instead of standing as a claim nobody rechecked.
     """
-    dials = (len(CTUNE_EWC_COEFFS) * len(CTUNE_KD_COEFFS)
-             * len(CTUNE_TEMPERATURES) * len(CTUNE_MIXES))
-    total = dials * (len(CTUNE_SERVER_ETAS) + 1)
-    return total - len(combo_tune_cells())
+    return _combo_tune_duplicates(CTUNE_PREFIX, CTUNE_RULES)
+
+
+def combo_tune_selected_duplicates() -> int:
+    """
+    The same count for the selected pair's grid.  Zero there too, and for the
+    same reason: the penalty rows are the same nine products, and the rule axis
+    cannot collide with itself.
+    """
+    return _combo_tune_duplicates(CTUNE_SEL_PREFIX, CTUNE_SEL_RULES)
+
+
+def _combo_tune_by_family(cells: List[Dict[str, Any]]
+                          ) -> Dict[str, List[Dict[str, Any]]]:
+    """One joint grid's cells, split by the schedule whose leader they tune."""
+    grouped: Dict[str, List[Dict[str, Any]]] = {name: [] for name in FAMILIES}
+    for cell in cells:
+        grouped[cell["family"]].append(cell)
+    return grouped
 
 
 def combo_tune_by_family() -> Dict[str, List[Dict[str, Any]]]:
     """The extension's cells, split by the schedule whose leader they tune."""
-    grouped: Dict[str, List[Dict[str, Any]]] = {name: [] for name in FAMILIES}
-    for cell in combo_tune_cells():
-        grouped[cell["family"]].append(cell)
-    return grouped
+    return _combo_tune_by_family(combo_tune_cells())
+
+
+def combo_tune_selected_by_family() -> Dict[str, List[Dict[str, Any]]]:
+    """The selected pair's cells, split the same way."""
+    return _combo_tune_by_family(combo_tune_selected_cells())
 
 
 def control_cell() -> Dict[str, Any]:

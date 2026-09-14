@@ -210,3 +210,32 @@ The screen's own top five per schedule, with the dials and where each sits in
 its row, are in `tables/paper/extension_combo_screen.csv`. Every dial of both
 winners but one is at an end of its row, which is the finding to read first and
 is why the pair is not offered as a tuned configuration to use.
+
+---
+
+## Addendum, 2026-09-14: the same question, asked of the pair that was selected
+
+The extension above tunes the pair that leads each schedule **by TEST score**.
+The shortlist those rules come from was cut on **validation** -
+`tables/p12_agg_top3.json` says so in its own `rank_by` - and on the parallel
+schedule the two orderings disagree about which rule comes first: the validation
+head is `anchor_h2`, the test head is `eta_0p95`. So the paragraphs above
+answered the joint-grid question for a rule the programme did not choose.
+
+`s25_combo_screen_selected.txt` asks it of the pair it did: `anchor_h2` with the
+same KD+EWC blend on the parallel schedule, `seq_fedavg` with the same blend on
+the cyclic one. The rule half is read from that record on the basis the record
+names; the penalty half, the four penalty rows and the mapping onto the
+trainer's coefficients are the first extension's, unchanged, so the two grids
+differ in one place and can be read against each other. On the parallel side the
+rule axis is the anchor's half-life over {1R, 2R, 4R}, and 4R is outside the row
+`agg_cells` screened - the selected setting sat at the top of that row, so a
+bracket around it has no neighbour above inside it. 216 cells, 1,080 tasks, 25
+rounds, at the same search rate and under the same protocol as the pair's own
+shipped `s20` lines, whose every non-grid flag it copies.
+
+**It is an extension too, and it does not alter the core selection.** It is
+outside the stage table in `REPRODUCE.md`, it has its own section in
+`REG_GRID_RANGES.md`, its cells are in no catalogue that `reg-top3`, `combos` or
+`stage-winner` reads, and its finals' record says so in its own text. Whatever
+it finds is read beside this document, not into it.

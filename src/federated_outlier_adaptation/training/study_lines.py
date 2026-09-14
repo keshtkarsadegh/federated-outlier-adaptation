@@ -478,9 +478,24 @@ def five_line(cfg, config: Dict[str, Any], clients_file: str,
 CTUNE_SCREEN_TAG = "ctune"
 CTUNE_FULL_TAG = "ctunefull"
 
+#: And the SECOND joint grid's, for the pair the study actually selected.  Its
+#: own again, for the reason above and for one more: ``d01_ctune_`` is a prefix
+#: of nothing here - ``d01_ctunesel_`` does not start with it, because the
+#: character after ``ctune`` is not the underscore the prefix ends in - so the
+#: two grids' folders are told apart by the same scan that tells either from
+#: the cross's ninety.
+CTUNE_SEL_SCREEN_TAG = "ctunesel"
+CTUNE_SEL_FULL_TAG = "ctuneselfull"
+
+#: The (screen, full) tag pair of each joint grid, so that a caller names the
+#: grid it is emitting rather than remembering two strings in the right order.
+CTUNE_TAGS = (CTUNE_SCREEN_TAG, CTUNE_FULL_TAG)
+CTUNE_SEL_TAGS = (CTUNE_SEL_SCREEN_TAG, CTUNE_SEL_FULL_TAG)
+
 
 def combo_tune_line(cfg, cell: Dict[str, Any], fold: int, rounds: int,
-                    seed: int, family: Optional[str] = None) -> str:
+                    seed: int, family: Optional[str] = None,
+                    tags: tuple = CTUNE_TAGS) -> str:
     """
     One jointly-tuned arm: a server rule and a client penalty, moved together.
 
@@ -498,9 +513,15 @@ def combo_tune_line(cfg, cell: Dict[str, Any], fold: int, rounds: int,
             full-horizon stage sets it anyway, as P14 and P22 do, so a folder
             says which schedule's finals it belongs to without anyone having to
             know that rule.
+        tags: The ``(screen, full)`` stems of the joint grid being emitted.
+            There is more than one joint grid, and their runs are scanned back
+            out of one results root by stem - so a grid that took the default
+            here would have its cells collected by the other grid's selector,
+            which would rank 432 cells of two different pairs against each
+            other and crown one of them.
     """
-    prefix = (f"{cfg.tag}_{CTUNE_SCREEN_TAG}" if rounds == SCREEN_ROUNDS
-              else f"{cfg.tag}_{CTUNE_FULL_TAG}")
+    prefix = (f"{cfg.tag}_{tags[0]}" if rounds == SCREEN_ROUNDS
+              else f"{cfg.tag}_{tags[1]}")
     if family is not None:
         prefix = f"{prefix}_{family}"
     # The parent is <prefix>_<cell id>_fold<k>, and the cell id already opens
@@ -559,10 +580,16 @@ def counts(cfg) -> Dict[str, int]:
         # crossings reads them.
         "combo_tune_screen": len(reg_cells.combo_tune_cells()) * folds,
         "combo_tune_full": len(FAMILIES) * folds,
+        # The second joint grid, of the pair the study SELECTED rather than the
+        # pair its test order leads with. Same shape, its own catalogue.
+        "combo_tune_selected_screen":
+            len(reg_cells.combo_tune_selected_cells()) * folds,
+        "combo_tune_selected_full": len(FAMILIES) * folds,
     }
 
 
 #: Which entries of :func:`counts` belong to the EXTENSION rather than to the
 #: core programme.  Named so that a reader of the counts - or a test - does not
 #: have to infer the distinction from a stage number.
-EXTENSION_COUNTS = ("combo_tune_screen", "combo_tune_full")
+EXTENSION_COUNTS = ("combo_tune_screen", "combo_tune_full",
+                    "combo_tune_selected_screen", "combo_tune_selected_full")

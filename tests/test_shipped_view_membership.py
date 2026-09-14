@@ -174,7 +174,8 @@ def test_every_stage_of_the_blend_and_the_extension_has_a_stem_of_its_own():
     import study_record
 
     for stage in ("s21_blend_screen", "s22_blend_full",
-                  "s23_combo_screen", "s24_combo_full"):
+                  "s23_combo_screen", "s24_combo_full",
+                  "s25_combo_screen_selected"):
         assert stage in study_record.PREFIXES, stage
         assert (STUDY / "jobs" / f"{stage}.txt").is_file(), stage
 

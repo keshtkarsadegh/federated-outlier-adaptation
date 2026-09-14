@@ -174,6 +174,7 @@ scheme and have to be reproducible on the same terms as everything else.
 |---|---|---|---|---|---|
 | E1 | **joint screen of the leading pair** | `tools/make_digits_p23.py` | `s23_combo_screen.txt` | 1080 | 25 |
 | E2 | **its winners at the full horizon** | `study_emit.py combo-tune-full` | `s24_combo_full.txt` | 10 | 100 |
+| E3 | **joint screen of the SELECTED pair** | `tools/make_digits_p25.py` | `s25_combo_screen_selected.txt` | 1080 | 25 |
 
 **What it asks.** Stage 12 crossed the top three server rules with the top three
 penalties per schedule, and every pair in it is a rule at the coefficients it
@@ -201,6 +202,31 @@ E1's cells and re-runs the two it crowns at 100 rounds. Its record is
 part of the core programme; its boundary report is on the owner's dials rather
 than on the two coefficients the trainer takes, because those are functions of
 all four dials and an edge in one of them would name a row nobody searched.
+
+**E3 asks E1's question about the pair the study actually selected.** E1 tunes
+the pair that leads each schedule by TEST score, which is the owner's documented
+departure from ranking on validation. The aggregation shortlist itself was cut
+on VALIDATION - `tables/p12_agg_top3.json` says so in its own `rank_by` field -
+and on the parallel schedule the two orderings disagree about which rule comes
+first: the validation head is `anchor_h2`, the test head is `eta_0p95`. So E1's
+answer was measured on a rule the programme did not choose, and E3 screens the
+joint grid of the pair it did: `anchor_h2` on the parallel schedule and
+`seq_fedavg` on the cyclic one, each beside the same KD+EWC blend E1 used.
+
+The rule half is read out of that record on the basis the record names, never
+typed, and the penalty half is read out of `make_digits_p23.THE_PAIR` - so the
+two joint grids differ in exactly one place and can be read against each other,
+which is the only reason to run the second. The four penalty rows are the same
+four rows at the same values and resolve through the same
+`reg_cells.combo_tune_lam_mix`; what is new is the rule axis. On the parallel
+side that axis is the anchor's half-life `h` in {1R, 2R, 4R}, and **4R is
+outside anything the programme screened**: `agg_cells.ANCHOR_HALFLIVES_R` stops
+at 2R because beyond it the anchor never acts inside the run, so the selected
+setting sat at the top edge of its own row and a bracket around it has no
+neighbour above inside the screened range. `REG_GRID_RANGES.md` section 10
+records that and what it costs; `s25_combo_screen_selected_README.md` records it
+again beside the file. `seq_fedavg` has no coefficient at all, so the cyclic half
+of this grid is a third the size, exactly as E1's is.
 
 ---
 
@@ -266,6 +292,12 @@ diff /tmp/check/s23_combo_screen_README.md \
 python tools/study_emit.py combo-tune-full --root $FOA_STUDY_DIR \
     --out /tmp/x.txt --expect 10
 diff /tmp/x.txt study/artifacts/Digits_study01/jobs/s24_combo_full.txt
+
+python tools/make_digits_p25.py --jobs-dir /tmp/check   # the selected pair
+diff /tmp/check/s25_combo_screen_selected.txt \
+     study/artifacts/Digits_study01/jobs/s25_combo_screen_selected.txt
+diff /tmp/check/s25_combo_screen_selected_README.md \
+     study/artifacts/Digits_study01/jobs/s25_combo_screen_selected_README.md
 ```
 
 ### The reference stages, which do take arguments

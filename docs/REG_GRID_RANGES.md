@@ -1069,3 +1069,105 @@ widened row cannot quietly pay twice.
 | the pair as `s20` ran it, per schedule | 1 | 5 |
 | this screen, parallel | 162 | 810 |
 | this screen, cyclic | 54 | 270 |
+
+---
+
+# EXTENSION, 2026-09-14: the SELECTED pair, tuned together
+
+**The section above is an extension; this is a second one, and it does not
+supersede it.** `s23_combo_screen.txt` and its finals stand exactly as they are
+and are not re-emitted. What follows is `s25_combo_screen_selected.txt` and the
+finals it feeds. No shortlist, no crossing, no crowning and no paper view reads
+anything either produces.
+
+## Why a second joint grid
+
+Section 9 tunes the pair that leads each schedule **by TEST score**, which is the
+owner's documented departure from ranking on validation and is the order the two
+shipped winners views carry. The aggregation shortlist those rules come from was
+itself cut on **validation**: `tables/p12_agg_top3.json` says so in its own
+`rank_by` field. On the parallel schedule the two orderings disagree about which
+rule comes first.
+
+| schedule | validation head - SELECTED | test head - section 9 tuned this |
+|---|---|---|
+| parallel | `anchor_h2` (val 0.9184) | `eta_0p95` (val 0.9176, test 0.9263) |
+| cyclic | `seq_fedavg` | `seq_delta_capped` |
+
+So section 9's conclusion was measured on a rule the programme did not choose.
+This section screens the joint grid of the pair it did.
+
+## 10. `kd+fisher` + the SELECTED server rule - the second joint grid
+
+**One grid with one thing changed.** The penalty half is section 9's, read out
+of `make_digits_p23.THE_PAIR` rather than re-derived; the four penalty rows are
+the same four rows at the same values; the mapping onto `lam` and the trainer's
+`mix` is the same `reg_cells.combo_tune_lam_mix` and is not restated here - see
+section 9 for the derivation and for where each penalty value came from. Two
+grids that differed in two places could not be read against each other, and
+reading them against each other is the whole reason to run the second.
+
+**Old range:** none. Nothing in the programme ever moved a rule and a penalty
+together, and section 9 moved a rule the programme did not select.
+
+**New range:**
+
+    c_ewc in {0.05, 0.1, 0.3}          EWC coefficient          3   as section 9
+    c_kd  in {0.05, 0.11, 0.2}         KD coefficient           3   as section 9
+    T     in {0.25, 2}                 KD temperature           2   as section 9
+    m     in {0.25, 0.5, 0.75}         blend weight             3   = 54
+    h     in {1R, 2R, 4R}              anchor half-life, PARALLEL ONLY
+
+    54 x 3 half-lives     = 162 parallel cells
+    54 x 1 (no rule knob) =  54 cyclic cells
+                          = 216 cells x 5 folds = 1080 tasks at 25 rounds
+
+**`h`, and where the row leaves the programme.** `anchor_h2` is one setting of a
+coefficient row, so the selected parallel rule *has* a knob and this grid moves
+it. The row is the selection with one neighbour each side - and the neighbour
+above is outside anything the study screened. Section 1 of this document is not
+where that row lives; `agg_cells.ANCHOR_HALFLIVES_R` is, and it is
+{2R, 1R, 0.5R, 0.25R, 0.125R}. It stops at 2R deliberately: the coefficient is
+`lambda_s = 1 - 2 ** (-1/h)` with `h` in rounds, so at `h = 2R` the displacement
+from g-0 never halves inside the run at all and nothing slower is an
+intervention.
+
+**The rule the study selected therefore sat on the top edge of its own row**,
+and a bracket around a winner on an edge cannot be symmetric inside the screened
+range. 4R is the step outside it, and it is a *weaker* intervention than every
+value the screen tried rather than a stronger one - which is worth saying
+plainly, because a reader who sees a three-point bracket will otherwise assume
+it straddles the live region. It does not; it straddles the boundary of the
+searched one.
+
+| h | `--server-anchor` at 25 rounds | at 100 rounds | inside the screened row? |
+|---|---|---|---|
+| 1R | 0.0273451 | 0.0069075 | yes |
+| 2R | 0.0137673 | 0.00345974 | yes |
+| 4R | 0.0069075 | 0.00173137 | **no** |
+
+A cell stores `h` and not the coefficient, and `study_lines.resolve_agg_flags`
+turns it into `--server-anchor` at the horizon the line runs - which is why the
+100-round column of the 2R row is exactly the coefficient the shipped `s20`
+combination line carries. A cell that stored the coefficient would be two
+different rules at the two horizons.
+
+**`seq_fedavg`** is cyclic FedAvg and has no coefficient at all, so the cyclic
+half of this grid has no rule axis - the same asymmetry section 9 has, arriving
+from a different rule.
+
+**Not the validation shortlist's penalty leaders.** Those are different arms
+again - `logit_l2_lam0p001` parallel and `ntd_b0p01_t2` cyclic, per
+`tables/p14_reg_top3.json`, and neither is a KD+EWC blend. Tuning one of them
+jointly would need a different mapping onto the trainer's coefficients and would
+be a different grid, not this one widened. It is not run and it is not claimed.
+
+**Deduplication: 0 cells removed.** Section 9's check, on the same nine
+`(m, c_kd)` products and the same nine `(1 - m) * c_ewc` weights, over a rule
+axis that cannot collide with itself.
+
+| | cells | tasks at 5 folds |
+|---|---|---|
+| the pair as `s20` ran it, per schedule | 1 | 5 |
+| this screen, parallel | 162 | 810 |
+| this screen, cyclic | 54 | 270 |

@@ -37,6 +37,12 @@ JOBS = REPO / "study" / "artifacts" / "Digits_study01" / "jobs"
 SCREEN = "s23_combo_screen.txt"
 FULL = "s24_combo_full.txt"
 
+#: Every EXTENSION task file, this stage's two included. The seed scheme's
+#: claim is about where the extensions sit relative to the programme, so the
+#: programme is what the window is measured against and these are subtracted.
+EXTENSION_FILES = (SCREEN, FULL, "s25_combo_screen_selected.txt",
+                   "s26_combo_full_selected.txt")
+
 #: The retired study roots, as P13 and P21 list them.
 RETIRED = (
     "v1_superseded", "main_v6", "studies/T", "T1_20outliers", "T1_10outliers",
@@ -119,7 +125,11 @@ def test_the_counts_register_the_extension_and_say_that_it_is_one():
     counts = SL.counts(DIGITS_STUDY01)
     assert counts["combo_tune_screen"] == 216 * 5 == 1080
     assert counts["combo_tune_full"] == len(SL.FAMILIES) * 5 == 10
-    assert SL.EXTENSION_COUNTS == ("combo_tune_screen", "combo_tune_full")
+    # P25 registered a second joint grid beside this one; both are extensions
+    # and both are labelled as such, which is what this tuple is for.
+    assert SL.EXTENSION_COUNTS == (
+        "combo_tune_screen", "combo_tune_full",
+        "combo_tune_selected_screen", "combo_tune_selected_full")
     for name in SL.EXTENSION_COUNTS:
         assert name in counts
 
@@ -399,11 +409,20 @@ def test_no_seed_collides_with_any_other_stage(parsed):
 
 
 def test_the_seed_window_is_wide_enough_and_outside_the_programmes(p23, parsed):
+    """
+    Above every seed THE PROGRAMME draws, not above every seed on disk.
+
+    The claim is that an extension's blocks sit visibly outside the programme's
+    rather than interleaved with them, so the comparison is against the
+    programme's task files. A later extension opening a higher block is the
+    scheme working, not a collision - and collisions are what
+    `test_no_seed_collides_with_any_other_stage` is for.
+    """
     seeds = {a.sampler_seed for a in parsed}
     assert p23.SEED_OFFSET == 60000
     assert min(seeds) == 760001 and max(seeds) == 762155
     assert max(seeds) - min(seeds) > 1000
-    assert min(seeds) > max(_shipped_seeds({SCREEN, FULL}))
+    assert min(seeds) > max(_shipped_seeds(set(EXTENSION_FILES)))
 
 
 def test_the_screen_and_the_finals_do_not_share_a_seed():

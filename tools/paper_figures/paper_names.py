@@ -211,6 +211,27 @@ def _rules():
              + [r"\lambda_E{=}%s" % _sci(g[0]), r"\lambda_K{=}%s" % _sci(g[1]),
                 r"T{=}%s" % _dec(g[2]), r"m{=}%s" % _dec(g[3])]))
 
+    # -- the SECOND joint grid: the pair the study SELECTED, tuned jointly.
+    # -- Same shape as the rule above and a name of its own, because it is a
+    # -- different pair: the rule half here is the head of the aggregation
+    # -- shortlist's own VALIDATION ranking, which on the parallel schedule is
+    # -- a different rule from the one its test order leads with.  The rule
+    # -- knob is the anchor's half-life rather than a server step, and it is
+    # -- printed in R because that is the unit the cell stores - the
+    # -- coefficient the trainer receives is a function of the horizon too, so
+    # -- printing it would name a number that changes between two runs of one
+    # -- cell.  A cell with a half-life is parallel and one without is cyclic.
+    rule(r"ctunesel_ewc([0-9pem]+)_kd([0-9pem]+)_T([0-9p]+)_mix([0-9p]+)"
+         r"(?:_h([0-9p]+))?",
+         lambda g: ("Server anchor + KD+EWC blend" if g[4]
+                    else "Cyclic FedAvg + KD+EWC blend"),
+         lambda g: ("Anchor + blend (tuned)" if g[4]
+                    else "Cyclic FedAvg + blend (tuned)"),
+         lambda g: _math(
+             ([r"h{=}%sR" % _dec(g[4])] if g[4] else [])
+             + [r"\lambda_E{=}%s" % _sci(g[0]), r"\lambda_K{=}%s" % _sci(g[1]),
+                r"T{=}%s" % _dec(g[2]), r"m{=}%s" % _dec(g[3])]))
+
     # -- the carried arms and the extreme federations -----------------------
     rule(r"winner", "Anchor + FedNTD (crowned)", "Crowned")
     rule(r"balanced", "FedAvg + KD/EWC blend", "Balanced")

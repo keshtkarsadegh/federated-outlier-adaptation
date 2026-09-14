@@ -64,6 +64,12 @@ PREFIXES = {
                        "d01_regfull_sequential_blend_"),
     "s23_combo_screen": ("d01_ctune_",),
     "s24_combo_full": ("d01_ctunefull_",),
+    # The second joint grid. Its stems are not lodgers inside the first one's:
+    # "d01_ctunesel_" does not start with "d01_ctune_", because the character
+    # after ``ctune`` is not the underscore that prefix ends in - so neither
+    # stage needs a negative pattern to keep the other's folders out.
+    "s25_combo_screen_selected": ("d01_ctunesel_",),
+    "s26_combo_full_selected": ("d01_ctuneselfull_",),
     "d01_five": ("d01_five_",),
     "d01_c10d10": ("d01_c10d10_",),
     "d01_c20": ("d01_c20d",),
