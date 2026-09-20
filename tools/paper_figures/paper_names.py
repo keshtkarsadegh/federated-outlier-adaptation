@@ -116,6 +116,18 @@ def _math(parts):
 # a method with no free parameter.
 # ---------------------------------------------------------------------------
 
+#: The coefficients each composite parentage inherited from the halves it was
+#: built out of, as the construction stage recorded them --- ``parallel`` from
+#: ``tables/p14_hybrid_construction.json`` (the distillation winner at T = 0.25
+#: and alpha = 0.9) and ``cyclic`` from its ``_sequential`` counterpart (T = 2,
+#: alpha = 0.99).  Lambda is that record's ``lam``, which is (1-alpha)/alpha
+#: and so is not a round number; it is printed to three significant figures,
+#: because alpha is the dial the sweep turned and lambda is what it implies.
+#: The two entries are restated here rather than read at import time: this
+#: module turns identifiers into names and opens no files.
+COMPOSITE = {"parallel": ("0.111", "0.25"), "cyclic": ("0.0101", "2")}
+
+
 def _rules():
     R = []
 
@@ -174,19 +186,32 @@ def _rules():
     rule(r"ntd_b([0-9p]+)_t([0-9p]+)", "FedNTD", "FedNTD",
          lambda g: _math([r"\beta{=}%s" % _dec(g[0]), r"\tau{=}%s" % _dec(g[1])]))
 
-    # -- the one composite penalty.  Which schedule's halves a blend is built
-    # -- from is part of its identity, so the two parentages never share a
-    # -- name, in the full form or in the short one.
-    rule(r"hybrid_mix([0-9p]+)", "KD+EWC blend", "KD+EWC blend",
-         lambda g: _math([r"m{=}%s" % _dec(g[0])]))
+    # -- the composite penalty, and the screen that swept the same three
+    # -- coefficients on its own.  THREE DIFFERENT ARMS USED TO READ "KD+EWC
+    # -- blend" ON THE PAGE.  The construction stage took a schedule's
+    # -- selected distillation and consolidation halves, INHERITED their
+    # -- lambda and T, and swept the mix alone; the screen swept lambda, T and
+    # -- m together and is a different arm built a different way.  So the
+    # -- composite is named for the construction and the screen for the
+    # -- screen, and which schedule's halves a composite is built from stays
+    # -- part of its identity: the two parentages never share a name, in the
+    # -- full form or in the short one.
+    # -- A composite cell spells its mix and nothing else, because the mix is
+    # -- the only dial that stage turned, so its lambda and T reach the page
+    # -- from COMPOSITE above or they reach it nowhere at all.
+    rule(r"hybrid_mix([0-9p]+)", "KD+EWC composite", "KD+EWC composite",
+         lambda g: _math([r"\lambda{=}%s" % COMPOSITE["parallel"][0],
+                          r"T{=}%s" % COMPOSITE["parallel"][1],
+                          r"m{=}%s" % _dec(g[0])]))
     rule(r"hybrid_seq_mix([0-9p]+)",
-         "KD+EWC blend", "KD+EWC blend, cyclic-tuned",
-         lambda g: _math([r"m{=}%s" % _dec(g[0])]), "cyclic-tuned")
-    # -- and the same blend as its own screen names it.  Those three cells
-    # -- inherited their lam and T; these carry them, so the identifier has
-    # -- to print all three coefficients rather than the mix alone.
+         "KD+EWC composite", "KD+EWC composite, cyclic-tuned",
+         lambda g: _math([r"\lambda{=}%s" % COMPOSITE["cyclic"][0],
+                          r"T{=}%s" % COMPOSITE["cyclic"][1],
+                          r"m{=}%s" % _dec(g[0])]), "cyclic-tuned")
+    # -- the screen carries all three coefficients in the identifier itself,
+    # -- which is the whole difference between it and the rows above.
     rule(r"blend_lam([0-9pem]+)_T([0-9p]+)_mix([0-9p]+)",
-         "KD+EWC blend", "KD+EWC blend",
+         "KD+EWC screened", "KD+EWC screened",
          lambda g: _math([r"\lambda{=}%s" % _dec(g[0]),
                           r"T{=}%s" % _dec(g[1]),
                           r"m{=}%s" % _dec(g[2])]))

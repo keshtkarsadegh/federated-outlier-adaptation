@@ -301,9 +301,11 @@
   % combos.csv, row anchor_h2_ntd_b0p01_t0p5, col adaptation
 \newcommand{\nComboWinnerPres}{0.9885}
   % combos.csv, row anchor_h2_ntd_b0p01_t0p5, col preservation
-\newcommand{\nComboWinnerHeadroom}{89\%}
-  % derived: combos.csv row anchor_h2_ntd_b0p01_t0p5 col gained / references.csv row 'centralized (from g-0)' col gained
-\newcommand{\nComboBalanced}{the server step at $\eta_s = 0.95$ with the cyclic-tuned KD+EWC blend at $m = 0.5$}
+\newcommand{\nComboWinnerHeadroom}{64\%}
+  % derived: combos.csv row anchor_h2_ntd_b0p01_t0p5 col gained / the shipped model's cohort gap P0 - A0 (references.csv, every row: preservation + spent; references.csv, every row: adaptation - gained), as a percentage
+\newcommand{\nComboWinnerHeadroomCeiling}{89\%}
+  % derived: combos.csv row anchor_h2_ntd_b0p01_t0p5 col gained / references.csv row 'centralized (from g-0)' col gained -- the same gain read against the ceiling rather than against the gap; no sentence uses it
+\newcommand{\nComboBalanced}{the server step at $\eta_s = 0.95$ with the cyclic-tuned KD+EWC composite at $m = 0.5$}
   % combos.csv, row eta_0p95_hybrid_seq_mix0p5/parallel, col cell -- the balanced arm, the frozen crowning record (validation basis), not re-derived here
 \newcommand{\nComboBalancedAdapt}{0.9290}
   % combos.csv, row eta_0p95_hybrid_seq_mix0p5, col adaptation

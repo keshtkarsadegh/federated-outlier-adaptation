@@ -213,3 +213,98 @@ def test_the_signal_extracts_carry_the_columns_their_tool_declares():
         keys = {row[0] for row in csv.reader(handle)}
     assert {"stopping_arms", "fixed_mean_score", "oracle_mean_score",
             "baseline_a0", "baseline_p0"} <= keys
+
+
+def _generated_tables(tmp_path, monkeypatch):
+    """The .tex the table generator actually writes, into a scratch directory."""
+    import make_paper_tables
+
+    monkeypatch.setenv("FOA_PAPER_OUT", str(tmp_path))
+    monkeypatch.setattr(sys, "argv", ["make_paper_tables.py"])
+    make_paper_tables.main()
+    return tmp_path / "tables"
+
+
+def test_every_delta_the_combination_table_prints_lands_on_a_printed_row(tmp_path, monkeypatch):
+    """
+    Table 4's delta column has to be reproducible from Tables 2 and 3.
+
+    `tab:combos` prints, for each of its eighteen rows, the score minus the
+    score of whichever of the row's two halves scores higher on its own, and
+    its note sends the reader to `tab:agg_winners` and `tab:reg_winners` to
+    find that half. Six of the eighteen cross a COMPOSITE penalty, and a
+    `tab:reg_winners` filtered to `not cell.startswith("hybrid")` printed none
+    of the composites - so those six deltas could not be checked from the page,
+    and the screened blend stood there as the only mixed penalty on it, inviting
+    a recomputation against the wrong row that moves the count of combinations
+    clearing their better half.
+
+    So what is pinned here is the joint itself, on the emitted LaTeX rather
+    than on the generator's intentions: for every combination, the parent the
+    delta is taken against is a row one of the two tables prints, with that
+    parent's own name and its own score on it.
+    """
+    import make_paper_tables as tables
+
+    out = _generated_tables(tmp_path, monkeypatch)
+    printed = {"reg": (out / "reg_winners.tex").read_text(),
+               "agg": (out / "agg_winners.tex").read_text()}
+
+    agg = tables.rows("agg-winners.csv")
+    regu = tables.rows("reg-winners.csv")
+    combo = tables.rows("combos.csv")
+    agg_cells = {row["cell"] for row in agg}
+    assert len(combo) == 18
+
+    composites = 0
+    for row in combo:
+        rule, penalty = tables.split_combo(row["cell"], agg_cells)
+        a = tables.pick(agg, cell=rule, family=row["family"])
+        b = tables.pick(regu, cell=penalty, family=row["family"])
+        parent = a if float(a["score"]) >= float(b["score"]) else b
+        composites += parent["cell"].startswith("hybrid")
+
+        name = tables.label(parent["cell"])
+        score = "%.2f" % (100 * float(parent["score"]))
+        where = printed["agg"] if parent is a else printed["reg"]
+        assert [ln for ln in where.splitlines() if name in ln and score in ln], (
+            f"{row['cell']}/{row['family']}: its delta is taken against "
+            f"{parent['cell']} at {score}, which no printed row carries"
+        )
+
+    assert composites == 6, composites
+
+
+def test_the_three_mixed_penalties_are_told_apart_by_name(tmp_path, monkeypatch):
+    """
+    Three different arms mix distillation with consolidation and all three
+    used to render as "KD+EWC blend".
+
+    The construction stage built a composite out of a schedule's own selected
+    halves, inheriting their lambda and T and sweeping the mix alone, and did
+    it twice - once per schedule. A separate screen swept lambda, T and m
+    together. The paper crosses one composite, reports another as selected, and
+    prints the screen beside both, so one name over the three left a reader no
+    way to tell which arm a row was about. A composite cell also spells only
+    its mix, so if paper_names does not carry its lambda and T, nothing does.
+    """
+    import paper_names
+
+    arms = ("hybrid_seq_mix0p75", "hybrid_seq_mix0p5", "hybrid_mix0p5",
+            "blend_lam0p1_T0p5_mix0p25", "blend_lam0p1_T0p25_mix0p5")
+    names = [paper_names.label(cell) for cell in arms]
+    assert len(set(names)) == len(names), names
+
+    assert len({paper_names.short(cell) for cell in
+                ("hybrid_mix0p5", "hybrid_seq_mix0p5",
+                 "blend_lam0p1_T0p5_mix0p25")}) == 3
+
+    for cell in ("hybrid_seq_mix0p75", "hybrid_mix0p5"):
+        rendered = paper_names.label(cell)
+        assert "\\lambda{=}" in rendered and "T{=}" in rendered, rendered
+
+    out = _generated_tables(tmp_path, monkeypatch)
+    reg = (out / "reg_winners.tex").read_text()
+    for cell in ("hybrid_seq_mix0p75", "hybrid_seq_mix0p5", "hybrid_mix0p5",
+                 "blend_lam0p1_T0p5_mix0p25", "blend_lam0p1_T0p25_mix0p5"):
+        assert paper_names.label(cell) in reg, cell

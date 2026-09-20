@@ -12,10 +12,26 @@ Contract
   a CSV cell is either a macro from numbers.tex (so it is generated too) or is
   labelled ``derived'' in a comment at the top of the emitted file.
 * Every table header states the evaluation basis it reports.
+* A column that is a difference against a row of another table names that
+  table, and every row it points at is a row that table prints.  ``tab:combos``
+  reads six of its eighteen deltas against a COMPOSITE penalty, so
+  ``tab:reg_winners`` carries the composite rows the grid crosses and the one
+  the study selected instead of filtering every composite out; dropping them
+  left six deltas that the page could not be used to reproduce, and a reader
+  who recomputed them against the screened blend --- the only mixed penalty
+  still printed --- got a different count of how many combinations clear their
+  better half.  ``reg_printed`` decides that row set and an assertion in
+  ``t_combos`` holds the delta column to it.
 * No run-record identifier reaches the page.  Every method is named by
   paper_names.py, which turns a cell id into the published name of the method
   and its setting in that method's own symbol; a table is rejected by an
   assertion at the end of this script if any identifier survives into it.
+* A printed number is rounded once, from the full-precision CSV value, and
+  the columns of a row are rounded independently.  So the printed gained and
+  spent of a row need not differ by exactly its printed score: the identity
+  holds where the score was computed, which is at full precision.  numbers.tex
+  rounds the same way, which is why no macro disagrees with the table beside
+  it; a reader who subtracts two printed numbers may disagree with both.
 * Running the script twice produces byte-identical files.
 
 Where it reads and where it writes
@@ -130,6 +146,15 @@ OUT = [None]
 CROWNED = ("anchor_h2_ntd_b0p01_t0p5", "parallel")
 BALANCED = ("eta_0p95_hybrid_seq_mix0p5", "parallel")
 CYCLIC_ARM = ("seq_fedavg_ntd_b0p01_t2", "cyclic")
+
+#: The composite the study selected out of the construction sweep, named for
+#: the same reason the three arms above are: the record is frozen, and a table
+#: reports it rather than re-deriving it from its own best row.
+BLEND_SELECTED = "hybrid_seq_mix0p75"
+
+#: The superscript tab:reg_winners puts on a composite row, by the role that
+#: earns the row its place in a table of penalties, in printing order.
+BLEND_MARK = (("selected", "\\dagger"), ("crossed", "\\ddagger"))
 
 RAW = {}
 CHECKED = [0]
@@ -333,6 +358,11 @@ def t_references(refs):
         "Reference & Adaptation & Preservation & Gained & Spent & Score \\\\\n"
         " & & & (pts) & (pts) & (pts) \\\\",
         body, size="\\scriptsize",
+        note=("Each column is rounded once from the stored value, so gained "
+              "and spent as printed need not differ by exactly the score as "
+              "printed; the identity holds at the precision the score was "
+              "computed at. The same holds of every table here and of every "
+              "number the text quotes."),
         comment="source: data/references.csv, all rows, ordered by col score")
 
 
@@ -367,34 +397,86 @@ def t_agg(agg):
 
 
 # --------------------------------------------------------------------------
-# T2b --- penalties (the blends have their own table)
+# T2b --- penalties, plus the composite rows another table reads;
+# the construction sweep in full has its own table below
 # --------------------------------------------------------------------------
 
-def t_reg(regu):
-    single = [r for r in regu if not r["cell"].startswith("hybrid")]
+def reg_printed(regu, combo, agg_cells):
+    """The rows tab:reg_winners carries, each with the roles that earn it one.
+
+    THE COMPOSITE ROWS ARE NOT DECORATION.  tab:combos prints, for every one of
+    its eighteen rows, the score minus the score of whichever half scores
+    higher on its own, and its note sends the reader to this table to find that
+    half.  Six of the eighteen cross a composite penalty, so a table of
+    penalties that filtered every composite out left six deltas the page could
+    not be used to reproduce --- and worse, left the screened blend standing as
+    the only mixed penalty on it, so a reader recomputing against that instead
+    got a count of how many combinations clear their better half that the text
+    does not report.
+
+    So the filter is not "no composites".  It is every single-method penalty,
+    plus the composite rows another printed table reads: the one the grid
+    crosses on that schedule, derived from the grid itself rather than assumed,
+    and the one the study selected.  The remaining composite rows are the
+    construction sweep's own subject and are reported with it.
+    """
+    crossed = {(split_combo(r["cell"], agg_cells)[1], r["family"]) for r in combo}
+    out = []
+    for r in regu:
+        if not r["cell"].startswith("hybrid"):
+            out.append((r, ()))
+            continue
+        roles = [role for role, ok in
+                 (("selected", r["cell"] == BLEND_SELECTED),
+                  ("crossed", (r["cell"], r["family"]) in crossed)) if ok]
+        if roles:
+            out.append((r, tuple(roles)))
+    return out
+
+
+def t_reg(reg_rows):
     body = []
     for fam, title in SCHEDULE_BLOCKS:
         if body:
             body.append("\\midrule")
         body.append("\\rowcolor{blockband}\\multicolumn{5}{@{}l}{\\textbf{%s}} \\\\" % title)
-        for r in by_score([x for x in single if x["family"] == fam]):
-            body.append(" & ".join(["\\quad " + label(r["cell"]),
+        here = [x for x in reg_rows if x[0]["family"] == fam]
+        for r, roles in sorted(here, key=lambda x: -float(x[0]["score"])):
+            name = "\\quad " + label(r["cell"]) + "".join(
+                "$^{%s}$" % mark for role, mark in BLEND_MARK if role in roles)
+            body.append(" & ".join([name,
                                     num(r, "adaptation"), num(r, "preservation"),
                                     num(r, "spent", 2, 100),
                                     num(r, "score", 2, 100)]) + " \\\\")
-    check_schedules(single)
+    check_schedules([r for r, _ in reg_rows])
+    note = ("The composite penalty is the one the construction stage built, "
+            "$\\lambda\\,[\\,m\\,D_{\\mathrm{kd}} + (1-m)\\,D_{\\mathrm{fisher}}\\,]$, "
+            "out of a schedule's own selected distillation and consolidation "
+            "halves: it inherited their $\\lambda$ and $T$ and swept the mix "
+            "alone. The \\emph{screened} rows are the separate screen that "
+            "swept all three coefficients together, which is why the two are "
+            "named apart and carry different coefficients here. Of the "
+            "composite rows this table carries the two another table reads: "
+            "$\\dagger$ the composite the study selected, $\\ddagger$ the "
+            "composite Table~\\ref{tab:combos} crosses on that schedule and "
+            "reads its $\\Delta$ against. The rest of the sweep is reported "
+            "with the construction it belongs to.")
     return block(
         "tab:reg_winners",
         "Every client penalty at its own best setting, at the full horizon "
-        "under plain FedAvg on the server. Five-fold means, \\textbf{test} axis, "
+        "under plain FedAvg on the server, together with the composite rows "
+        "the other tables read. Five-fold means, \\textbf{test} axis, "
         "grouped by schedule and ordered by score within each block; "
         "``No penalty (control)'' is the proximal term at $\\mu{=}0$.",
         "lrrrr",
         "Client penalty & Adaptation & Preservation & Spent (pts) & Score (pts) \\\\",
-        body, size="\\scriptsize", colsep="5pt",
-        comment="source: data/reg-winners.csv, rows whose cell does not start\n"
-                "with 'hybrid', grouped by col family (parallel block first,\n"
-                "cyclic second), ordered by col score within each block")
+        body, size="\\scriptsize", colsep="5pt", note=note,
+        comment="source: data/reg-winners.csv, every row whose cell does not\n"
+                "start with 'hybrid', plus the 'hybrid' rows another table\n"
+                "reads --- the penalty half of a data/combos.csv row on the\n"
+                "same schedule, and the selected composite (mix 0.75,\n"
+                "cyclic-tuned) --- grouped by col family (parallel block\n"
+                "first, cyclic second), ordered by col score within each block")
 
 
 # --------------------------------------------------------------------------
@@ -469,7 +551,7 @@ def split_combo(cell, agg_cells):
     raise KeyError(cell)
 
 
-def t_combos(combo, agg, regu):
+def t_combos(combo, agg, regu, printed):
     agg_cells = {r["cell"] for r in agg}
     check_schedules(combo)
     ordered = []
@@ -485,6 +567,10 @@ def t_combos(combo, agg, regu):
             a = pick(agg, cell=rule, family=r["family"])
             b = pick(regu, cell=pen, family=r["family"])
             half = a if float(a["score"]) >= float(b["score"]) else b
+            assert (half["cell"], r["family"]) in printed, (
+                "the delta for %s on the %s schedule is taken against %s, "
+                "which neither tab:agg_winners nor tab:reg_winners prints"
+                % (r["cell"], r["family"], half["cell"]))
             d = 100.0 * (float(r["score"]) - float(half["score"]))
             CHECKED[0] += 1
             halves.append(half["cell"] == pen)
@@ -503,7 +589,10 @@ def t_combos(combo, agg, regu):
             "$\\Delta$ better half is the row's score minus the score of "
             "whichever of its two halves scores higher on its own, read from "
             "Tables~\\ref{tab:agg_winners} and~\\ref{tab:reg_winners}. In all "
-            "eighteen rows that better half is the \\emph{penalty}. The column is "
+            "eighteen rows that better half is the \\emph{penalty}, and every "
+            "one of the eighteen is printed in Table~\\ref{tab:reg_winners} "
+            "--- the composite penalty six of them cross is marked there with "
+            "$\\ddagger$. The column is "
             "a difference of five-fold means, not a fold-paired verdict, which "
             "the text reports instead. $\\star$ marks the crowned pair.")
 
@@ -521,7 +610,8 @@ def t_combos(combo, agg, regu):
                 "(parallel block first, cyclic second), ordered by col score\n"
                 "within each block; the delta column is derived --- combos\n"
                 "score minus the larger of the two parents' scores in\n"
-                "data/agg-winners.csv and data/reg-winners.csv, same schedule")
+                "data/agg-winners.csv and data/reg-winners.csv, same schedule,\n"
+                "and asserted to be a row one of those two tables prints")
 
 
 # --------------------------------------------------------------------------
@@ -1004,14 +1094,21 @@ def main():
               "c20d20": rows("fairness_c20d20.csv")}
     sizes = {k: rows("sizes_%s.csv" % k) for k, _, _ in SETTING}
 
+    # What Tables 2 and 3 print is what Table 4's delta column may point at.
+    # Both tables are emitted from these two sets, so the assertion inside
+    # t_combos cannot drift away from what is actually on the page.
+    agg_cells = {r["cell"] for r in agg}
+    reg_rows = reg_printed(regu, combo, agg_cells)
+    printed = ({(r["cell"], r["family"]) for r in agg}
+               | {(r["cell"], r["family"]) for r, _ in reg_rows})
+
     emitted = [
         ("references.tex", t_references(refs), len(refs)),
         ("agg_winners.tex", t_agg(agg), len(agg)),
-        ("reg_winners.tex", t_reg(regu),
-         len([r for r in regu if not r["cell"].startswith("hybrid")])),
+        ("reg_winners.tex", t_reg(reg_rows), len(reg_rows)),
         ("blends.tex", t_blends(regu, blend),
          len([r for r in regu if r["cell"].startswith("hybrid")])),
-        ("combos.tex", t_combos(combo, agg, regu), len(combo)),
+        ("combos.tex", t_combos(combo, agg, regu, printed), len(combo)),
         ("scaling.tex", t_scaling(sizes, cost_s),
          sum(len(v) for v in sizes.values())),
         ("fairness.tex", t_fairness(fair_combo, fair10, fair20,

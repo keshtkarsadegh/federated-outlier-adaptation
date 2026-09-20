@@ -15,6 +15,11 @@ Contract
 * Every emitted definition carries a trailing comment naming the CSV file,
   the row and the column the value came from, so any number in the paper can
   be traced to a file without leaving the manuscript.
+* A quantity is rounded ONCE, from the full-precision value, and a quantity
+  that is a difference is differenced before it is rounded.  make_paper_tables
+  rounds the same way, so no macro can disagree with the table beside it ---
+  but a reader who subtracts two PRINTED numbers can land a digit away from
+  both, and has.  See ``ROUND_ONCE``.
 * Running the script twice produces a byte-identical file.
 
 Where it reads and where it writes
@@ -216,6 +221,16 @@ def code(cell):
 # table, so that a later data refresh can never silently re-crown anything.
 # --------------------------------------------------------------------------
 
+#: What every rounded quantity in this file does with a difference, written
+#: down because four of these macros have been recomputed off the printed page
+#: and reported as wrong.  A difference is taken at FULL PRECISION and rounded
+#: once, here and in make_paper_tables.py alike; it is never the difference of
+#: two numbers that were rounded first.  The two orders disagree in the last
+#: digit often enough to matter --- the carry margin is 2.77 from the stored
+#: scores and 2.78 from the printed ones --- and the stored one is the answer.
+ROUND_ONCE = ("rounded once from the full-precision value; subtracting the"
+              " PRINTED values instead can move the last digit")
+
 CROWNED = ("anchor_h2_ntd_b0p01_t0p5", "parallel")     # the crowned pair
 BALANCED = ("eta_0p95_hybrid_seq_mix0p5", "parallel")  # the balanced arm
 CYCLIC_ARM = ("seq_fedavg_ntd_b0p01_t2", "cyclic")     # the cyclic arm
@@ -261,12 +276,16 @@ PROSE = {
     "fisher_scaled_lam50": "loss-capped EWC at $\\lambda = 50$",
     "param_l2_mu0": "FedProx at $\\mu = 0$",
     "param_l2_mu0p0001": "FedProx at $\\mu = 10^{-4}$",
-    "hybrid_mix0p25": "the KD+EWC blend at $m = 0.25$",
-    "hybrid_mix0p5": "the KD+EWC blend at $m = 0.5$",
-    "hybrid_mix0p75": "the KD+EWC blend at $m = 0.75$",
-    "hybrid_seq_mix0p25": "the cyclic-tuned KD+EWC blend at $m = 0.25$",
-    "hybrid_seq_mix0p5": "the cyclic-tuned KD+EWC blend at $m = 0.5$",
-    "hybrid_seq_mix0p75": "the cyclic-tuned KD+EWC blend at $m = 0.75$",
+    "hybrid_mix0p25": "the KD+EWC composite at $m = 0.25$",
+    "hybrid_mix0p5": "the KD+EWC composite at $m = 0.5$",
+    "hybrid_mix0p75": "the KD+EWC composite at $m = 0.75$",
+    "hybrid_seq_mix0p25": "the cyclic-tuned KD+EWC composite at $m = 0.25$",
+    "hybrid_seq_mix0p5": "the cyclic-tuned KD+EWC composite at $m = 0.5$",
+    "hybrid_seq_mix0p75": "the cyclic-tuned KD+EWC composite at $m = 0.75$",
+    "blend_lam0p1_T0p5_mix0p25":
+        "the screened KD+EWC blend at $\\lambda = 0.1$, $T = 0.5$, $m = 0.25$",
+    "blend_lam0p1_T0p25_mix0p5":
+        "the screened KD+EWC blend at $\\lambda = 0.1$, $T = 0.25$, $m = 0.5$",
 }
 
 # trimmed_t<k> keeps k updates out of n; the grid it was drawn from is
@@ -377,7 +396,8 @@ def build():
         "agg-winners.csv control_fedavg/cyclic score minus reg-winners.csv"
         " param_l2_mu0/cyclic score, in points: same nominal configuration run twice")
     put("nIsoScore", pts(100 * f(pick(refs, cell="isolated (from g-0)"), "score")),
-        "references.csv, row 'isolated (from g-0)', col score, in points")
+        "references.csv, row 'isolated (from g-0)', col score, in points; "
+        + ROUND_ONCE)
     put("nFedBestScore", pts(100 * max(f(r, "score")
                                        for view in (agg, regu, combo) for r in view)),
         "max col score over agg-winners.csv, reg-winners.csv, combos.csv, in points")
@@ -620,13 +640,26 @@ def build():
         "combos.csv, row %s, col adaptation" % win["cell"])
     put("nComboWinnerPres", acc(f(win, "preservation")),
         "combos.csv, row %s, col preservation" % win["cell"])
+    # THE DENOMINATOR IS THE SENTENCE'S OWN.  The text reads "closing X of the
+    # shipped model's gap", and the gap it names is the one \nStartingGap
+    # reports: P0 - A0, the shipped model's cohort gap.  This used to divide by
+    # the CENTRALIZED ceiling's gain instead, which is a different question
+    # with a different answer (89% against 64%), so both are emitted now and
+    # the one the sentence means is the one the sentence uses.
     cen = pick(refs, cell="centralized (from g-0)")
-    put("nComboWinnerHeadroom", "%d\\%%" % round(100 * f(win, "gained") / f(cen, "gained")),
+    put("nComboWinnerHeadroom", "%d\\%%" % round(100 * f(win, "gained") / (P0 - A0)),
+        "derived: combos.csv row %s col gained / the shipped model's cohort"
+        " gap P0 - A0 (%s; %s), as a percentage" % (win["cell"], SRC_P0, SRC_A0))
+    put("nComboWinnerHeadroomCeiling",
+        "%d\\%%" % round(100 * f(win, "gained") / f(cen, "gained")),
         "derived: combos.csv row %s col gained / references.csv row"
-        " 'centralized (from g-0)' col gained" % win["cell"])
+        " 'centralized (from g-0)' col gained -- the same gain read against the"
+        " ceiling rather than against the gap; no sentence uses it"
+        % win["cell"])
 
     put("nComboWinnerSpent", pts(100 * f(win, "spent")),
-        "combos.csv, row %s, col spent (= P0 - preservation), in points" % win["cell"])
+        "combos.csv, row %s, col spent (= P0 - preservation), in points; %s"
+        % (win["cell"], ROUND_ONCE))
 
     bal = pick(combo, cell=BALANCED[0], family=BALANCED[1])
     put("nComboBalanced", prose(bal["cell"], agg_cells),
@@ -798,7 +831,7 @@ def build():
         put(macro, pts(100 * f(c, "spent")),
             "sizes_%s.csv, row control, col spent (= P0 - preservation):"
             " the worse (larger) of the parallel and cyclic schedules,"
-            " here %s, in points" % (k, c["family"]))
+            " here %s, in points; %s" % (k, c["family"], ROUND_ONCE))
 
     # margin over the control; the twenty-client settings carry no control row
     margins = []
@@ -814,7 +847,7 @@ def build():
         "derived: sizes_*.csv, col score, minimum over every non-control row of"
         " (arm - the better-scoring control of its setting); attained by"
         " sizes_%s.csv row %s. The two twenty-client settings carry no control"
-        " row and are excluded. In points." % (mk, mc))
+        " row and are excluded. In points, %s." % (mk, mc, ROUND_ONCE))
 
     # ---- Section 6.7, fairness ------------------------------------------
     def cov(cell, family):
