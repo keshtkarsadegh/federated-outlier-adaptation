@@ -447,6 +447,8 @@
   % derived: mean of col final_score over stopping_all.csv, all 81 arms, in points
 \newcommand{\nOracleMeanScore}{9.23}
   % derived: mean of col oracle_score over stopping_all.csv, all 81 arms, in points
+\newcommand{\nOracleMeanGain}{1.48}
+  % derived: mean of col oracle_score minus mean of col final_score over stopping_all.csv, all 83 arms, in points
 \newcommand{\nOneRuleMeanScore}{8.20}
   % derived: mean of col one_score over stopping_all.csv, all 81 arms, in points
 \newcommand{\nOneRuleMeanGain}{0.47}
@@ -465,6 +467,8 @@
   % derived: minus stopping_all.csv col one_vs_final of that row, in points (the sentence reads it as a cost)
 \newcommand{\nKlRuleScore}{7.19}
   % signals_summary_extract.csv, row kl_global_to_current, col mean_stopped_score, in points
+\newcommand{\nProxyKlRuleScore}{8.12}
+  % signals_summary_extract.csv, row proxy_kl, col mean_stopped_score, in points
 \newcommand{\nOracleGapMainMin}{0.08}
   % derived: smallest per-stage MEDIAN of col oracle_cost over the seven non-extreme stages of stopping_all.csv, in points
 \newcommand{\nOracleGapMainMax}{2.17}
@@ -479,6 +483,10 @@
   % signals_extras_extract.csv, key source_max_fall_extreme, in points
 \newcommand{\nSignalRuns}{2\,471}
   % signals_extras_extract.csv, key study_runs --- the run count the signals module reported for the study (of which 2444 carry a source-validation correlation)
+\newcommand{\nSignalCount}{eight}
+  % signals_summary_extract.csv, number of data rows --- the signals the runner records on every arm
+\newcommand{\nSignalCorrRuns}{2\,444}
+  % signals_extras_extract.csv, key signal_runs_with_source_val --- the runs of that pass which carry a source-validation correlation, and so the population every rho in the table is a median over
 \newcommand{\nSignalKLRho}{0.920}
   % signals_summary_extract.csv, row kl_global_to_current, col median_rho
 \newcommand{\nSignalKLShare}{58.0\%}
@@ -495,6 +503,14 @@
   % signals_summary_extract.csv, row agreement_with_global, col median_rho
 \newcommand{\nSignalAgreementShare}{23.8\%}
   % signals_summary_extract.csv, row agreement_with_global, col share_ge_0p9
+\newcommand{\nSignalFisherRho}{0.807}
+  % signals_summary_extract.csv, row dist_fisher_to_global, col median_rho
+\newcommand{\nSignalFisherShare}{30.3\%}
+  % signals_summary_extract.csv, row dist_fisher_to_global, col share_ge_0p9
+\newcommand{\nSignalFisherNormRho}{0.807}
+  % signals_summary_extract.csv, row dist_fisher_norm_to_global, col median_rho
+\newcommand{\nSignalFisherNormShare}{30.3\%}
+  % signals_summary_extract.csv, row dist_fisher_norm_to_global, col share_ge_0p9
 \newcommand{\nSignalProxyAccRho}{0.515}
   % signals_summary_extract.csv, row proxy_acc, col median_rho
 \newcommand{\nSignalProxyAccShare}{9.9\%}

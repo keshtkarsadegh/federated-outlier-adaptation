@@ -308,3 +308,93 @@ def test_the_three_mixed_penalties_are_told_apart_by_name(tmp_path, monkeypatch)
     for cell in ("hybrid_seq_mix0p75", "hybrid_seq_mix0p5", "hybrid_mix0p5",
                  "blend_lam0p1_T0p5_mix0p25", "blend_lam0p1_T0p25_mix0p5"):
         assert paper_names.label(cell) in reg, cell
+
+
+def test_the_signals_table_prices_all_eight_signals_from_the_shipped_view(tmp_path, monkeypatch):
+    """
+    The signals subsection is written off `tables/signals.tex` and off nothing
+    else, so every signal the study permits has to be on it and every cell of
+    it has to be a cell of the view.
+
+    Two joints break silently here. A signal the runner stopped recording, or
+    one the exporter left without its stopping columns, would quietly shorten
+    a table whose whole argument is that the best tracker and the best rule
+    are different rows - eight of eight is the claim, not "the ones that had
+    data that day". And a mean or a delta retyped into the emitter rather than
+    read would put a number on the page that no file backs: the generator's
+    own assertions hold the cell it reads to the file, and this holds the cell
+    that reaches the page to the cell it was read from.
+    """
+    import make_paper_tables as tables
+    import paper_names
+
+    out = _generated_tables(tmp_path, monkeypatch)
+    lines = (out / "signals.tex").read_text().splitlines()
+
+    sigs = tables.rows("signals_summary_extract.csv")
+    assert len(sigs) == 8, [row["signal"] for row in sigs]
+    assert {row["signal"] for row in sigs} == set(tables.SIGNAL_ORDER)
+
+    for row in sigs:
+        name = paper_names.SIGNAL[row["signal"]]
+        printed = [ln for ln in lines if ln.startswith(name)]
+        assert len(printed) == 1, (row["signal"], printed)
+        cells = [c.strip() for c in printed[0].rstrip("\\ ").split(" & ")]
+        assert len(cells) == 8, cells
+
+        gain = "%.2f" % (100 * float(row["mean_vs_fixed"]))
+        assert cells[1] == row["observed_on"]
+        assert cells[2] == "%.3f" % float(row["median_rho"])
+        assert cells[3] == "%.1f" % (100 * float(row["share_ge_0p9"])) + r"\%"
+        assert cells[4] == row["best_delta"]
+        assert cells[5] == "%d" % int(row["arms_fired"])
+        assert cells[6] == "%.2f" % (100 * float(row["mean_stopped_score"]))
+        assert cells[7] == ("$%s$" % gain if gain.startswith("-")
+                            else "$+%s$" % gain)
+
+    # The three reference rows are what make the eight readable as worth
+    # something: all of them are the one plateau row that runs over every arm,
+    # so the horizon a signal is priced against is the horizon the patience
+    # rule is priced against.
+    every = tables.pick(tables.rows("plateau_stages.csv"), stage="all")
+    for label, column in (("Fixed horizon", "fixed_mean"),
+                          ("Patience rule", "rule_mean"),
+                          ("Oracle stop", "oracle_mean")):
+        printed = [ln for ln in lines if label in ln]
+        assert len(printed) == 1, label
+        assert "%.2f" % (100 * float(every[column])) in printed[0], label
+
+    caption = [ln for ln in lines if ln.startswith("\\caption{")]
+    assert len(caption) == 1, caption
+    assert "\\textbf{validation}" in caption[0], caption[0]
+
+
+def test_every_macro_the_template_carries_is_mapped_and_every_signal_quotable():
+    """
+    numbers.tex is rewritten in place from the macro NAMES the file already
+    carries, so a macro added to one of the two files and not the other fails
+    in two different directions: a name with no registry entry reaches the
+    page as \\TBD{unmapped}, and a registry entry with no name is computed and
+    thrown away. The template is the copy this repository ships to seed that
+    rewrite, and neither failure is visible from the tables.
+
+    The signals subsection is why this is pinned now. It quotes a correlation
+    and a share for each of the eight signals in prose, beside a table that
+    prints all eight, and a signal whose rho had no macro would be retyped by
+    hand - which is the one thing numbers.tex exists to prevent.
+    """
+    import make_numbers
+
+    text = (FIGURES / "numbers.template.tex").read_text()
+    block = text.split(make_numbers.BEGIN, 1)[1].split(make_numbers.END, 1)[0]
+    names = make_numbers.NAME_RE.findall(block)
+    assert len(names) == len(set(names)), "a macro is defined twice"
+
+    registry = make_numbers.build()
+    assert sorted(set(names)) == sorted(registry)
+
+    rho = [n for n in registry if n.startswith("nSignal") and n.endswith("Rho")]
+    share = [n for n in registry
+             if n.startswith("nSignal") and n.endswith("Share")]
+    assert len(rho) == 8, sorted(rho)
+    assert len(share) == 8, sorted(share)

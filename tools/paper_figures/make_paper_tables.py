@@ -816,7 +816,8 @@ def t_extreme(extr, stopx):
 
 
 # --------------------------------------------------------------------------
-# T10 --- the eight permitted signals: tracker on the left, rule on the right
+# T10 --- the eight permitted signals: tracker on the left, rule on the
+# right, and the three references a rule column is worth nothing without
 # --------------------------------------------------------------------------
 
 # The order the section introduces them in: the three that need no data, the
@@ -834,53 +835,127 @@ UNSTEERABLE = ("dist_l2_to_global", "dist_fisher_to_global",
                "dist_fisher_norm_to_global")
 
 
-def t_signals(sigs):
+def t_signals(sigs, pst):
+    """T10 --- every permitted signal twice: as a tracker, then as a rule.
+
+    THE TWO SIDES OF THE TABLE ARE READ OVER DIFFERENT POPULATIONS, which is
+    why the note says which is which.  The correlation columns are one rank
+    correlation per run over the runs the signals pass covers; the four rule
+    columns are means over the hundred-round stopping arms, a later and
+    smaller population.  Both sit on the validation trace, the only basis a
+    stopping round may be chosen on.  They are printed side by side because
+    they disagree: the signal that orders the rounds of a run best is not the
+    signal a server should stop on, and a section that reported the
+    correlations alone would have picked the wrong one.
+
+    THE LAST THREE ROWS ARE NOT SIGNALS.  A mean score means nothing without
+    the horizon it is measured against, the rule that needs no proxy, and the
+    oracle that prices what any stop could be worth; carrying the three here
+    is what lets the subsection read the eight rows above them as worth
+    something or not, rather than sending the reader to two other tables.
+    """
     by = {r["signal"]: r for r in sigs}
+    assert len(by) == len(sigs) == len(SIGNAL_ORDER), sorted(by)
+
     body = []
     for key in SIGNAL_ORDER:
         r = by[key]
-        fired = int(r["arms_fired"])
-        if key in UNSTEERABLE:
-            verdict = "\\emph{unsteerable}"
-        elif fired == 0:
-            verdict = "\\emph{never fires}"
-        else:
-            verdict = "%s at $\\delta=%s$" % (
-                num(r, "mean_stopped_score", 2, 100), verbatim(r, "best_delta"))
+        assert r["defined_on_all_arms"] == "1", (
+            "%s is not defined on every stopping arm, so its rule columns are "
+            "a mean over a different population than the rest of the column"
+            % key)
         body.append(" & ".join([
-            SIGNAL[key], r["observed_on"],
+            SIGNAL[key] + ("$^{\\dagger}$" if key in UNSTEERABLE else ""),
+            verbatim(r, "observed_on"),
             num(r, "median_rho", 3),
             "%s\\%%" % num(r, "share_ge_0p9", 1, 100),
-            verdict]) + " \\\\")
+            verbatim(r, "best_delta"),
+            count(r, "arms_fired"),
+            num(r, "mean_stopped_score", 2, 100),
+            num(r, "mean_vs_fixed", 2, 100, signed=True)]) + " \\\\")
 
-    note = ("The correlation columns read the signal's \\emph{drift} from its "
-            "own round-zero value against the drop in source validation "
-            "accuracy, one rank correlation per run, over the study's "
-            "\\nSignalRuns{} runs. The last column prices the same signal as a "
-            "\\emph{rule}: the mean score, over all \\nStoppingArms{} "
-            "hundred-round arms, at which its best single budget stops --- "
-            "against \\nFixedMeanScore{} points for the fixed horizon. "
-            "\\emph{never fires} means no budget in the grid is ever crossed "
-            "on any arm, so the rule is the fixed horizon by another name; "
-            "\\emph{unsteerable} means the shared budget grid cannot be "
-            "applied to a raw parameter-space distance at all --- the "
-            "$\\ell_2$ distance crosses every budget inside one round and the "
-            "Fisher distance reaches none of them.")
+    # The three references, all from the one row of plateau_stages.csv that
+    # runs over every arm, so the horizon under the patience rule and the
+    # horizon under a signal are the same 83 arms and the same mean.
+    ref = pick(pst, stage="all")
+    dash = "---"
+    gap = float(ref["oracle_mean"]) - float(ref["fixed_mean"])
+    CHECKED[0] += 1
+    body += [
+        "\\midrule",
+        " & ".join(["\\emph{Fixed horizon}", "nothing", dash, dash, dash,
+                    dash, num(ref, "fixed_mean", 2, 100), dash]) + " \\\\",
+        " & ".join(["\\emph{Patience rule} ($k=\\nPlateauK{}$)",
+                    "cohort accuracy", dash, dash, dash,
+                    count(ref, "fires"), num(ref, "rule_mean", 2, 100),
+                    num(ref, "gain", 2, 100, signed=True)]) + " \\\\",
+        " & ".join(["\\emph{Oracle stop}", "the source population", dash,
+                    dash, dash, dash, num(ref, "oracle_mean", 2, 100),
+                    derived(gap, 2, 100, signed=True)]) + " \\\\"]
+
+    # Six of the eight signals are recorded on the same runs; the two the
+    # clients are asked for are missing from a few, and a median over a
+    # different population is a thing the note has to say out loud.
+    common = by["proxy_kl"]["n_runs"]
+    assert sum(1 for r in sigs if r["n_runs"] == common) == 6, (
+        "the run counts moved: %s" % sorted({r["n_runs"] for r in sigs}))
+
+    note = ("Median $\\rho$ is the Spearman rank correlation of the signal's "
+            "\\emph{drift} --- the signal signed so that forgetting makes it "
+            "grow --- against the fall in source validation accuracy, one "
+            "correlation per run; the column beside it is the share of those "
+            "runs at $\\lvert\\rho\\rvert\\ge0.9$. Both are read over the "
+            "runs of the signals pass, which is the programme as it stood "
+            "before its last two stages: %s runs for six of the eight "
+            "signals, %s for %s and %s for %s. The four columns on the right "
+            "are means over the \\nStoppingArms{} hundred-round arms "
+            "instead --- the budget the signal scores best at on the grid "
+            "shared by all eight, the arms it stops before the horizon on, "
+            "the mean score at the round it stops, and the difference from "
+            "the fixed horizon. The one rule Table~\\ref{tab:stopping} "
+            "reports is the proxy-set accuracy row of this table, at "
+            "$\\delta=\\nOneRuleDelta{}$. $\\dagger$ The three "
+            "parameter-space distances share no scale with that one grid: "
+            "the $\\ell_2$ distance crosses every budget on it inside a "
+            "single round and the two Fisher distances reach almost none of "
+            "them, so their rule columns report a units problem and not an "
+            "information one. The last three rows are not signals: the "
+            "horizon itself, the patience rule of "
+            "Table~\\ref{tab:plateau}, which watches the cohort's own "
+            "validation accuracy and needs no proxy at all, and the oracle "
+            "stop, which reads the source population and is a bound on what "
+            "stopping is worth rather than a method."
+            % (count(by["proxy_kl"], "n_runs"),
+               count(by["retention_known"], "n_runs"),
+               short("retention_known"),
+               count(by["agreement_with_global"], "n_runs"),
+               short("agreement_with_global")))
 
     return block(
         "tab:signals",
-        "The eight quantities a server may watch, as trackers and as rules. "
-        "Correlation is not deployability: the strongest tracker is the only "
-        "firing rule that scores below the fixed horizon, and the best rule is "
-        "a mediocre tracker.",
-        "llrrl",
-        "Signal & Observed on & Median $\\rho$ & $\\lvert\\rho\\rvert\\ge0.9$ "
-        "& As a rule (best budget) \\\\\n"
-        " & & (per run) & (share of runs) & (mean score, pts) \\\\",
-        body, size="\\scriptsize", colsep="5pt", note=note,
-        comment="source: data/signals_summary_extract.csv, one row per signal,\n"
-                "cols median_rho, share_ge_0p9, mean_stopped_score, best_delta,\n"
-                "arms_fired --- ordered as Section 7 introduces them")
+        "The eight quantities a server may watch, each as a tracker of "
+        "forgetting and as a stopping rule, with the fixed horizon, the "
+        "patience rule and the oracle beside them. Every column is read from "
+        "the per-round \\textbf{validation} trace, the only basis on which a "
+        "stopping round may be chosen. Correlation is not deployability: of "
+        "the five signals the shared budget grid can steer, the best tracker "
+        "is the only one whose rule scores below the fixed horizon, and the "
+        "best rule is the seventh tracker of the eight.",
+        "llrrrrrr",
+        "Signal & Reads & Median $\\rho$ & $\\lvert\\rho\\rvert\\ge0.9$ & "
+        "Budget $\\delta$ & Fires & Score & $\\Delta$ vs.\\ fixed \\\\\n"
+        " & & (per run) & (share of runs) & (best) & "
+        "(of \\nStoppingArms{}) & (pts) & (pts) \\\\",
+        body, size="\\scriptsize", colsep="4pt", note=note,
+        comment="sources: data/signals_summary_extract.csv, one row per\n"
+                "signal in the order Section 7 introduces them, cols\n"
+                "observed_on, n_runs, median_rho, share_ge_0p9, best_delta,\n"
+                "arms_fired, mean_stopped_score, mean_vs_fixed;\n"
+                "data/plateau_stages.csv, row all, for the three reference\n"
+                "rows (cols fixed_mean, fires, rule_mean, gain, oracle_mean).\n"
+                "derived: the oracle row's delta --- col oracle_mean minus\n"
+                "col fixed_mean of that same row, differenced before it is\n"
+                "rounded")
 
 
 # --------------------------------------------------------------------------
@@ -1118,7 +1193,7 @@ def main():
                                     {r["cell"] for r in agg}), 4 + len(fair10) + 2),
         ("cost.tex", t_cost(cost_s), len(cost_s)),
         ("extreme.tex", t_extreme(extr, stopx), len(extr)),
-        ("signals.tex", t_signals(sigs), len(sigs)),
+        ("signals.tex", t_signals(sigs, pst), len(sigs)),
         ("stopping.tex", t_stopping(stopa), len(stopa)),
         ("plateau.tex", t_plateau(pst), len(pst) - 1),
         ("cohort.tex", t_cohort(cohort), len(cohort)),

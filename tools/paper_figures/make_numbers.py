@@ -991,6 +991,9 @@ def build():
         "derived: mean of col final_score over %s, in points" % S7)
     put("nOracleMeanScore", dpts(mean("oracle_score")),
         "derived: mean of col oracle_score over %s, in points" % S7)
+    put("nOracleMeanGain", dpts(mean("oracle_score") - mean("final_score")),
+        "derived: mean of col oracle_score minus mean of col final_score over"
+        " %s, in points; %s" % (S7, ROUND_ONCE))
     put("nOneRuleMeanScore", dpts(mean("one_score")),
         "derived: mean of col one_score over %s, in points" % S7)
     put("nOneRuleMeanGain", dpts(mean("one_vs_final")),
@@ -1023,6 +1026,9 @@ def build():
                                "mean_stopped_score")),
         "signals_summary_extract.csv, row kl_global_to_current, col"
         " mean_stopped_score, in points")
+    put("nProxyKlRuleScore", dpts(f(SIG["proxy_kl"], "mean_stopped_score")),
+        "signals_summary_extract.csv, row proxy_kl, col mean_stopped_score,"
+        " in points")
 
     put("nOracleGapMainMin", dpts(min(main_medians)),
         "derived: smallest per-stage MEDIAN of col oracle_cost over the seven"
@@ -1048,14 +1054,23 @@ def build():
     # median_rho is the per-run median rank correlation of the signal's DRIFT
     # against the source-validation drop; the extractor applies the signal's
     # own direction so that every entry is 'forgetting makes it grow'.
+    put("nSignalCount", word(len(sigs)),
+        "signals_summary_extract.csv, number of data rows --- the signals the"
+        " runner records on every arm")
     put("nSignalRuns", group(float(sigx["study_runs"])),
         "signals_extras_extract.csv, key study_runs --- the run count the"
         " signals module reported for the study (of which %s carry a"
         " source-validation correlation)" % sigx["signal_runs_with_source_val"])
+    put("nSignalCorrRuns", group(float(sigx["signal_runs_with_source_val"])),
+        "signals_extras_extract.csv, key signal_runs_with_source_val --- the"
+        " runs of that pass which carry a source-validation correlation, and"
+        " so the population every rho in the table is a median over")
     for macro, signal in (("KL", "kl_global_to_current"),
                           ("ProxyKL", "proxy_kl"),
                           ("LTwo", "dist_l2_to_global"),
                           ("Agreement", "agreement_with_global"),
+                          ("Fisher", "dist_fisher_to_global"),
+                          ("FisherNorm", "dist_fisher_norm_to_global"),
                           ("ProxyAcc", "proxy_acc"),
                           ("Retention", "retention_known")):
         row = SIG[signal]
