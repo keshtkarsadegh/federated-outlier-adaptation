@@ -701,10 +701,11 @@ def build():
             "composition.csv, rows with col family = %s: col all_positive"
             " summed over the %d pairings of that schedule" % (fam, len(sub)))
 
-    # a combination against its better half.  combos.csv carries means only, so
-    # the gain is recomputed from the two parent tables; the fold-paired
-    # verdict of the same comparison is in combos_folds.csv, counted below.
-    def half_gain(cell, family):
+    # a combination against its better component.  combos.csv carries means
+    # only, so the gain is recomputed from the two parent tables; the
+    # fold-paired verdict of the same comparison is in combos_folds.csv,
+    # counted below.
+    def comp_gain(cell, family):
         row = pick(combo, cell=cell, family=family)
         rule, pen = split_combo(cell, agg_cells)
         a = pick(agg, cell=rule, family=family)
@@ -713,36 +714,37 @@ def build():
         return (f(row, "score") - f(parent, "score"),
                 "derived: combos.csv, row %s/%s, col score, minus the better of"
                 " agg-winners.csv row %s/%s and reg-winners.csv row %s/%s"
-                " (the better half is %s), in points"
+                " (the better component is %s), in points"
                 % (cell, family, rule, family, pen, family, parent["cell"]))
 
     for macro, cell in (("nNtdAnchorGain", "anchor_h2_ntd_b0p01_t0p5"),
                         ("nNtdEtaGain", "eta_0p95_ntd_b0p01_t0p5")):
-        g, src = half_gain(cell, "parallel")
+        g, src = comp_gain(cell, "parallel")
         put(macro, dpts(g), src)
 
     # the composition question read on five-fold means: how many of the cross
-    # arms clear the better of the two halves they are built from.
+    # arms clear the better of the two components they are built from.
     put("nComboArms", word(len(combo)),
         "combos.csv, number of rows -- the cross of three rules with three"
         " penalties inside each of the two schedules")
     put("nComboBeatMeans",
         word(sum(1 for r in combo
-                 if half_gain(r["cell"], r["family"])[0] > 0)),
+                 if comp_gain(r["cell"], r["family"])[0] > 0)),
         "derived: combos.csv, rows whose score exceeds the better of its two"
-        " halves in agg-winners.csv and reg-winners.csv, counted")
+        " components in agg-winners.csv and reg-winners.csv, counted")
 
     # the same question paired within folds.  combos_folds.csv carries, for
     # every cross arm, the five within-fold score differences against BOTH of
-    # its halves; a row counts only when every one of those ten differences is
-    # positive, which is what col beats_both_folds records.  A mean gain that
+    # its components; a row counts only when every one of those ten
+    # differences is positive, which is what col beats_both_folds records.
+    # A mean gain that
     # changes sign across folds is not a gain, so this count and the means
     # count above are deliberately kept side by side.
     put("nComboBeatFolds",
         word(sum(1 for r in combo_folds if int(r["beats_both_folds"]))),
         "combos_folds.csv, rows with col beats_both_folds = 1, counted -- the"
         " within-fold difference is positive on all five folds against BOTH"
-        " halves (cols diffs_vs_agg, diffs_vs_reg)")
+        " components (cols diffs_vs_agg, diffs_vs_reg)")
 
     # the same means count split by schedule, so the text can report the cross
     # one schedule at a time in the order Table~\ref{tab:combos} now presents
@@ -756,10 +758,10 @@ def build():
         assert len(sub) == len(subf), (fam, len(sub), len(subf))
         put("nComboBeatMeans" + suffix_,
             "%s of %s" % (word(sum(1 for r in sub
-                                   if half_gain(r["cell"], r["family"])[0] > 0)),
+                                   if comp_gain(r["cell"], r["family"])[0] > 0)),
                           word(len(sub))),
             "derived: combos.csv, rows with col family = %s whose score exceeds"
-            " the better of its two halves in agg-winners.csv and"
+            " the better of its two components in agg-winners.csv and"
             " reg-winners.csv, counted over the %d pairings of that schedule"
             % (fam, len(sub)))
 

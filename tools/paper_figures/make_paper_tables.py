@@ -20,7 +20,7 @@ Contract
   left six deltas that the page could not be used to reproduce, and a reader
   who recomputed them against the screened blend --- the only mixed penalty
   still printed --- got a different count of how many combinations clear their
-  better half.  ``reg_printed`` decides that row set and an assertion in
+  better component.  ``reg_printed`` decides that row set and an assertion in
   ``t_combos`` holds the delta column to it.
 * No run-record identifier reaches the page.  Every method is named by
   paper_names.py, which turns a cell id into the published name of the method
@@ -405,14 +405,14 @@ def reg_printed(regu, combo, agg_cells):
     """The rows tab:reg_winners carries, each with the roles that earn it one.
 
     THE COMPOSITE ROWS ARE NOT DECORATION.  tab:combos prints, for every one of
-    its eighteen rows, the score minus the score of whichever half scores
+    its eighteen rows, the score minus the score of whichever component scores
     higher on its own, and its note sends the reader to this table to find that
-    half.  Six of the eighteen cross a composite penalty, so a table of
+    component.  Six of the eighteen cross a composite penalty, so a table of
     penalties that filtered every composite out left six deltas the page could
     not be used to reproduce --- and worse, left the screened blend standing as
     the only mixed penalty on it, so a reader recomputing against that instead
-    got a count of how many combinations clear their better half that the text
-    does not report.
+    got a count of how many combinations clear their better component that the
+    text does not report.
 
     So the filter is not "no composites".  It is every single-method penalty,
     plus the composite rows another printed table reads: the one the grid
@@ -452,8 +452,8 @@ def t_reg(reg_rows):
     note = ("The composite penalty is the one the construction stage built, "
             "$\\lambda\\,[\\,m\\,D_{\\mathrm{kd}} + (1-m)\\,D_{\\mathrm{fisher}}\\,]$, "
             "out of a schedule's own selected distillation and consolidation "
-            "halves: it inherited their $\\lambda$ and $T$ and swept the mix "
-            "alone. The \\emph{screened} rows are the separate screen that "
+            "components: it inherited their $\\lambda$ and $T$ and swept the "
+            "mix alone. The \\emph{screened} rows are the separate screen that "
             "swept all three coefficients together, which is why the two are "
             "named apart and carry different coefficients here. Of the "
             "composite rows this table carries the two another table reads: "
@@ -473,8 +473,8 @@ def t_reg(reg_rows):
         body, size="\\scriptsize", colsep="5pt", note=note,
         comment="source: data/reg-winners.csv, every row whose cell does not\n"
                 "start with 'hybrid', plus the 'hybrid' rows another table\n"
-                "reads --- the penalty half of a data/combos.csv row on the\n"
-                "same schedule, and the selected composite (mix 0.75,\n"
+                "reads --- the penalty component of a data/combos.csv row\n"
+                "on the same schedule, and the selected composite (mix 0.75,\n"
                 "cyclic-tuned) --- grouped by col family (parallel block\n"
                 "first, cyclic second), ordered by col score within each block")
 
@@ -488,7 +488,7 @@ def t_blends(regu, blend):
     assert len(hyb) == 12, len(hyb)
 
     # blends.csv holds one comparison per (blend, parent) on the schedule the
-    # blend's two halves were selected on; index it by that pair.
+    # blend's two components were selected on; index it by that pair.
     verdict = {}
     parents = {}
     for b in blend:
@@ -511,11 +511,12 @@ def t_blends(regu, blend):
             verdict.get(key + ("fisher",), "---")]) + " \\\\")
 
     note = ("Verdict columns: the mean of the five fold-paired score "
-            "differences, in points, against the distillation half and the "
-            "consolidation half the blend was built from, with the number of "
-            "folds on which "
+            "differences, in points, against the distillation component and "
+            "the consolidation component the blend was built from, with the "
+            "number of folds on which "
             "the difference is positive. A blend is compared on the schedule "
-            "its two halves were selected on, so the six rows run off that "
+            "its two components were selected on, so the six rows run off "
+            "that "
             "schedule carry no paired record and are marked ---. Parents: "
             + "; ".join("%s and %s on the %s schedule"
                         % (label(parents[(fam, "kd")]),
@@ -529,7 +530,7 @@ def t_blends(regu, blend):
         "at the three mixes and on both schedules. Performance columns are "
         "five-fold means on the \\textbf{test} axis; the two verdict columns "
         "are fold-paired against the blend's own parents. The plain rows are "
-        "built from the parallel schedule's selected halves; the "
+        "built from the parallel schedule's selected components; the "
         "\\emph{cyclic-tuned} rows are built from the cyclic schedule's.",
         "llrrrrrr",
         "Blend & Schedule & Adapt. & Pres. & Spent & Score & vs.\\ KD & vs.\\ EWC \\\\\n"
@@ -556,7 +557,7 @@ def t_combos(combo, agg, regu, printed):
     check_schedules(combo)
     ordered = []
     body = []
-    halves = []
+    pen_better = []
     for fam, title in SCHEDULE_BLOCKS:
         if body:
             body.append("\\midrule")
@@ -566,14 +567,14 @@ def t_combos(combo, agg, regu, printed):
             rule, pen = split_combo(r["cell"], agg_cells)
             a = pick(agg, cell=rule, family=r["family"])
             b = pick(regu, cell=pen, family=r["family"])
-            half = a if float(a["score"]) >= float(b["score"]) else b
-            assert (half["cell"], r["family"]) in printed, (
+            comp = a if float(a["score"]) >= float(b["score"]) else b
+            assert (comp["cell"], r["family"]) in printed, (
                 "the delta for %s on the %s schedule is taken against %s, "
                 "which neither tab:agg_winners nor tab:reg_winners prints"
-                % (r["cell"], r["family"], half["cell"]))
-            d = 100.0 * (float(r["score"]) - float(half["score"]))
+                % (r["cell"], r["family"], comp["cell"]))
+            d = 100.0 * (float(r["score"]) - float(comp["score"]))
             CHECKED[0] += 1
-            halves.append(half["cell"] == pen)
+            pen_better.append(comp["cell"] == pen)
             name = "\\quad " + short(rule) + " & " + short(pen)
             if r["cell"] == CROWNED[0]:
                 name += "$^{\\star}$"
@@ -583,13 +584,15 @@ def t_combos(combo, agg, regu, printed):
                 num(r, "score", 2, 100),
                 ("$+%.2f$" % d) if d >= 0 else ("$%.2f$" % d)]) + " \\\\")
 
-    assert all(halves), "a server rule outscores its penalty somewhere"
+    assert all(pen_better), "a server rule outscores its penalty somewhere"
     note = ("Settings, given once for the whole table: "
             + settings_note([(r["cell"], r["family"]) for r in ordered]) + ". "
-            "$\\Delta$ better half is the row's score minus the score of "
-            "whichever of its two halves scores higher on its own, read from "
+            "$\\Delta$ vs.\\ better comp.\\ is the row's score minus the "
+            "score of whichever of its two components, the rule alone or the "
+            "penalty alone, scores higher on its own, read from "
             "Tables~\\ref{tab:agg_winners} and~\\ref{tab:reg_winners}. In all "
-            "eighteen rows that better half is the \\emph{penalty}, and every "
+            "eighteen rows that better component is the \\emph{penalty}, and "
+            "every "
             "one of the eighteen is printed in Table~\\ref{tab:reg_winners} "
             "--- the composite penalty six of them cross is marked there with "
             "$\\ddagger$. The column is "
@@ -604,7 +607,7 @@ def t_combos(combo, agg, regu, printed):
         "within each block.",
         "llrrrr",
         "Server rule & Penalty & Adapt. & Pres. & Score (pts) & "
-        "$\\Delta$ better half (pts) \\\\",
+        "$\\Delta$ vs.\\ better comp.\\ (pts) \\\\",
         body, size="\\scriptsize", colsep="4pt", note=note,
         comment="sources: data/combos.csv, all rows, grouped by col family\n"
                 "(parallel block first, cyclic second), ordered by col score\n"

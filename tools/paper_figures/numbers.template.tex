@@ -320,13 +320,13 @@
 \newcommand{\nComboArms}{eighteen}
   % combos.csv, number of rows -- the cross of three rules with three penalties inside each of the two schedules
 \newcommand{\nComboBeatMeans}{seven}
-  % derived: combos.csv, rows whose score exceeds the better of its two halves in agg-winners.csv and reg-winners.csv, counted
+  % derived: combos.csv, rows whose score exceeds the better of its two components in agg-winners.csv and reg-winners.csv, counted
 \newcommand{\nComboBeatFolds}{two}
-  % combos_folds.csv, rows with col beats_both_folds = 1, counted -- the within-fold difference is positive on all five folds against BOTH halves (cols diffs_vs_agg, diffs_vs_reg)
+  % combos_folds.csv, rows with col beats_both_folds = 1, counted -- the within-fold difference is positive on all five folds against BOTH components (cols diffs_vs_agg, diffs_vs_reg)
 \newcommand{\nComboBeatMeansConc}{three of nine}
-  % derived: combos.csv, rows with col family = parallel whose score exceeds the better of its two halves in agg-winners.csv and reg-winners.csv, counted over the 9 pairings of that schedule
+  % derived: combos.csv, rows with col family = parallel whose score exceeds the better of its two components in agg-winners.csv and reg-winners.csv, counted over the 9 pairings of that schedule
 \newcommand{\nComboBeatMeansSeq}{four of nine}
-  % derived: combos.csv, rows with col family = cyclic whose score exceeds the better of its two halves in agg-winners.csv and reg-winners.csv, counted over the 9 pairings of that schedule
+  % derived: combos.csv, rows with col family = cyclic whose score exceeds the better of its two components in agg-winners.csv and reg-winners.csv, counted over the 9 pairings of that schedule
 \newcommand{\nComboSeqAdapt}{0.9356}
   % combos.csv, row seq_fedavg_ntd_b0p01_t2/cyclic, col adaptation -- the cyclic arm, the frozen crowning record (validation basis), not re-derived here
 \newcommand{\nComboSeqPres}{0.9907}
@@ -342,9 +342,9 @@
 \newcommand{\nCompositionSeqFolds}{six of nine}
   % composition.csv, rows with col family = sequential: col all_positive summed over the 9 pairings of that schedule
 \newcommand{\nNtdAnchorGain}{1.21}
-  % derived: combos.csv, row anchor_h2_ntd_b0p01_t0p5/parallel, col score, minus the better of agg-winners.csv row anchor_h2/parallel and reg-winners.csv row ntd_b0p01_t0p5/parallel (the better half is ntd_b0p01_t0p5), in points
+  % derived: combos.csv, row anchor_h2_ntd_b0p01_t0p5/parallel, col score, minus the better of agg-winners.csv row anchor_h2/parallel and reg-winners.csv row ntd_b0p01_t0p5/parallel (the better component is ntd_b0p01_t0p5), in points
 \newcommand{\nNtdEtaGain}{0.77}
-  % derived: combos.csv, row eta_0p95_ntd_b0p01_t0p5/parallel, col score, minus the better of agg-winners.csv row eta_0p95/parallel and reg-winners.csv row ntd_b0p01_t0p5/parallel (the better half is ntd_b0p01_t0p5), in points
+  % derived: combos.csv, row eta_0p95_ntd_b0p01_t0p5/parallel, col score, minus the better of agg-winners.csv row eta_0p95/parallel and reg-winners.csv row ntd_b0p01_t0p5/parallel (the better component is ntd_b0p01_t0p5), in points
 \newcommand{\nSizeList}{five, ten and twenty}
   % derived: the sizes_*.csv inventory (c10d10, c20d10, c20d20, five)
 \newcommand{\nFiveControlPres}{0.9370}
