@@ -74,7 +74,7 @@ def main():
         each was built from, one row of panels per schedule so the two
         constructions are never drawn over each other: accuracy on the source
         population (left, preservation) and on the outlier cohort (right,
-        adaptation), fold-mean over the five folds on the validation halves,
+        adaptation), fold-mean over the five folds on the validation rows,
         from the shipped model at round 0.  In each row the parents are the red and blue
         curves --- distillation, which adapts and does not preserve, and the
         elastic-weight term, the reverse --- and the green curve is the

@@ -57,7 +57,7 @@ def main():
         hundred-round budget on the study's ten-client cohort: accuracy on the
         source population (left, preservation) and on the outlier cohort
         (right, adaptation), fold-mean over the five folds on the validation
-        halves.  All seven arms run the same cyclic schedule and start from the
+        rows.  All seven arms run the same cyclic schedule and start from the
         shipped model at round 0, so the curves differ only in the penalty.
         The reader should see the separation the previous figure did not have:
         every penalty holds the source population far above the unprotected

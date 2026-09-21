@@ -70,7 +70,7 @@ def main():
         merged into one client, so the two hold identical data and differ
         only in whether the aggregation ever sees a client boundary.
         Accuracy on the source population (left) and on the two writers' own
-        rows (right), fold-mean on the validation halves.  Filled markers
+        rows (right), fold-mean on the validation rows.  Filled markers
         give each arrangement's best round by the selection score; open
         markers the round the early-stopping rule fires.  Adaptation is
         complete at the filled marker while preservation is still near the

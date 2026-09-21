@@ -12,7 +12,7 @@ wherever it appears.
     right panel = outlier cohort,    "adaptation"
 
 BASIS.  Every curve is a fold-mean over the five folds of the frozen record,
-read from the VALIDATION halves the study's own selection is allowed to see
+read from the VALIDATION rows the study's own selection is allowed to see
 (``source_val_accuracies`` and ``pool_val_accuracies``).  They are therefore
 not the test-set numbers the tables report, and the two must not be quoted
 against each other.

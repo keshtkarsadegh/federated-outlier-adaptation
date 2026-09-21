@@ -74,7 +74,7 @@ def main():
         The three selected server rules on the parallel schedule with no
         client-side penalty, over the full hundred-round budget on the
         ten-client cohort, fold-mean over the five folds on the validation
-        halves.  Every panel repeats the federated-averaging control (black,
+        rows.  Every panel repeats the federated-averaging control (black,
         dashed) and the shipped model's accuracy (dotted); the rules are
         split across the rows so their curves do not overlap.  A rule helps
         only where it rises above the control: the anchor (blue) is the only

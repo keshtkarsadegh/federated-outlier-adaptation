@@ -73,10 +73,10 @@ def main():
         ten-client outlier cohort: accuracy on the source population (left,
         preservation) and on the outlier cohort (right, adaptation) against the
         communication round, fold-mean over the five folds on the validation
-        halves.  Round 0 is the shipped model's own evaluation, so the curve
+        rows.  Round 0 is the shipped model's own evaluation, so the curve
         begins at the dotted reference on both panels.  The dashed line is the
         centralized pooled ceiling, the same adaptation run with the cohort's
-        data not split across clients.  The reader should see the two halves of
+        data not split across clients.  The reader should see the two sides of
         one trade: the cohort curve climbs steeply for some tens of rounds and
         then flattens well short of the pooled ceiling, while over the same
         rounds the source curve leaves the shipped model and keeps falling to

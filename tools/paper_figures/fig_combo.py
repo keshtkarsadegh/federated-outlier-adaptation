@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""The crowned combination, beside each of its two halves.
+"""The crowned combination, beside each of its two components.
 
 The combination the frozen record crowned is a server rule and a client-side
 penalty run together.  It is drawn here against the same server rule with no
 penalty, the same penalty under the plain server rule, and the unprotected
-control both halves were selected over, so the reader can see which half
-carries which part of the result.
+control both components were selected over, so the reader can see which
+component carries which part of the result.
 
     python fig_combo.py          # regenerates fig_combo.pdf from ../data
 
@@ -19,7 +19,7 @@ import figstyle as fs
 
 ARMS = [
     # The claim is a pair: the crowned combination (thick black) rides on its
-    # penalty half (red dashed) --- those two carry the argument; the server
+    # penalty component (red dashed) --- those two carry the argument; the server
     # rule alone and the control are context, thin and light.
     ("control_fedavg", fs.LIGHT, (0, (5, 2)), 0.5, 3),
     ("anchor_h2", fs.SKY, (0, (1, 1.2)), 0.5, 4),
@@ -58,20 +58,20 @@ def main():
 
     fs.save(figure, "fig_combo", rect=(0, 0.16, 1, 1))
     fs.caption("fig_combo", """
-        The crowned combination against each of its two halves and against the
-        unprotected control, over the full hundred-round budget on the study's
-        ten-client cohort: accuracy on the source population (left,
+        The crowned combination against each of its two components and against
+        the unprotected control, over the full hundred-round budget on the
+        study's ten-client cohort: accuracy on the source population (left,
         preservation) and on the outlier cohort (right, adaptation), fold-mean
-        over the five folds on the validation halves.  All four arms run the
+        over the five folds on the validation rows.  All four arms run the
         parallel schedule and start from the shipped model at round 0; the
         server rule is the anchor at $h=2R$ and the penalty is FedNTD at
-        $\beta=0.01$, $\tau=0.5$.  The
-        reader should see that the two halves do not contribute symmetrically:
-        the penalty half alone already carries almost all of the preservation
-        the combination holds on the left, where the server rule alone recovers
-        only a small part of the control's loss, while on the right the
-        combination sits above both halves --- so the server rule is buying
-        adaptation on top of a penalty that is doing the preserving.
+        $\beta=0.01$, $\tau=0.5$.  The reader should see that the two
+        components do not contribute symmetrically: the penalty alone already
+        carries almost all of the preservation the combination holds on the
+        left, where the server rule alone recovers only a small part of the
+        control's loss, while on the right the combination sits above both
+        components --- so the server rule is buying adaptation on top of a
+        penalty that is doing the preserving.
         Validation basis, so the endpoints are not the test-set figures the
         tables report.
         """)
