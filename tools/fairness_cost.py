@@ -19,6 +19,9 @@ hides:
 NOTHING HERE RETRAINS ANYTHING, and nothing is recomputed from weights. Every
 quantity is already in the stored payloads:
 
+    final_evaluation.clients.accuracy     the cohort accuracy pooled over the
+                                          cohort's TEST rows - the number
+                                          report_tables.py prints as adaptation
     final_evaluation.clients.per_client   one accuracy per client, TEST rows,
                                           written at the end of the run
     round_seconds                         wall seconds of each round
@@ -33,6 +36,19 @@ same evaluation broken out by writer. The per-round ``client_test_accuracies``
 series is NOT used - it is measured inside the loop against a different
 denominator, and mixing the two would report a fairness table that does not add
 up to the score table beside it.
+
+AND THE POOLED NUMBER IS CARRIED, NOT RECONSTRUCTED. ``cohort`` is
+``final_evaluation.clients.accuracy`` fold-averaged, and ``mean`` is the
+unweighted mean over the cohort's CLIENTS of the same evaluation. They are two
+different questions and they give two different answers: the writers hold
+between 72 and 200-odd digit rows apiece, so pooling over rows weights the
+large writers and averaging over clients does not. Both ship. The manuscript's
+fairness table quotes ``cohort``, because an arm that appears in two tables has
+to print one adaptation in both; the spread columns beside it - the worst
+client, its lift and the lifted share - are the per-client reading, which is
+the whole point of the view. Reconstructing the pooled number here from the
+per-client one would need the row counts and would be a second, slightly
+different copy of a number the payload already states.
 
 THE REFERENCE IS THE SHIPPED MODEL, PER CLIENT. ``report_tables.py`` measures
 against one pooled ``A0``; a fairness table cannot, because the question is
@@ -252,7 +268,17 @@ def fairness_rows(root: Path, prefix: str, books: dict, folds: int = 5) -> list:
         if not clients or fold is None:
             continue
         reference = pick_reference(clients, books.get(int(fold), {}))
+        pooled = (final.get("clients") or {}).get("accuracy")
+        if not isinstance(pooled, (int, float)):
+            raise SystemExit(
+                f"{run['folder']}: final_evaluation.clients has per_client but "
+                "no pooled accuracy. That pooled number is what the score "
+                "tables print, and a fairness row that quoted the per-client "
+                "mean in its place would disagree with every other table this "
+                "arm appears in."
+            )
         row = distribution(clients.values())
+        row["cohort"] = float(pooled)
         row["improved"] = share_improved(clients, reference)
         row["reference_mean"] = st.fmean(reference.values()) if reference else None
         row["reference_min"] = min(reference.values()) if reference else None
@@ -267,6 +293,7 @@ def fairness_rows(root: Path, prefix: str, books: dict, folds: int = 5) -> list:
         rows.append({
             "cell": cell, "family": family, "folds": len(measured),
             "clients": measured[0]["clients"],
+            "cohort": fold_mean(measured, "cohort"),
             "min": fold_mean(measured, "min"),
             "p25": fold_mean(measured, "p25"),
             "median": fold_mean(measured, "median"),
@@ -326,16 +353,21 @@ def client_rows(root: Path, prefix: str, books: dict, folds: int = 5) -> list:
 def show_fairness(rows: list, title: str, a0: float) -> None:
     print(f"\n{title}")
     print(f"reference: the shipped model, per client  pooled adapt {a0:.4f}")
-    print("basis: TEST (final_evaluation.clients.per_client). Selection ran on validation.")
+    print("basis: TEST. cohort is final_evaluation.clients.accuracy, pooled over")
+    print("the cohort's rows - the column the score tables print as adaptation;")
+    print("every other column is final_evaluation.clients.per_client, one value")
+    print("per client. Selection ran on validation.")
     width = max([len(r["cell"]) for r in rows] + [len("cell")]) + 2
-    print(f"{'cell':<{width}}{'sched':<10}{'n':>3}{'min':>8}{'p25':>8}{'med':>8}"
-          f"{'mean':>8}{'max':>8}{'gap':>8}{'d-worst':>9}{'d-mean':>8}{'lifted':>8}")
-    print("-" * (width + 81))
+    print(f"{'cell':<{width}}{'sched':<10}{'n':>3}{'cohort':>9}{'min':>8}{'p25':>8}"
+          f"{'med':>8}{'mean':>8}{'max':>8}{'gap':>8}{'d-worst':>9}{'d-mean':>8}"
+          f"{'lifted':>8}")
+    print("-" * (width + 90))
     for r in rows:
         def points(value):
             return f"{value * 100:+.2f}p" if value is not None else "-"
         lifted = f"{r['improved'] * 100:.0f}%" if r["improved"] is not None else "-"
         print(f"{r['cell']:<{width}}{r['family']:<10}{r['clients']:>3}"
+              f"{r['cohort']:>9.4f}"
               f"{r['min']:>8.4f}{r['p25']:>8.4f}{r['median']:>8.4f}"
               f"{r['mean']:>8.4f}{r['max']:>8.4f}{r['gap']:>8.4f}"
               f"{points(r['lift_worst']):>9}{points(r['lift_mean']):>8}{lifted:>8}")

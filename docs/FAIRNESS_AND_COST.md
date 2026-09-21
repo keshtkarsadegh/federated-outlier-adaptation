@@ -29,7 +29,8 @@ is the score table's adaptation column, opened up.
 
 | column | what it is |
 |---|---|
-| `min` `p25` `med` `mean` `max` | the fold-mean of each order statistic of the cohort's client accuracies |
+| `cohort` | the fold-mean of `final_evaluation.clients.accuracy`: the cohort accuracy pooled over the cohort's test ROWS, and the exact column `report_tables.py` reports as `adaptation`. `tab:fairness` prints this one, so an arm that appears in two tables prints one adaptation in both |
+| `min` `p25` `med` `mean` `max` | the fold-mean of each order statistic of the cohort's client accuracies. `mean` is the unweighted mean over CLIENTS and is *not* `cohort`: the writers hold between seventy and two hundred-odd digit rows apiece, so pooling over rows and averaging over clients give different numbers, by up to a point at twenty clients |
 | `gap` | `mean - min`: how far the cohort's average sits above the client it served worst |
 | `d-worst` | `min` less the shipped model's own worst client, in points |
 | `d-mean` | `mean` less the shipped model's own cohort mean, in points |
