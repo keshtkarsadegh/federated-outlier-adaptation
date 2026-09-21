@@ -821,15 +821,21 @@ landed, and the rest - the proxy-set constants, the good pool, the per-writer
 sample counts - were macros nothing set. A macro no page calls is a macro no
 reader can check: `\TBD{}` cannot fire on a name nobody writes.
 
-The other 196 macros are generated: 138 after the 2026-09-21 pruning pass, plus
-the 58 the appendix rebuild added the same day. Of those 58, thirty-two are the
-remaining cells of the signals table - the budget, the fire count, the stopped
-score and the delta of each of the eight signals - so that every number on that
-table can be quoted in prose without being retyped off the page; eleven are the
-pre-filter's shape and reach; seven are the held-out stopping table's own counts
-and extremes; and eight are quantities two sentences of the paper used to quote
-as one, chiefly the two shipped-model worst-client figures and the replicate
-spread of a single configuration. No macro that existed before that day changed
+The other 197 macros are generated: 138 after the 2026-09-21 pruning pass, plus
+the 59 the appendix rebuild and the review pass beside it added the same day. Of
+those 59, thirty-two are the remaining cells of the signals table - the budget,
+the fire count, the stopped score and the delta of each of the eight signals - so
+that every number on that table can be quoted in prose without being retyped off
+the page; eleven are the pre-filter's shape and reach; eight are the held-out
+stopping table's own counts and extremes; and eight are quantities two sentences
+of the paper used to quote as one, chiefly the two shipped-model worst-client
+figures and the replicate spread of a single configuration. The last of the
+eight is `\nKholdoutAggfullHeldGain`, and it is the one that needs a sentence:
+its stage-loo row of `plateau_holdout_protocols.csv` is the only one whose
+held-out gain EQUALS its stage's in-sample gain, because the protocol that held
+the aggregation finals out chose the same patience and margin the whole-programme
+fit chose. `tests/test_appendix_tables.py` pins that equality, so a reader who
+notices it is not left deciding whether a file was misread. No macro that existed before that day changed
 its value. The template
 now defines what the manuscript sets plus the handful the tables and the figure
 captions set for it, and `make_numbers.py` reports any registry entry with no

@@ -1075,7 +1075,8 @@ def build():
     put("nKholdoutMaxHeldGain", dpts(max(f(r, "held_gain") for r in prot)),
         "plateau_holdout_protocols.csv, col held_gain, maximum over every"
         " protocol, in points")
-    for macro, held in (("nKholdoutRegfullHeldGain", "regfull arms"),
+    for macro, held in (("nKholdoutAggfullHeldGain", "aggfull arms"),
+                        ("nKholdoutRegfullHeldGain", "regfull arms"),
                         ("nKholdoutComboHeldGain", "combo arms")):
         hit = [r for r in prot if r["heldout_set"] == held
                and r["protocol"] == "stage-loo"]
@@ -1084,7 +1085,10 @@ def build():
             "plateau_holdout_protocols.csv, the stage-loo row whose col"
             " heldout_set is %r, col held_gain, in points. This is the"
             " HELD-OUT gain; plateau_stages.csv's col gain for the same stage"
-            " is the in-sample one and is a different number" % held)
+            " is the in-sample one. For regfull and combo the two are"
+            " different numbers; for aggfull they coincide, because the"
+            " protocol that held that stage out chose the same (k, eps)"
+            " the whole-programme fit chose" % held)
 
     # ---- the pre-filter, and the room it ran with ------------------------
     # Coverage is 1.0 and cannot be anything else: the cohorts are cut out of

@@ -324,6 +324,26 @@ def test_every_holdout_protocol_reaches_the_table(tmp_path, monkeypatch):
         "the held-out and in-sample gains of the regularisation finals are "
         "the same number, so one of the two is being read from the wrong file")
 
+    # The aggregation finals are the other way round, and the macro has to
+    # survive a reader noticing it.  Its held-out gain EQUALS the in-sample
+    # one, because the protocol that held aggfull out landed on the same
+    # patience and margin the whole-programme fit landed on - so the rule the
+    # holdout selected is the rule the in-sample fit selected, and one number
+    # answers both.  Pinned here so that a later change to either file, or to
+    # which row the macro reads, cannot pass the regfull assertion above and
+    # quietly turn this coincidence into an error nobody can see.
+    agg_held = registry["nKholdoutAggfullHeldGain"][0]
+    agg_row = tables.pick(tables.rows("plateau_stages.csv"), stage="aggfull")
+    agg_loo = [r for r in prot
+               if r["protocol"] == "stage-loo" and r["heldout_set"] == "aggfull arms"]
+    assert len(agg_loo) == 1, agg_loo
+    assert (agg_loo[0]["k"], float(agg_loo[0]["eps"])) == \
+        (agg_row["patience"], float(agg_row["margin"])), (agg_loo[0], agg_row)
+    assert agg_held == "%.2f" % (100 * float(agg_row["gain"])), (
+        agg_held, agg_row["gain"])
+    assert agg_held == "%.2f" % (100 * float(agg_loo[0]["held_gain"])), (
+        agg_held, agg_loo[0]["held_gain"])
+
 
 # ------------------------------------------------------ the pre-filter view
 def test_the_prefilter_view_is_rebuilt_from_the_shipped_records(tmp_path):
