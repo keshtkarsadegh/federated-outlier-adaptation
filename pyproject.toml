@@ -36,10 +36,18 @@ seaborn = "*"
 pillow = "*"
 joblib = "*"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3"
-black = "^24.10"
-isort = "^5.13"
+# Test and formatting tooling, reachable as the `dev` EXTRA.  It used to be a
+# poetry *group*, which pip does not read: `pip install -e ".[dev]"` reported
+# nothing unusual, installed nothing, and left the very next documented command
+# - `pytest -q tests` - with no pytest to run.  An extra is what pip reads, so
+# the command now does what it says.  `poetry install --extras dev` is the
+# poetry side of the same thing.
+pytest = { version = "^8.3", optional = true }
+black = { version = "^24.10", optional = true }
+isort = { version = "^5.13", optional = true }
+
+[tool.poetry.extras]
+dev = ["pytest", "black", "isort"]
 
 [tool.poetry.scripts]
 foa = "federated_outlier_adaptation.cli:main"

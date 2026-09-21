@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+import tomllib
+from pathlib import Path
 
 import pytest
+
+REPO = Path(__file__).resolve().parents[1]
 
 import federated_outlier_adaptation as package
 from federated_outlier_adaptation import config
@@ -135,3 +139,41 @@ def test_cli_help_exits_cleanly(capsys):
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--help"])
     assert exc.value.code == 0
+
+
+# ------------------------------------------------------------------ packaging
+def test_the_dev_extra_installs_pytest():
+    """
+    `pip install -e ".[dev]"` has to install the thing it names.
+
+    It used to be a poetry *group*, which pip does not read: the command
+    reported nothing unusual, installed nothing, and the next documented step -
+    `pytest -q tests` - had no pytest to run. Extras are what pip reads, so the
+    tooling is declared as optional dependencies with a `dev` extra over them,
+    and this holds it that way.
+    """
+    data = tomllib.loads((REPO / "pyproject.toml").read_text())
+    poetry = data["tool"]["poetry"]
+    assert "pytest" in poetry["extras"]["dev"]
+    for name in poetry["extras"]["dev"]:
+        # An extra may only name a dependency of the package itself; one that
+        # names a group member resolves to nothing at all.
+        assert poetry["dependencies"][name]["optional"] is True, name
+    assert "group" not in poetry or "dev" not in poetry.get("group", {}), (
+        "the dev tooling is an extra now; a group of the same name would be the "
+        "half pip cannot see"
+    )
+
+
+def test_the_pinned_requirements_carry_the_test_runner():
+    """
+    The other documented install path, which is the one the study ran under.
+
+    `pyproject.toml` carries ranges so the package stays installable; the pins
+    every figure and table was rendered on live in `requirements.txt`, and the
+    documents send a reader there first.
+    """
+    pins = (REPO / "requirements.txt").read_text()
+    assert "pytest==" in pins
+    for package_name in ("torch", "numpy", "pandas", "matplotlib", "scikit-learn"):
+        assert package_name in pins, package_name
