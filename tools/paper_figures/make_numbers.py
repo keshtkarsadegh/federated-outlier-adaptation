@@ -370,6 +370,7 @@ def build():
               "c20d20": rows("fairness_c20d20.csv")}
     comp = rows("composition.csv")
     blend = rows("blends.csv")
+    sel = rows("selection_axis.csv")
     stopx = rows("stopping_extreme.csv")
     stopa = rows("stopping_all.csv")
     sigs = rows("signals_summary_extract.csv")
@@ -604,6 +605,51 @@ def build():
     put("nBlendBestSpent", pts(100 * f(bb, "spent")),
         "reg-winners.csv, row %s/%s, col spent (= P0 - preservation), in points"
         % (bb["cell"], bb["family"]))
+    # THE SCREEN THAT SWEPT ALL THREE COEFFICIENTS DID NOT BEAT THE
+    # CONSTRUCTION THAT SWEPT ONE.  tab:reg_winners carries both kinds of
+    # composite, and the sentence that reads them wants the gap rather than
+    # two printed scores a reader has to subtract -- which is how a difference
+    # lands a digit away from both numbers it was taken between.  The
+    # construction row is the test-leading composite, the cyclic-tuned one at
+    # m = 0.75 that leads both blocks of that table and that no validation
+    # ordering selected; the screened row is the single blend_* cell
+    # reg-winners.csv carries for that schedule.
+    from make_paper_tables import BLEND_TEST_LEADING  # noqa: E402
+    screened = {}
+    for family in ("parallel", "cyclic"):
+        hit = [r for r in regu if r["cell"].startswith("blend_")
+               and r["family"] == family]
+        assert len(hit) == 1, (family, [r["cell"] for r in hit])
+        screened[family] = hit[0]
+    for macro, family in (("nBlendScreenGapPar", "parallel"),
+                          ("nBlendScreenGapCyc", "cyclic")):
+        lead = pick(regu, cell=BLEND_TEST_LEADING, family=family)
+        put(macro, dpts(f(lead, "score") - f(screened[family], "score")),
+            "reg-winners.csv, row %s/%s col score minus row %s/%s col score,"
+            " in points: the test-leading composite of tab:reg_winners less"
+            " the screened composite of the same schedule; %s"
+            % (BLEND_TEST_LEADING, family, screened[family]["cell"], family,
+               ROUND_ONCE))
+
+    # AND THE SCREEN DID BEAT WHAT THE CYCLIC SELECTION ACTUALLY TOOK.  Which
+    # composite that was is read off the cross rather than typed: the penalty
+    # half of the cyclic combinations is the composite the cyclic validation
+    # ordering carried, and it is the parallel-tuned one at m = 0.5 run under
+    # the cyclic schedule, not the cyclic-tuned one the block leads with.
+    crossed = {(split_combo(r["cell"], agg_cells)[1], r["family"])
+               for r in combo}
+    took = sorted(cell for cell, family in crossed
+                  if family == "cyclic" and cell.startswith("hybrid"))
+    assert len(took) == 1, took
+    taken = pick(regu, cell=took[0], family="cyclic")
+    put("nBlendScreenVsSelectedCyc",
+        dpts(f(screened["cyclic"], "score") - f(taken, "score")),
+        "reg-winners.csv, row %s/cyclic col score minus row %s/cyclic col"
+        " score, in points: the screened composite less the composite the"
+        " cyclic validation ordering selected, which is read off combos.csv"
+        " as the penalty half of that schedule cross; %s"
+        % (screened["cyclic"]["cell"], taken["cell"], ROUND_ONCE))
+
     kd = [r for r in blend if r["minus"].startswith("kd_")]
     assert len(kd) == 6
     put("nBlendVsKdMax", pts(max(f(r, "mean") for r in kd)),
@@ -1093,10 +1139,50 @@ def build():
             " %s" % (fam, fam, ROUND_ONCE))
 
     # ---- how deep tab:selection_axis prints ------------------------------
-    from make_paper_tables import SELECTION_DEPTH  # noqa: E402
+    from make_paper_tables import (SCHEDULE_BLOCKS, SELECTION_DEPTH,  # noqa: E402
+                                   SELECTION_STAGES)
     put("nSelectionDepth", word(SELECTION_DEPTH),
         "make_paper_tables.SELECTION_DEPTH: how many arms of each block"
         " tab:selection_axis prints, in words")
+
+    # ---- how much of that table moves between the two axes ---------------
+    # THE CLAIM IS ABOUT THE PAGE, NOT ABOUT THE VIEW.  The table exists to
+    # show that the ordering which selected and the ordering which reports are
+    # two different orderings, and "most arms move" is worth nothing to a
+    # reader who cannot see how many arms were on offer.  So both counts are
+    # built the way the table builds its blocks -- grouped by stage and by
+    # schedule, ordered on the validation score rank, cut at SELECTION_DEPTH
+    # plus any arm carried forward from below that depth -- and not over every
+    # row of selection_axis.csv, which carries sixty.  A count taken over the
+    # view would describe a population the page does not print.
+    printed = []
+    for stage, _, _ in SELECTION_STAGES:
+        for family, _ in SCHEDULE_BLOCKS:
+            block = sorted([r for r in sel if r["stage"] == stage
+                            and r["schedule"] == family],
+                           key=lambda r: int(r["val_score_rank"]))
+            assert block, (stage, family)
+            printed += block[:SELECTION_DEPTH]
+            printed += [r for r in block[SELECTION_DEPTH:] if r["role"]]
+    blocks = len(SELECTION_STAGES) * len(SCHEDULE_BLOCKS)
+    # Every arm the study carried forward happens to sit inside the depth, so
+    # the printed set is exactly the blocks times the depth.  Asserted rather
+    # than assumed: an arm shortlisted from below the cut would add a row to
+    # the table, and the sentence quoting this macro would be a row short.
+    assert len(printed) == blocks * SELECTION_DEPTH, len(printed)
+    put("nSelectionRankTotal", "%d" % len(printed),
+        "selection_axis.csv, the rows tab:selection_axis prints: the first %d"
+        " by col val_score_rank of each of the %d stage-by-schedule blocks,"
+        " plus any row below that depth that col role marks as carried"
+        " forward, counted" % (SELECTION_DEPTH, blocks))
+    still = [r for r in printed
+             if int(r["val_score_rank"]) == int(r["test_score_rank"])]
+    put("nSelectionRankMoved", "%d" % (len(printed) - len(still)),
+        "selection_axis.csv, of those %d printed rows the ones whose col"
+        " val_score_rank differs from col test_score_rank, counted; the %d"
+        " that do not move are %s"
+        % (len(printed), len(still),
+           ", ".join("%s/%s" % (r["cell"], r["schedule"]) for r in still)))
 
     # ---- the blend that clears its distillation parent on every fold -----
     clearing = [f(r, "mean") for r in blend if r["all_positive"] == "1"]

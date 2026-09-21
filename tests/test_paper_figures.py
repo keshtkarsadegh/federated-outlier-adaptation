@@ -527,6 +527,88 @@ def test_the_joint_tuning_macros_are_the_cells_the_extension_table_reports():
     assert registry["nJointSelMixPar"][0] == registry["nJointSelMixCyc"][0]
 
 
+def test_the_selection_axis_counts_are_over_the_rows_that_table_prints():
+    """
+    "Most arms move between the two axes" is a claim about the page, and a
+    count taken over selection_axis.csv would be a claim about sixty rows the
+    table does not print.  So the two macros are rebuilt here the way the
+    table builds its blocks, and the arms that do NOT move are named: the
+    sentence they serve says three, and three is a small enough number that a
+    drift in any one of them would otherwise read as a plausible new total.
+    """
+    import make_numbers
+    import make_paper_tables as tables
+
+    registry = make_numbers.build()
+    with (PAPER / "selection_axis.csv").open(newline="") as fh:
+        view = list(csv.DictReader(fh))
+
+    printed = []
+    for stage, _, _ in tables.SELECTION_STAGES:
+        for family, _ in tables.SCHEDULE_BLOCKS:
+            block = sorted([r for r in view if r["stage"] == stage
+                            and r["schedule"] == family],
+                           key=lambda r: int(r["val_score_rank"]))
+            printed += block[:tables.SELECTION_DEPTH]
+            printed += [r for r in block[tables.SELECTION_DEPTH:] if r["role"]]
+
+    assert registry["nSelectionRankTotal"][0] == str(len(printed))
+    assert int(registry["nSelectionRankTotal"][0]) == (
+        len(tables.SELECTION_STAGES) * len(tables.SCHEDULE_BLOCKS)
+        * tables.SELECTION_DEPTH)
+    still = {(r["cell"], r["schedule"]) for r in printed
+             if r["val_score_rank"] == r["test_score_rank"]}
+    assert still == {("fedavgm_b0p3", "parallel"),
+                     ("seq_delta_capped", "cyclic"),
+                     ("hybrid_seq_mix0p5", "parallel")}, sorted(still)
+    assert registry["nSelectionRankMoved"][0] == str(len(printed) - len(still))
+    for name in ("nSelectionRankTotal", "nSelectionRankMoved"):
+        assert "selection_axis.csv" in registry[name][1]
+
+
+def test_the_screened_composite_gaps_are_against_the_rows_the_table_prints():
+    """
+    Three macros price the coefficient screen against the construction sweep,
+    and each is a difference of two rows of one table -- so each is rounded
+    once, from full precision, and a reader who subtracts the PRINTED scores
+    can land a digit away from it.  The arms are pinned here because two of
+    the three are easy to confuse: the row that leads tab:reg_winners is the
+    cyclic-tuned composite at m = 0.75, which no selection chose, and the row
+    the cyclic cross carried is the parallel-tuned one at m = 0.5.
+    """
+    import make_numbers
+    import make_paper_tables as tables
+
+    registry = make_numbers.build()
+    with (PAPER / "reg-winners.csv").open(newline="") as fh:
+        regu = list(csv.DictReader(fh))
+
+    def score(cell, family):
+        hit = [r for r in regu if r["cell"] == cell and r["family"] == family]
+        assert len(hit) == 1, (cell, family)
+        return float(hit[0]["score"])
+
+    screened = {}
+    for family in ("parallel", "cyclic"):
+        hit = [r["cell"] for r in regu
+               if r["cell"].startswith("blend_") and r["family"] == family]
+        assert len(hit) == 1, (family, hit)
+        screened[family] = hit[0]
+
+    assert tables.BLEND_TEST_LEADING == "hybrid_seq_mix0p75"
+    for macro, family in (("nBlendScreenGapPar", "parallel"),
+                          ("nBlendScreenGapCyc", "cyclic")):
+        gap = (score(tables.BLEND_TEST_LEADING, family)
+               - score(screened[family], family))
+        assert registry[macro][0] == "%.2f" % (100.0 * gap), macro
+        assert float(registry[macro][0]) > 0, macro
+
+    taken = ("hybrid_mix0p5", "cyclic")
+    gap = score(screened["cyclic"], "cyclic") - score(*taken)
+    assert registry["nBlendScreenVsSelectedCyc"][0] == "%.2f" % (100.0 * gap)
+    assert taken[0] in registry["nBlendScreenVsSelectedCyc"][1]
+
+
 def test_every_macro_the_template_carries_is_mapped_and_every_signal_quotable():
     """
     numbers.tex is rewritten in place from the macro NAMES the file already
