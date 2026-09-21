@@ -100,7 +100,11 @@
 \newcommand{\nProxyAccStart}{0.9356}
 \newcommand{\nProxyAccEnd}{0.9319}
 
-% Protocol constants (Section 5) --- configuration, not measured
+% Protocol constants (Section 5) --- configuration, not measured.  The two
+% optimiser constants that used to sit here moved into the generated block on
+% 2026-09-21, when data/recipe.csv landed: the runner records the configuration
+% it ran under beside every set of accuracies, so the learning rate and the
+% weight decay are read off the payloads now rather than typed.
 \newcommand{\nBadFraction}{30\%}
 \newcommand{\nGoodPoolSize}{2\,506}
 \newcommand{\nDigitRows}{402\,953}
@@ -521,6 +525,16 @@
   % signals_summary_extract.csv, row retention_known, col share_ge_0p9
 \newcommand{\nBadPoolSize}{1\,074}
   % cohort_table.csv, col 'of' (identical on every row)
+\newcommand{\nLearningRate}{$10^{-3}$}
+  % recipe.csv, row learning_rate, col value
+\newcommand{\nWeightDecay}{$10^{-4}$}
+  % recipe.csv, row weight_decay, col value
+\newcommand{\nDropoutFraction}{0.2}
+  % derived: 1 - cost_stages.csv col clients_per_round / the cohort size
+\newcommand{\nProgrammeTasks}{2\,765}
+  % cost_stages.csv, col tasks summed over every stage
+\newcommand{\nProgrammeGpuHours}{56.8}
+  % cost_stages.csv, col hours summed over every stage, in GPU-hours
 \newcommand{\nCohortSize}{ten}
   % cohort_composition.csv, count of rows with cohort = cohort10
 \newcommand{\nDecoupleGInit}{0.9091}

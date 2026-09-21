@@ -137,7 +137,11 @@ def _rules():
 
     # -- server rules, parallel schedule ------------------------------------
     rule(r"control_fedavg", "FedAvg (control)", "FedAvg (control)")
-    rule(r"control_fedavg_earlystop", "FedAvg + early stop", "FedAvg + early stop")
+    # The oracle stop rule armed, not a run that stopped: it fired on no fold
+    # of either schedule, and the table that prints this row says so.  "Early
+    # stop" alone named a thing the protocol forbids and the runs did not do.
+    rule(r"control_fedavg_earlystop", "FedAvg (control, stop rule armed)",
+         "FedAvg (stop armed)")
     rule(r"eta_([0-9p]+)", "FedAvg", "Server step",
          lambda g: _math([r"\eta_s{=}%s" % _dec(g[0])]))
     rule(r"anchor_h([0-9p]+)", "Server anchor", "Anchor",

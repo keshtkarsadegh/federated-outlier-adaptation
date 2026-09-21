@@ -1,0 +1,7 @@
+setting,value,payloads
+learning_rate,0.001,7005
+weight_decay,0.0001,7005
+client_early_stopping,0,705
+client_patience,5,705
+batch_size,64,7005
+local_epochs,5,7005

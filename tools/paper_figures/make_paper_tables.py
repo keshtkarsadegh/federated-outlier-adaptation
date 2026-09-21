@@ -156,6 +156,26 @@ BLEND_SELECTED = "hybrid_seq_mix0p75"
 #: earns the row its place in a table of penalties, in printing order.
 BLEND_MARK = (("selected", "\\dagger"), ("crossed", "\\ddagger"))
 
+#: What the two control rows of tab:agg_winners are, said where the rows are
+#: printed.  The second one arms the oracle stop rule and is otherwise the
+#: first, which a reader of a table headed "server rule" cannot be expected to
+#: guess -- and "early stop" is a thing the protocol forbids, so a row whose
+#: name is only that reads as a run that stopped.  None did: the rule fired on
+#: no fold of either schedule, at either horizon, which `cost_arms.csv` records
+#: as a full hundred rounds on both control arms and `tests/test_recipe.py`
+#: holds it to.
+CONTROL_NOTE = (
+    "``FedAvg (control)'' is plain FedAvg at $\\eta_s{=}1$, the row every "
+    "other row of this table is measured against. "
+    "``FedAvg (control, stop rule armed)'' is that same configuration with the "
+    "oracle stop rule switched on --- it ends a run the round the global "
+    "accuracy first falls below the participating clients' own accuracy or "
+    "below $0.90$ --- and it is a second control rather than a server rule. "
+    "\\textbf{It never fired.} Both control arms ran the full hundred rounds on "
+    "every fold of both schedules, so this row is a second measurement of the "
+    "first under a different client-sampling seed, and nothing in this paper "
+    "reports a run that stopped early.")
+
 RAW = {}
 CHECKED = [0]
 
@@ -299,6 +319,12 @@ def block(label, caption, colspec, header, body, size="\\small",
     return "\n".join(L)
 
 
+#: The table helper, under a second name, because the function above needs a
+#: local called `block` for the rows of one schedule and shadowing a helper is
+#: how a table silently stops being a table.
+block_env = block
+
+
 def bare(colspec, header, body, comment="", note=None):
     """A tabular with no surrounding table environment.
 
@@ -386,11 +412,10 @@ def t_agg(agg):
         "tab:agg_winners",
         "Every server rule at its own best setting, at the full horizon under "
         "a plain cross-entropy objective. Five-fold means, \\textbf{test} axis, "
-        "grouped by schedule and ordered by score within each block; "
-        "``FedAvg (control)'' is plain FedAvg at $\\eta_s{=}1$.",
+        "grouped by schedule and ordered by score within each block.",
         "lrrrr",
         "Server rule & Adaptation & Preservation & Spent (pts) & Score (pts) \\\\",
-        body, size="\\scriptsize", colsep="5pt",
+        body, size="\\scriptsize", colsep="5pt", note=CONTROL_NOTE,
         comment="source: data/agg-winners.csv, all rows, grouped by col family\n"
                 "(parallel block first, cyclic second), ordered by col score\n"
                 "within each block")
@@ -707,9 +732,19 @@ def t_fairness(fair_combo, fair10, fair20, agg_cells):
             "\\emph{that client's own} accuracy under the shipped model, in "
             "points; lifted is the share of client-fold pairs that finish "
             "above their own shipped-model accuracy. Every entry is a "
-            "five-fold mean over the per-client records. The only negative "
+            "five-fold mean over the per-client records, on the \\textbf{test} "
+            "axis, and each block states its own participation in its header. "
+            "In the ten-client carry setting every arm lifts its worst-served "
+            "client, by between \\nFairWorstMinGain{} and "
+            "\\nFairWorstMaxGain{} points. The only negative "
             "$\\Delta$ worst in the study is the balanced arm at twenty "
-            "clients, in the last block. Arms: " + ARM["winner"] + " is "
+            "clients, in the last block: \\nBalancedWorstTwentyTwo{} points "
+            "with two of the twenty dropped and "
+            "\\nBalancedWorstTwentyFour{} with four --- and in both the "
+            "lifted column says most of the cohort still finished above its "
+            "own shipped-model accuracy, which is exactly what a cohort mean "
+            "hides. "
+            "Arms: " + ARM["winner"] + " is "
             + label(CROWNED[0]) + ", " + ARM["balanced"] + " is "
             + label(BALANCED[0]) + ", " + ARM["sequential"] + " is "
             + label(CYCLIC_ARM[0]) + ", and the best worst-client pair is "
@@ -729,6 +764,100 @@ def t_fairness(fair_combo, fair10, fair20, agg_cells):
         comment="sources: data/fairness_combo.csv (search setting),\n"
                 "data/fairness_c10d10.csv (carry setting), and\n"
                 "data/fairness_c20d10.csv + fairness_c20d20.csv (the caveat rows)")
+
+
+# --------------------------------------------------------------------------
+# A1 --- the axis the selecting ran on, beside the axis the tables report
+# --------------------------------------------------------------------------
+
+#: Each stage that selected, the title its block carries, and the shipped view
+#: its test columns are joined from.  A stage cut its shortlist out of one
+#: catalogue and is reported out of one table; pairing the two here is what
+#: keeps the halves of a row two readings of one set of runs rather than two
+#: numbers that happen to sit side by side.
+SELECTION_STAGES = (
+    ("aggregation", "Server rules: the shortlist the cross was built from", "agg"),
+    ("regularisation", "Client penalties: the shortlist the cross was built from",
+     "reg"),
+    ("combination", "The cross: the three strongest pairs of each schedule", "combo"),
+)
+
+
+def t_selection_axis(sel, agg, regu, combo):
+    """
+    Every arm a stage carried forward, at its place in both orderings.
+
+    The test columns are read from the table that reports the arm and NOT from
+    the selection record, which carries a test figure of its own for the same
+    runs.  They agree --- the assertion below is what says so --- and printing
+    the reported one is what stops this table from becoming a second, slightly
+    different copy of Tables 2 to 4.
+    """
+    reported = {"agg": agg, "reg": regu, "combo": combo}
+    body = []
+    for stage, title, which in SELECTION_STAGES:
+        stage_rows = [r for r in sel if r["stage"] == stage]
+        assert stage_rows, stage
+        if body:
+            body.append("\\midrule")
+        body.append("\\rowcolor{blockband}\\multicolumn{7}{@{}l}{\\textbf{%s}} \\\\"
+                    % title)
+        for fam, fam_title in SCHEDULE_BLOCKS:
+            block = [r for r in stage_rows if r["schedule"] == fam]
+            assert block, (stage, fam)
+            body.append("\\multicolumn{7}{@{}l}{\\emph{%s, %s arms ranked}} \\\\"
+                        % (fam_title, count(block[0], "ranked")))
+            for r in block:
+                row = pick(reported[which], cell=r["cell"], family=fam)
+                # One set of runs, two readings of it.  A drift here would mean
+                # the frozen record and the shipped view no longer describe the
+                # same runs, which is exactly the failure this table would
+                # otherwise hide behind two plausible-looking columns.
+                assert abs(float(r["test_adaptation"])
+                           - float(row["adaptation"])) < 5e-5, (stage, r["cell"])
+                mark = "$^{\\dagger}$" if r["crowned"] == "yes" else ""
+                body.append(" & ".join([
+                    "\\quad " + label(r["cell"]) + mark,
+                    num(r, "val_adaptation"), count(r, "val_rank"),
+                    num(row, "adaptation"), count(r, "test_rank"),
+                    num(row, "preservation"),
+                    num(row, "score", 2, 100)]) + " \\\\")
+    check_schedules([{"family": r["schedule"]} for r in sel])
+
+    note = ("Basis, column by column: \\emph{Adaptation} and \\emph{Rank} under "
+            "\\textbf{validation} are the fold-mean cohort accuracy each "
+            "selection record was cut on and the arm's place in that record's "
+            "own ordering; the four columns under \\textbf{test} are the row the "
+            "reporting table prints for the same arm, and \\emph{Rank} there is "
+            "its place in the same record's test ordering of the same runs. A "
+            "rank is over every arm that schedule's record ranked, which the "
+            "block header states. "
+            "The two orderings are not the same ordering: on the parallel "
+            "schedule the rule the cross was built from is the one validation "
+            "put first, and it is not the one that leads "
+            "Table~\\ref{tab:agg_winners}. The penalty shortlist carries an arm "
+            "ranked below the third because a composite competes for a slot of "
+            "its own, which is why a validation rank in a three-row block need "
+            "not read $1,2,3$. $\\dagger$ marks the pair the cross crowned, on "
+            "validation, and therefore the arm every later stage carried.")
+
+    return block_env(
+        "tab:selection_axis",
+        "What the selecting saw, and what the tables report. Every arm each "
+        "stage carried forward, with the \\textbf{validation} ordering that "
+        "chose it beside the \\textbf{test} row that reports it. Five-fold "
+        "means throughout; the two axes are two evaluations of one set of runs "
+        "and must not be quoted against each other.",
+        "lrrrrrr",
+        "Arm & \\multicolumn{2}{c}{Validation} & "
+        "\\multicolumn{4}{c}{Test} \\\\\n"
+        "\\cmidrule(lr){2-3}\\cmidrule(lr){4-7}\n"
+        " & Adaptation & Rank & Adaptation & Rank & Preservation & Score (pts) \\\\",
+        body, size="\\scriptsize", colsep="4pt", note=note,
+        comment="source: data/selection_axis.csv, all rows, grouped by col stage\n"
+                "then by col schedule, ordered by col val_rank inside each block;\n"
+                "the four test columns are joined by (cell, family) onto\n"
+                "data/agg-winners.csv, data/reg-winners.csv and data/combos.csv")
 
 
 # --------------------------------------------------------------------------
@@ -1167,6 +1296,7 @@ def main():
     pst = rows("plateau_stages.csv")
     cohort = rows("cohort_table.csv")
     sigs = rows("signals_summary_extract.csv")
+    sel = rows("selection_axis.csv")
     fair_combo = rows("fairness_combo.csv")
     fair10 = rows("fairness_c10d10.csv")
     fair20 = {"c20d10": rows("fairness_c20d10.csv"),
@@ -1198,9 +1328,10 @@ def main():
         ("stopping.tex", t_stopping(stopa), len(stopa)),
         ("plateau.tex", t_plateau(pst), len(pst) - 1),
         ("cohort.tex", t_cohort(cohort), len(cohort)),
+        ("selection_axis.tex", t_selection_axis(sel, agg, regu, combo), len(sel)),
     ]
     ids = identifiers(refs, agg, regu, blend, combo, extr, stopx, sigs,
-                      fair_combo, fair10, *fair20.values(), *sizes.values())
+                      fair_combo, fair10, sel, *fair20.values(), *sizes.values())
     for name, text, n in emitted:
         no_code_ids(name, text, ids)
         write(name, text)

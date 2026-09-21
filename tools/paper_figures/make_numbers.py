@@ -186,6 +186,21 @@ def signed(x, nd=2):
     return "$%s$" % v if v.startswith("-") else v
 
 
+def power(x):
+    """A protocol constant the field writes as a power of ten.
+
+    The learning rate and the weight decay are quoted as $10^{-3}$ and
+    $10^{-4}$ everywhere the literature quotes them, and the view carries them
+    as 0.001 and 0.0001 because that is what the runner recorded.  A constant
+    that is not a clean power is written out rather than forced into one: a
+    wrong exponent is a worse failure than an ugly number.
+    """
+    e = math.log10(float(x))
+    if abs(e - round(e)) > 1e-12:
+        return ("%g" % float(x)).replace("-", "$-$")
+    return "$10^{%d}$" % int(round(e))
+
+
 def word(n):
     n = int(round(n))
     return WORDS[n] if 0 <= n < len(WORDS) else str(n)
@@ -335,6 +350,7 @@ def build():
     cost_a = rows("cost_arms.csv")
     cost_s = rows("cost_stages.csv")
     cohort = rows("cohort_table.csv")
+    recipe = {r["setting"]: r for r in rows("recipe.csv")}
     cohort_comp = rows("cohort_composition.csv")
     decouple = rows("decouple_example.csv")
     fair = rows("fairness_c10d10.csv")
@@ -1083,10 +1099,40 @@ def build():
     # ---- Section 5, the protocol ----------------------------------------
     put("nBadPoolSize", group(float(cohort[0]["of"])),
         "cohort_table.csv, col 'of' (identical on every row)")
-    put("nCohortSize", word(sum(1 for r in cohort_comp if r["cohort"] == "cohort10")),
+    cohort_clients = sum(1 for r in cohort_comp if r["cohort"] == "cohort10")
+    put("nCohortSize", word(cohort_clients),
         "cohort_composition.csv, count of rows with cohort = cohort10")
     put("nRounds", "%d" % int(f(pick(cost_s, stage="regularisation finals"), "rounds")),
         "cost_stages.csv, row 'regularisation finals', col rounds")
+
+    # The client recipe.  These are configuration and not measurements, which
+    # is why they lived in the hand-maintained block for as long as they did;
+    # recipe.csv reads them back out of the stored payloads, so the paragraph
+    # that states them now has a file behind it like every other number here.
+    put("nLearningRate", power(recipe["learning_rate"]["value"]),
+        "recipe.csv, row learning_rate, col value (%s payloads, all agreeing)"
+        % recipe["learning_rate"]["payloads"])
+    put("nWeightDecay", power(recipe["weight_decay"]["value"]),
+        "recipe.csv, row weight_decay, col value (%s payloads, all agreeing)"
+        % recipe["weight_decay"]["payloads"])
+
+    # The participation the search setting ran at, as the fraction NOT drawn.
+    # Both halves are read: the per-round count off the stage that crowned the
+    # pair, the cohort size off the cohort itself.  Writing 0.2 here would be
+    # writing down a ratio that two other views already fix.
+    per_round = f(pick(cost_s, stage="combinations"), "clients_per_round")
+    put("nDropoutFraction", ("%g" % (1.0 - per_round / cohort_clients)),
+        "derived: 1 - cost_stages.csv row 'combinations' col clients_per_round"
+        " / cohort_composition.csv count of rows with cohort = cohort10")
+
+    # What the programme cost, summed over its stages rather than restated.
+    # docs/FAIRNESS_AND_COST.md prints the same two totals under the same
+    # table and tests/test_recipe.py holds the prose to this sum.
+    put("nProgrammeTasks", group(sum(f(r, "tasks") for r in cost_s)),
+        "cost_stages.csv, col tasks summed over every stage")
+    put("nProgrammeGpuHours", "%.1f" % sum(f(r, "hours") for r in cost_s),
+        "cost_stages.csv, col hours summed over every stage, in GPU-hours; "
+        + ROUND_ONCE)
 
     # The decoupling example. The extract flags exactly one row: the writer
     # the detector ranked worst of the whole bad pool, which the shipped

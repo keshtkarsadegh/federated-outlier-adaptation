@@ -517,6 +517,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
 | does the schedule matter? six pairs, each schedule's own selected arm against the other's, cyclic minus parallel and paired by fold | `export_schedule_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `schedule_pairs.csv` |
 | the study's eight strongest arms across the three reporting stages, and which schedule ran each | the same command -> `schedule_top.csv` |
+| what each selection saw: the VALIDATION ordering every shortlist was cut on, beside the same runs' test ordering, per schedule | `export_selection_axis.py --root $FOA_STUDY_DIR --csv <dir>` -> `selection_axis.csv` |
+| the client recipe the methods section states, read back off every stored payload | `export_recipe_view.py --root $FOA_STUDY_DIR --csv <dir>` -> `recipe.csv` |
 | the two extracts the forgetting-signals section is written on | `export_signals_summary.py --root $FOA_STUDY_DIR --out <dir>` |
 | the five writers the two selection rankings disagree about | `export_decouple_example.py --root $FOA_STUDY_DIR --out <dir>` |
 | every figure in the manuscript | [below](#and-which-command-produces-which-figure) - two commands per figure |
@@ -524,6 +526,22 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | every table the manuscript sets | `paper_figures/make_paper_tables.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
+
+`selection_axis.csv` and `recipe.csv` are **core** for the same reason the two
+schedule views are. The first is the other half of a sentence the manuscript
+already sets: every shipped table is TEST and every shortlist that decided which
+arms those tables contain was cut on VALIDATION, and the two orderings are not
+the same ordering - on the parallel schedule the rule the combination cross was
+built from is not the rule that leads Table 2. Each arm in it is the head of a
+record's own ranking, read under the basis that record names in `rank_by`, and
+the shortlist is the record's own `top` rather than the first three rows of the
+ranking: a composite competes for a slot of its own, and reading the head of the
+ranking instead would print a shortlist the study never carried. The second
+carries the six client-side constants of the methods paragraph - the learning
+rate, the weight decay, the two early-stopping settings that are off, the batch
+size and the local epochs - each read out of `config` in every stored payload and
+refused if the programme does not agree on one value; `tests/test_recipe.py`
+holds the paragraph, the code and the view to each other.
 
 The two schedule views are **core**, which is why they are in the table above
 rather than beside it. Every stage of the programme selected and reported the two
@@ -685,7 +703,7 @@ evaluations only.
 
 One step further along the same shape. `numbers.tex` - the file every
 quantitative sentence of the manuscript reads its value from - and the
-thirteen `tables/*.tex` it sets are written from the views too, by two generators that sit
+fourteen `tables/*.tex` it sets are written from the views too, by two generators that sit
 beside the figure scripts and compute nothing:
 
 ```bash
@@ -702,19 +720,19 @@ will write into a source checkout: with no `FOA_PAPER_OUT` set they say so and
 stop, rather than drop LaTeX into the tracked tree. `FOA_PAPER_DATA` overrides
 where the views are read from, exactly as it does for the figures.
 
-Thirty views feed the two of them and all thirty ship here, spread over four
-directories because four different tools write them:
+Thirty-two views feed the two of them and all thirty-two ship here, spread over
+four directories because four different tools write them:
 
 | where | what is in it | written by |
 |---|---|---|
-| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py` |
+| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view, the two schedule views, the selection axis, the client recipe | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py`, `export_schedule_views.py`, `export_selection_axis.py`, `export_recipe_view.py` |
 | `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
 | `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, three of which the generators read - `plateau_stages.csv` builds `plateau.tex`, `plateau_arms.csv` and `plateau_extremes.csv` fill macros, and `fig_extremes.py` marks its stopping rounds from the last - while `docs/STOPPING.md` reads all four; the three `plateau_holdout_*.csv` beside them answer that rule's own objection and feed neither generator and no figure | `stopping_table.py --csv`, `plateau_rule.py --out`, `plateau_holdout.py --out` |
 | `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
 
-`tables/paper/` also holds the extension's two views. They feed neither
+`tables/paper/` also holds the extension's four views. They feed neither
 generator and no figure, they are named `extension_*` for that reason, and the
-thirty above are thirty without them.
+thirty-two above are thirty-two without them.
 
 **THE PAPER BUNDLE IS SEARCHED FIRST, AND THAT MATTERS.** `tables/combos.csv` is
 the raw grid dump the combination stage left behind and `tables/paper/combos.csv`
