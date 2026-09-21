@@ -41,8 +41,9 @@ from __future__ import annotations
 import re
 
 __all__ = ["label", "short", "params", "has_params", "settings_note", "run_label",
-           "REFERENCE", "SIGNAL", "SIGNAL_SHORT", "ARM", "ARM_SHORT",
-           "EXTREME", "SCHEDULE", "family_label", "UntranslatedIdentifier"]
+           "COMPOSITE", "REFERENCE", "SIGNAL", "SIGNAL_SHORT", "ARM",
+           "ARM_SHORT", "EXTREME", "SCHEDULE", "family_label",
+           "UntranslatedIdentifier"]
 
 
 class UntranslatedIdentifier(KeyError):
@@ -203,10 +204,16 @@ def _rules():
     # -- A composite cell spells its mix and nothing else, because the mix is
     # -- the only dial that stage turned, so its lambda and T reach the page
     # -- from COMPOSITE above or they reach it nowhere at all.
-    rule(r"hybrid_mix([0-9p]+)", "KD+EWC composite", "KD+EWC composite",
+    # -- BOTH parentages are marked, not just the cyclic one.  An unlabelled
+    # -- composite beside a "cyclic-tuned" one reads as the default rather
+    # -- than as the other parentage, and the two are crossed under both
+    # -- schedules, so a reader meeting the unlabelled row in a cyclic block
+    # -- had nothing on the page to tell it apart from the block's own.
+    rule(r"hybrid_mix([0-9p]+)",
+         "KD+EWC composite", "KD+EWC composite, parallel-tuned",
          lambda g: _math([r"\lambda{=}%s" % COMPOSITE["parallel"][0],
                           r"T{=}%s" % COMPOSITE["parallel"][1],
-                          r"m{=}%s" % _dec(g[0])]))
+                          r"m{=}%s" % _dec(g[0])]), "parallel-tuned")
     rule(r"hybrid_seq_mix([0-9p]+)",
          "KD+EWC composite", "KD+EWC composite, cyclic-tuned",
          lambda g: _math([r"\lambda{=}%s" % COMPOSITE["cyclic"][0],
@@ -215,7 +222,7 @@ def _rules():
     # -- the screen carries all three coefficients in the identifier itself,
     # -- which is the whole difference between it and the rows above.
     rule(r"blend_lam([0-9pem]+)_T([0-9p]+)_mix([0-9p]+)",
-         "KD+EWC screened", "KD+EWC screened",
+         "KD+EWC composite, screened", "KD+EWC composite, screened",
          lambda g: _math([r"\lambda{=}%s" % _dec(g[0]),
                           r"T{=}%s" % _dec(g[1]),
                           r"m{=}%s" % _dec(g[2])]))
@@ -263,7 +270,7 @@ def _rules():
 
     # -- the carried arms and the extreme federations -----------------------
     rule(r"winner", "Anchor + FedNTD (crowned)", "Crowned")
-    rule(r"balanced", "FedAvg + KD/EWC blend", "Balanced")
+    rule(r"balanced", "Server step + KD/EWC blend", "Balanced")
     rule(r"sequential", "Cyclic + FedNTD", "Cyclic arm")
     rule(r"control", "FedAvg (control)", "Control")
     rule(r"double", "Two writers", "Two writers")

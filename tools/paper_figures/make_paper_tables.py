@@ -59,8 +59,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from paper_names import (ARM, EXTREME, REFERENCE, SCHEDULE, SIGNAL,  # noqa: E402
-                         label, settings_note, short)
+from paper_names import (ARM, COMPOSITE, EXTREME, REFERENCE, SCHEDULE,  # noqa: E402
+                         SIGNAL, label, params, settings_note, short)
 
 
 def _data_dirs():
@@ -287,6 +287,22 @@ def count(row, col):
     return "%d" % int(round(v))
 
 
+def grouped(row, col):
+    """An integer CSV cell with LaTeX thin-space thousands: ``2\\,381``.
+
+    numbers.tex groups every count it sets, so a footnote that prints one
+    count through a macro and the next with ``count`` sets the same quantity
+    two ways in one sentence and reads as two different quantities.
+    """
+    s = count(row, col)
+    out = []
+    while len(s) > 3:
+        out.insert(0, s[-3:])
+        s = s[:-3]
+    out.insert(0, s)
+    return "\\,".join(out)
+
+
 def loose(row, col, nd=2):
     """A CSV cell that may or may not be integral (clients per round)."""
     raw = row[col]
@@ -488,7 +504,7 @@ NO_PENALTY_CONTROL = "control_fedavg"
 NO_PENALTY_MARK = "\\S"
 
 
-def t_reg(reg_rows, agg):
+def t_reg(reg_rows, agg, regu):
     """T3 --- every penalty at its best setting, with a control on both blocks.
 
     WHY THE PARALLEL BLOCK HAS TO BORROW ITS CONTROL.  The regularisation
@@ -531,6 +547,31 @@ def t_reg(reg_rows, agg):
         "a schedule block of tab:reg_winners carries no no-penalty control, so "
         "its penalties are read against nothing while the other block's are "
         "read against one: %s" % controls)
+    # THE FOOTNOTE QUOTES FOUR NUMBERS IN PROSE, AND NOT ONE OF THEM IS
+    # RETYPED.  A note that says the head of a block is a tie, and prints the
+    # margin that makes it one, is a claim about the rows directly above it:
+    # if the ordering moves and the sentence does not, the table disproves its
+    # own footnote.  Each is differenced or read here, from the same rows the
+    # body was built from, and rounded once.
+    leads = {}
+    for fam, _ in SCHEDULE_BLOCKS:
+        here = sorted((float(r["score"]) for r, _ in reg_rows
+                       if r["family"] == fam), reverse=True)
+        leads[fam] = derived(here[0] - here[1], 2, 100)
+    # The composite the cyclic validation ordering ranked third and this table
+    # does not print: the row that makes "over the rows printed" true.
+    crossed_par = [r["cell"] for r, roles in reg_rows
+                   if r["family"] == "parallel" and "crossed" in roles]
+    assert len(crossed_par) == 1, crossed_par
+    unprinted = pick(regu, cell=crossed_par[0], family="cyclic")
+    assert (unprinted["cell"], "cyclic") not in {(r["cell"], r["family"])
+                                                 for r, _ in reg_rows}, (
+        "the footnote says tab:reg_winners does not print the cyclic %s row, "
+        "and it does" % unprinted["cell"])
+    provenance = ("giving the \\emph{cyclic-tuned} composite at "
+                  "$\\lambda{=}%s, T{=}%s$ and the \\emph{parallel-tuned} one "
+                  "at $\\lambda{=}%s, T{=}%s$"
+                  % (COMPOSITE["cyclic"] + COMPOSITE["parallel"]))
     note = ("$\\S$ The no-penalty control: plain FedAvg with no client penalty, "
             "at the same horizon, the same five folds and the same "
             "participation --- the row of Table~\\ref{tab:agg_winners} that "
@@ -549,24 +590,46 @@ def t_reg(reg_rows, agg):
             "differing only in the client-sampling seed, is the pair of "
             "control rows of Table~\\ref{tab:agg_winners} and is "
             "\\nControlSeedSpread{} points. "
-            "The composite penalty is the one the construction stage built, "
+            "The composite penalties are the two the construction stage "
+            "built, "
             "$\\lambda\\,[\\,m\\,D_{\\mathrm{kd}} + (1-m)\\,D_{\\mathrm{fisher}}\\,]$, "
-            "out of a schedule's own selected distillation and consolidation "
-            "components: it inherited their $\\lambda$ and $T$ and swept the "
-            "mix alone. The \\emph{screened} rows are the separate screen that "
+            "one per schedule out of that schedule's own selected "
+            "distillation and consolidation components: each inherited their "
+            "$\\lambda$ and $T$ and swept the mix alone, "
+            + provenance + ", and both were run under both schedules. "
+            "The \\emph{screened} rows are the separate screen that "
             "swept all three coefficients together, which is why the two are "
             "named apart and carry different coefficients here. Of the "
-            "composite rows this table carries the two another table reads: "
-            "$\\dagger$ the composite the study selected, $\\ddagger$ the "
-            "composite Table~\\ref{tab:combos} crosses on that schedule and "
-            "reads its $\\Delta$ against. The rest of the sweep is reported "
-            "with the construction it belongs to.")
+            "composite rows this table carries the two another table reads. "
+            "$\\ddagger$ is the composite that schedule's validation ordering "
+            "selected --- $m{=}0.5$ on both schedules --- which is therefore "
+            "the one Table~\\ref{tab:combos} crosses and reads its $\\Delta$ "
+            "against (Table~\\ref{tab:selection_axis} prints the ordering). "
+            "$\\dagger$ is the composite that leads this table on both "
+            "schedules: the \\emph{test-leading} composite, a post-selection "
+            "reading and not a selection, and the arm the extension of "
+            "Section~\\ref{sec:results:jointtune} tunes. Its lead is $"
+            + leads["parallel"] + "$ points over the next row on the parallel "
+            "schedule and $" + leads["cyclic"] + "$ on the cyclic, both far "
+            "inside the \\nControlSeedSpread{}-point spread of one "
+            "configuration run twice, so the head of each block is a tie and "
+            "not an ordering. The ordering is over the rows printed and not "
+            "over every arm of the block: each schedule ranked thirteen "
+            "penalty cells, and the composite rows here are the ones other "
+            "tables read rather than every mix --- the cyclic composite at "
+            "$\\lambda{=}" + COMPOSITE["cyclic"][0] + ", T{=}"
+            + COMPOSITE["cyclic"][1] + ", m{=}0.5$ scores $"
+            + num(unprinted, "score", 2, 100) + "$ and would stand third in "
+            "that block; it is printed in "
+            "Table~\\ref{tab:selection_axis}. The rest of the sweep is "
+            "reported with the construction it belongs to.")
     return block(
         "tab:reg_winners",
         "Every client penalty at its own best setting, at the full horizon "
         "under plain FedAvg on the server, together with the composite rows "
         "the other tables read. Five-fold means, \\textbf{test} axis, "
-        "grouped by schedule and ordered by score within each block; "
+        "grouped by schedule and ordered by score within each block over "
+        "the rows printed; "
         "``No penalty (control)'' is the proximal term at $\\mu{=}0$, and the "
         "row marked $\\S$ at the foot of each block is the study's own "
         "no-penalty control, carried here so that both blocks are read "
@@ -691,8 +754,35 @@ def t_combos(combo, agg, regu, printed):
                 ("$+%.2f$" % d) if d >= 0 else ("$%.2f$" % d)]) + " \\\\")
 
     assert all(pen_better), "a server rule outscores its penalty somewhere"
+
+    # WHICH COMPOSITE A BLOCK CROSSES IS PART OF THE READING.  The two
+    # composites are told apart by their coefficients alone, and each block
+    # crosses the one its OWN validation ordering selected -- which on both
+    # schedules is the one built from the other schedule's components.  A
+    # settings list that prints "cyclic-tuned" and stops leaves the reader of
+    # the parallel block to conclude the opposite, so each entry is annotated
+    # with the schedule that selected it, derived from the crossing the block
+    # actually prints rather than restated.
+    settings = settings_note([(r["cell"], r["family"]) for r in ordered])
+    for fam, _ in SCHEDULE_BLOCKS:
+        crossed = sorted({split_combo(r["cell"], agg_cells)[1]
+                          for r in ordered if r["family"] == fam
+                          and split_combo(r["cell"], agg_cells)[1]
+                          .startswith("hybrid")})
+        assert len(crossed) == 1, (fam, crossed)
+        entry = "%s %s" % (short(crossed[0]), params(crossed[0]))
+        assert settings.count(entry) == 1, (entry, settings)
+        settings = settings.replace(
+            entry, entry + " (the composite the %s schedule's validation "
+                           "ordering selected)" % fam)
+
     note = ("Settings, given once for the whole table: "
-            + settings_note([(r["cell"], r["family"]) for r in ordered]) + ". "
+            + settings + ". "
+            "The two composites are the two the construction stage built, "
+            "one per schedule (Section~\\ref{sec:method:reg}); each "
+            "schedule's block crosses the one its own validation ordering "
+            "selected, which on both schedules is the composite built from "
+            "the other schedule's components. "
             "$\\Delta$ vs.\\ better comp.\\ is the row's score minus the "
             "score of whichever of its two components, the rule alone or the "
             "penalty alone, scores higher on its own, read from "
@@ -700,8 +790,9 @@ def t_combos(combo, agg, regu, printed):
             "eighteen rows that better component is the \\emph{penalty}, and "
             "every "
             "one of the eighteen is printed in Table~\\ref{tab:reg_winners} "
-            "--- the composite penalty six of them cross is marked there with "
-            "$\\ddagger$. The column is "
+            "--- the two composite penalties, one per schedule, that six of "
+            "these rows cross are the rows marked $\\ddagger$ there. The "
+            "column is "
             "a difference of five-fold means, not a fold-paired verdict, which "
             "the text reports instead. $\\star$ marks the crowned pair.")
 
@@ -754,9 +845,20 @@ def t_scaling(sizes, cost_s):
                     num(r, "adaptation"), num(r, "preservation"),
                     num(r, "score", 2, 100)]) + " \\\\")
 
+    # THE TWO ROWS ARE TWO SERVER RULES.  label(BALANCED[0]) names the arm
+    # correctly and still lets it be read as the control row with a penalty
+    # added, which is the one comparison this table does not make: the control
+    # is plain FedAvg at eta_s = 1 and the carry arm steps at 0.95.  So the
+    # arm is spelled out and the difference said, pinned to the frozen record
+    # below so a changed carry arm cannot leave the prose describing the old.
+    assert BALANCED[0] == "eta_0p95_hybrid_seq_mix0p5", BALANCED
     note = ("Carried arms, run unchanged: \\emph{" + ARM["winner"] + "} is "
-            + label(CROWNED[0]) + ", \\emph{" + ARM["balanced"] + "} is "
-            + label(BALANCED[0]) + " and \\emph{" + ARM["sequential"]
+            + label(CROWNED[0]) + "; \\emph{" + ARM["balanced"] + "} is the "
+            "server step at $\\eta_s{=}0.95$ with the cyclic-tuned KD+EWC "
+            "composite at $m{=}0.5$, which is a \\emph{different server rule} "
+            "from \\emph{" + ARM["control"] + "}, plain FedAvg at "
+            "$\\eta_s{=}1$ --- the two rows are two rules, not one rule with "
+            "and without a penalty; and \\emph{" + ARM["sequential"]
             + "} is " + label(CYCLIC_ARM[0])
             + ". The twenty-client settings omit the control.")
 
@@ -832,6 +934,7 @@ def t_fairness(fair, sizes, combo, cost_s):
     best = max(fair["combo"], key=lambda r: float(r["lift_worst"]))
     body = []
     listed = []
+    shown = []
     for key, stage, title in FAIRNESS_BLOCKS:
         if body:
             body.append("\\midrule")
@@ -850,6 +953,7 @@ def t_fairness(fair, sizes, combo, cost_s):
                     for cell in ARM_ORDER
                     for r in [x for x in fair[key] if x["cell"] == cell]]
         for name, r in rows:
+            shown.append(r)
             # ONE ARM, ONE ADAPTATION.  The mean column of this table and the
             # adaptation column of the table that reports the same arm are the
             # same measurement of the same runs, and this is what says so.
@@ -876,6 +980,12 @@ def t_fairness(fair, sizes, combo, cost_s):
         "tab:scaling reports these arms and tab:fairness does not list them, "
         "so the sentence that introduces it is false: %s" % missing)
 
+    assert BALANCED[0] == "eta_0p95_hybrid_seq_mix0p5", BALANCED
+    lifted = {k: num(pick(fair[k], cell="balanced"), "improved", 2)
+              for k in ("c20d10", "c20d20")}
+    assert all(float(r["improved"]) < 0.995 for r in shown), (
+        "the note says the lifted column reaches 1.00 nowhere, and a row "
+        "this table prints does")
     note = ("Mean is the cohort accuracy pooled over the cohort's test rows "
             "--- the same number Tables~\\ref{tab:combos} "
             "and~\\ref{tab:scaling} print as adaptation for the same arm, "
@@ -904,14 +1014,19 @@ def t_fairness(fair, sizes, combo, cost_s):
             "at twenty clients: \\nBalancedWorstTwentyTwo{} points "
             "with two of the twenty dropped and "
             "\\nBalancedWorstTwentyFour{} with four --- and in both the "
-            "lifted column says most of the cohort still finished above its "
-            "own shipped-model accuracy, which is exactly what a cohort mean "
-            "hides. "
+            "lifted column stands at $" + lifted["c20d10"] + "$ and $"
+            + lifted["c20d20"] + "$, so between a third and two fifths of "
+            "client--fold pairs finished \\emph{below} their own "
+            "shipped-model accuracy, which is exactly what a cohort mean "
+            "hides. The lifted column reaches $1.00$ nowhere in this table. "
             "Arms: " + ARM["winner"] + " is "
-            + label(CROWNED[0]) + ", " + ARM["balanced"] + " is "
-            + label(BALANCED[0]) + ", " + ARM["sequential"] + " is "
-            + label(CYCLIC_ARM[0]) + ", " + ARM["control"] + " is plain "
-            "FedAvg, and the best worst-client pair is "
+            + label(CROWNED[0]) + "; " + ARM["balanced"] + " is the server "
+            "step at $\\eta_s{=}0.95$ with the cyclic-tuned KD+EWC composite "
+            "at $m{=}0.5$; " + ARM["sequential"] + " is "
+            + label(CYCLIC_ARM[0]) + "; " + ARM["control"] + " is plain "
+            "FedAvg at $\\eta_s{=}1$, a different server rule from the "
+            "server step and not the same rule without a penalty; and the "
+            "best worst-client pair is "
             + label(best["cell"]) + ". The twenty-client settings ran no "
             "control.")
 
@@ -1044,7 +1159,13 @@ def t_selection_axis(sel, agg, regu, combo):
             "schedule the rule the cross was built from is the one validation "
             "put first, and it is not the one that leads "
             "Table~\\ref{tab:agg_winners}. "
-            "$\\ddagger$ marks an arm the stage carried forward. A shortlist "
+            "$\\ddagger$ marks an arm the stage carried forward; on the "
+            "penalty blocks the composite it marks is the composite that "
+            "schedule selected, $m{=}0.5$ on both. The cyclic-tuned "
+            "composite at $m{=}0.75$, at cyclic validation rank 3 and "
+            "unmarked, is the \\emph{test-leading} composite of "
+            "Table~\\ref{tab:reg_winners}: it leads both test orderings and "
+            "no validation ordering selected it. A shortlist "
             "is the first three arms of the validation-score ordering that "
             "belong to three \\emph{different} methods --- a family's three "
             "slots are three ideas, not three settings of one, and the "
@@ -1267,7 +1388,7 @@ def t_signals(sigs, pst):
         "\\midrule",
         " & ".join(["\\emph{Fixed horizon}", "nothing", dash, dash, dash,
                     dash, fixed, dash]) + " \\\\",
-        " & ".join(["\\emph{Patience rule} ($k=\\nPlateauK{}$)",
+        " & ".join(["\\emph{Patience rule} ($\\kappa=\\nPlateauK{}$)",
                     "cohort accuracy", dash, dash, dash,
                     count(ref, "fires"), rule,
                     against_fixed(rule, ref["gain"], "patience rule")]) + " \\\\",
@@ -1291,8 +1412,9 @@ def t_signals(sigs, pst):
             "which is \\nSignalCorrRuns{} of the \\nSignalRuns{} runs that "
             "pass covered --- itself the programme as it stood before its "
             "last two stages, and not the \\nProgrammeTasks{} tasks the whole "
-            "programme ran. Of those, %s carry all of six of the eight "
-            "signals, %s carry %s and %s carry %s. The four columns on the right "
+            "programme ran. Six of the eight signals are carried by all "
+            "\\nSignalCorrRuns{} of them; %s is carried by %s of them and %s "
+            "by %s. The four columns on the right "
             "are means over the \\nStoppingArms{} hundred-round arms "
             "instead --- the budget the signal scores best at on the grid "
             "shared by all eight, the arms it stops before the horizon on, "
@@ -1318,11 +1440,10 @@ def t_signals(sigs, pst):
             "not rounded once from the stored value; the two agree to within "
             "a hundredth of a point on every row, and the generator asserts "
             "it. No macro quotes this column."
-            % (count(by["proxy_kl"], "n_runs"),
-               count(by["retention_known"], "n_runs"),
-               short("retention_known"),
-               count(by["agreement_with_global"], "n_runs"),
-               short("agreement_with_global")))
+            % (short("retention_known"),
+               grouped(by["retention_known"], "n_runs"),
+               short("agreement_with_global"),
+               grouped(by["agreement_with_global"], "n_runs")))
 
     return block(
         "tab:signals",
@@ -1425,7 +1546,8 @@ def t_plateau(pst):
     note = ("Mean score in points over each stage's arms, on the per-round "
             "\\textbf{validation} trace, the only basis on which a stopping "
             "round may be chosen. The rule keeps the checkpoint of the best "
-            "cohort round and stops training after $k=\\nPlateauK{}$ rounds "
+            "cohort round and stops training after "
+            "$\\kappa=\\nPlateauK{}$ rounds "
             "without improvement; it costs anything on exactly "
             "\\nPlateauHurtArms{} arm of \\nPlateauArms{} "
             "($-\\nPlateauWorstLoss{}$ points), and an arm on which it never "
@@ -1574,7 +1696,8 @@ def t_kholdout(prot):
             "\\nKholdoutProtocols{} of them in six families, with the two "
             "families whose splits are interchangeable summarised as one row "
             "apiece carrying the mean and the sample standard deviation of "
-            "their held-out gains. The patience $k=\\nPlateauK{}$ is chosen "
+            "their held-out gains. The patience $\\kappa=\\nPlateauK{}$ is "
+            "chosen "
             "by every one of the \\nKholdoutProtocols{}, at every margin and "
             "on every split. The designated stage split and the "
             "leave-one-stage-out of the same stage are one cut seen from its "
@@ -1588,12 +1711,13 @@ def t_kholdout(prot):
 
     return block(
         "tab:kholdout",
-        "Held-out selection of the patience $k$. The rule's cell is chosen on "
+        "Held-out selection of the patience $\\kappa$. The rule's cell is "
+        "chosen on "
         "the selection set and applied unchanged to the held-out one; gains "
         "are the mean score over the held-out arms, plateau rule minus fixed "
         "horizon, in points on the \\textbf{validation} trace.",
         "llrrr",
-        "Selection set & Held-out set & Arms & $k$ chosen & "
+        "Selection set & Held-out set & Arms & $\\kappa$ chosen & "
         "Held-out gain (pts) \\\\\n"
         " & & (held) & & \\\\",
         body, size="\\scriptsize", colsep="4pt", note=note,
@@ -1739,7 +1863,7 @@ def main():
     emitted = [
         ("references.tex", t_references(refs), len(refs)),
         ("agg_winners.tex", t_agg(agg), len(agg)),
-        ("reg_winners.tex", t_reg(reg_rows, agg), len(reg_rows) + 2),
+        ("reg_winners.tex", t_reg(reg_rows, agg, regu), len(reg_rows) + 2),
         ("blends.tex", t_blends(regu, blend),
          len([r for r in regu if r["cell"].startswith("hybrid")])),
         ("combos.tex", t_combos(combo, agg, regu, printed), len(combo)),
