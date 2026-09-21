@@ -57,7 +57,11 @@ def main():
                   bbox_to_anchor=(0.5, 0.0))
 
     fs.save(figure, "fig_combo", rect=(0, 0.16, 1, 1))
-    fs.caption("fig_combo", """
+    # RAW.  This caption sets two greek letters, and "\b" and "\t" are a
+    # backspace and a tab to Python long before they are \beta and \tau to
+    # LaTeX.  A plain string here put a literal 0x08 into the caption file
+    # and ate the tau, and neither shows up in a diff.
+    fs.caption("fig_combo", r"""
         The crowned combination against each of its two components and against
         the unprotected control, over the full hundred-round budget on the
         study's ten-client cohort: accuracy on the source population (left,

@@ -18,7 +18,10 @@ the manuscript build rather than here.
 
 from __future__ import annotations
 
+import ast
 import csv
+import importlib
+import re
 import sys
 from pathlib import Path
 
@@ -213,6 +216,89 @@ def test_the_signal_extracts_carry_the_columns_their_tool_declares():
         keys = {row[0] for row in csv.reader(handle)}
     assert {"stopping_arms", "fixed_mean_score", "oracle_mean_score",
             "baseline_a0", "baseline_p0"} <= keys
+
+
+#: Every byte a generated caption, table or macro file may not carry. Newline
+#: is the one control character any of them has a use for; the rest arrive by
+#: accident, and they arrive invisibly - a terminal swallows them, a diff shows
+#: nothing, and LaTeX sets whatever is left.
+CONTROL = re.compile(r"[\x00-\x09\x0b-\x1f\x7f]")
+
+
+def _controls(text):
+    """The control characters in one string, named, for a readable failure."""
+    return sorted({"0x%02x" % ord(character) for character in CONTROL.findall(text)})
+
+
+def _generated_captions(out, monkeypatch):
+    """Every caption the figure scripts write, into a scratch directory.
+
+    The scripts are run rather than read: a caption is a Python string on the
+    way to a file, and the two spellings of one that matter here differ only
+    after the interpreter has had it.
+    """
+    import matplotlib.pyplot as plt
+
+    import figstyle
+
+    out.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(figstyle, "OUT", str(out))
+    for path in sorted(FIGURES.glob("fig_*.py")):
+        importlib.import_module(path.stem).main()
+        plt.close("all")
+    return sorted(out.glob("*_caption.txt"))
+
+
+def test_no_generated_caption_table_or_macro_carries_a_control_character(
+        tmp_path, monkeypatch):
+    """
+    Nothing the manuscript inputs may carry a byte a reader cannot see.
+
+    `fig_combo`'s caption sets $\beta$ and $\tau$, and it was written as a
+    plain Python string: the interpreter turned the two backslash sequences
+    into a backspace and a tab before `figstyle.caption` ever saw them, the
+    whitespace-normalising join ate the tab, and the caption file shipped a
+    literal 0x08 in front of "eta". It rendered as "$eta=0.01$, $ au=0.5$" and
+    looked, in every terminal and every diff, like a caption.
+
+    So the check is on the bytes of everything the generators write, and not on
+    the source that wrote it: a raw string is one fix for one file, and this is
+    the property the manuscript actually needs.
+    """
+    for path in _generated_captions(tmp_path / "figures", monkeypatch):
+        found = _controls(path.read_text())
+        assert not found, (path.name, found)
+
+    for path in sorted(_generated_tables(tmp_path / "tex", monkeypatch).glob("*.tex")):
+        found = _controls(path.read_text())
+        assert not found, (path.name, found)
+
+    import make_numbers
+
+    monkeypatch.setenv("FOA_PAPER_OUT", str(tmp_path / "tex"))
+    monkeypatch.setattr(sys, "argv", ["make_numbers.py"])
+    assert make_numbers.main() == 0
+    numbers = tmp_path / "tex" / "numbers.tex"
+    found = _controls(numbers.read_text())
+    assert not found, found
+
+
+def test_no_string_in_a_figure_script_smuggles_a_python_escape():
+    """
+    The same failure, caught where it is written rather than where it lands.
+
+    A caption that never reaches a file - one behind a flag, one added today
+    and rendered tomorrow - is not covered by the test above until somebody
+    runs it. Every string constant in these modules is read out of the syntax
+    tree instead, so a backslash that Python understands and LaTeX meant
+    differently fails at once.
+    """
+    for path in sorted(FIGURES.glob("fig_*.py")) + [FIGURES / "figstyle.py"]:
+        for node in ast.walk(ast.parse(path.read_text())):
+            if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+                continue
+            found = _controls(node.value)
+            assert not found, (path.name, node.lineno, found)
 
 
 def _generated_tables(tmp_path, monkeypatch):
