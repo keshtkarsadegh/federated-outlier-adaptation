@@ -1,0 +1,4 @@
+cohort,k,clients,kept_by_prefilter,coverage,deepest_prefilter_rank,depth_fraction,prefilter_pool,ranked_writers,pool_fraction,ranked_above_ties,distinct_scores,writers_at_top_score,cut_inside_tie
+five,5,5,5,1.0000,191,0.053352,1074,3580,0.300000,634,79,2946,1
+ten,10,10,10,1.0000,191,0.053352,1074,3580,0.300000,634,79,2946,1
+twenty,20,20,20,1.0000,486,0.135754,1074,3580,0.300000,634,79,2946,1
