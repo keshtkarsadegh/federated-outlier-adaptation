@@ -217,6 +217,16 @@ def group(n):
     return "\\,".join(out)
 
 
+def dial(row, col):
+    """A grid coordinate, spelled the way the grid spells it: 0.1, 0.05, 2.
+
+    Not a measurement and not rounded: a coefficient the search was offered
+    reaches the page as the number the record carries, so a reader can find
+    the cell the sentence describes by the digits it prints.
+    """
+    return "%g" % float(row[col])
+
+
 def code(cell):
     return "\\code{%s}" % cell.replace("_", "\\_")
 
@@ -656,6 +666,38 @@ def build():
     put("nComboSeqPres", acc(f(seqarm, "preservation")),
         "combos.csv, row %s/%s, col preservation -- the cyclic arm, %s"
         % (CYCLIC_ARM[0], CYCLIC_ARM[1], FROZEN))
+
+    # THE JOINT-TUNING EXTENSION'S OWN WINNER, Section 4.7.  The section says
+    # which half-life the search chose and then stops, because the winning
+    # configuration is printed nowhere: tab:jointtune reports the arms' scores
+    # and not their dials, so a sentence naming the chosen coefficients had no
+    # source on the page and would have been retyped off a CSV by hand.  Each
+    # dial is read off rank 1 of its schedule in the screen's ranked view.
+    #
+    # TWO FILES, ONE WINNER.  The dials live in the screen's view and the arm
+    # the table reports lives in the table's own; nothing but the assertion
+    # below ties them together, and without it a re-run that moved the winner
+    # would leave the sentence describing one cell beside a table reporting
+    # another.
+    jt_screen = rows("extension_combo_screen_selected.csv")
+    jt_table = rows("extension_combo_tune_selected.csv")
+    for fam, tag in (("concurrent", "Par"), ("sequential", "Cyc")):
+        won = pick([r for r in jt_screen if r["family"] == fam], rank="1")
+        shown = pick(jt_table, family=fam, role="tuned pair")
+        assert won["cell"] == shown["arm"], (
+            "the joint-tuning macros would describe %s and tab:jointtune "
+            "reports %s on the %s schedule" % (won["cell"], shown["arm"], fam))
+        for col, name, what in (
+                ("c_ewc", "Ewc", "the consolidation coefficient"),
+                ("c_kd", "Kd", "the distillation coefficient"),
+                ("T", "T", "the distillation temperature"),
+                ("m", "Mix", "the blend weight")):
+            put("nJointSel%s%s" % (name, tag), dial(won, col),
+                "extension_combo_screen_selected.csv, row family=%s rank=1"
+                " (%s), col %s -- %s the joint search chose on that schedule;"
+                " asserted equal to the 'tuned pair' arm of"
+                " extension_combo_tune_selected.csv" % (fam, won["cell"], col,
+                                                        what))
 
     # every selected penalty against every selected server rule, fold-paired
     put("nCompositionMinGap", pts(min(f(r, "mean") for r in comp)),

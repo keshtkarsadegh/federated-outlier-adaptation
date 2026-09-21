@@ -493,6 +493,40 @@ def test_the_signals_table_prices_all_eight_signals_from_the_shipped_view(tmp_pa
     assert "\\textbf{validation}" in caption[0], caption[0]
 
 
+def test_the_joint_tuning_macros_are_the_cells_the_extension_table_reports():
+    """
+    Section 4.7 names the configuration the joint search chose, and no table
+    prints it: tab:jointtune reports the arms' scores and the dials live only
+    in the screen's ranked view. So the eight macros are read out of one file
+    and the arm they describe out of another, and a re-run that moved the
+    winner in either would leave the sentence describing a cell the table does
+    not report. Both halves are pinned here, in the grid's own spelling.
+    """
+    import make_numbers
+
+    registry = make_numbers.build()
+    with (PAPER / "extension_combo_screen_selected.csv").open(newline="") as fh:
+        screen = list(csv.DictReader(fh))
+    with (PAPER / "extension_combo_tune_selected.csv").open(newline="") as fh:
+        reported = list(csv.DictReader(fh))
+
+    for fam, tag in (("concurrent", "Par"), ("sequential", "Cyc")):
+        won = [r for r in screen if r["family"] == fam and r["rank"] == "1"]
+        assert len(won) == 1, fam
+        arms = [r["arm"] for r in reported
+                if r["family"] == fam and r["role"] == "tuned pair"]
+        assert arms == [won[0]["cell"]], (fam, arms)
+        for col, name in (("c_ewc", "Ewc"), ("c_kd", "Kd"),
+                          ("T", "T"), ("m", "Mix")):
+            value, src = registry[f"nJointSel{name}{tag}"]
+            assert float(value) == float(won[0][col]), (name, tag, value)
+            assert "extension_combo_screen_selected.csv" in src
+
+    # The sentence these eight serve says the two schedules agree on the mix
+    # and on nothing else; the agreement is the half of that a macro can hold.
+    assert registry["nJointSelMixPar"][0] == registry["nJointSelMixCyc"][0]
+
+
 def test_every_macro_the_template_carries_is_mapped_and_every_signal_quotable():
     """
     numbers.tex is rewritten in place from the macro NAMES the file already
