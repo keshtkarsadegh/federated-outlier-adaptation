@@ -1142,8 +1142,9 @@ def build():
     from make_paper_tables import (SCHEDULE_BLOCKS, SELECTION_DEPTH,  # noqa: E402
                                    SELECTION_STAGES, selection_block)
     put("nSelectionDepth", word(SELECTION_DEPTH),
-        "make_paper_tables.SELECTION_DEPTH: how many arms of each block"
-        " tab:selection_axis prints, in words")
+        "make_paper_tables.SELECTION_DEPTH: how many arms of each"
+        " selecting block of tab:selection_axis prints, in words; the"
+        " cross blocks of tab:selection_axis_cross print all nine")
 
     # ---- how much of that table moves between the two axes ---------------
     # THE CLAIM IS ABOUT THE PAGE, NOT ABOUT THE VIEW.  The table exists to
@@ -1167,11 +1168,13 @@ def build():
     # equal, so that the sentence quoting this macro cannot go a row short.
     assert len(printed) >= blocks * SELECTION_DEPTH, len(printed)
     put("nSelectionRankTotal", "%d" % len(printed),
-        "selection_axis.csv, the rows tab:selection_axis prints: the first %d"
-        " by col val_score_rank of each of the %d stage-by-schedule blocks,"
-        " plus any row below that depth that col role marks as carried"
-        " forward or that tab:scaling runs again, counted"
-        % (SELECTION_DEPTH, blocks))
+        "selection_axis.csv, the rows tab:selection_axis and"
+        " tab:selection_axis_cross print between them: the first %d by col"
+        " val_score_rank of each of the %d selecting stage-by-schedule"
+        " blocks, plus any row below that depth that col role marks as"
+        " carried forward, that tab:scaling runs again, or that leads both"
+        " test orderings, plus every row of the two cross blocks, counted"
+        % (SELECTION_DEPTH, blocks - 2))
     still = [r for r in printed
              if int(r["val_score_rank"]) == int(r["test_score_rank"])]
     put("nSelectionRankMoved", "%d" % (len(printed) - len(still)),

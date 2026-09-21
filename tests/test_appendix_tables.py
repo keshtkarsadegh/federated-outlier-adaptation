@@ -297,12 +297,20 @@ def test_the_crowned_pair_leads_the_validation_score_ordering():
 
 def test_the_selection_axis_table_prints_every_arm_it_carried(
         tmp_path, monkeypatch):
-    """An arm the study carried is never below the depth the table prints."""
+    """
+    An arm the study carried is never below the depth the table prints.
+
+    The selection axis is TWO floats: the selecting stages and the cross they
+    were built into. A search for a row has to look in both, or splitting the
+    table would have silently turned "every carried arm is printed" into
+    "every carried arm of the first two stages is printed".
+    """
     import make_paper_tables as tables
     import paper_names
 
     out = _emitted(tmp_path, monkeypatch)
-    printed = (out / "selection_axis.tex").read_text()
+    printed = ((out / "selection_axis.tex").read_text()
+               + (out / "selection_axis_cross.tex").read_text())
     for row in _rows(PAPER / "selection_axis.csv"):
         if not row["role"]:
             continue
@@ -327,7 +335,8 @@ def test_every_arm_the_scaling_table_runs_is_on_the_selection_axis(
     import paper_names
 
     out = _emitted(tmp_path, monkeypatch)
-    axis = (out / "selection_axis.tex").read_text()
+    axis = ((out / "selection_axis.tex").read_text()
+            + (out / "selection_axis_cross.tex").read_text())
     scaling = (out / "scaling.tex").read_text()
 
     carried = dict(zip(["winner", "balanced", "sequential"],
@@ -346,11 +355,16 @@ def test_every_arm_the_scaling_table_runs_is_on_the_selection_axis(
 
 def test_the_selection_axis_note_explains_the_carry_mark(
         tmp_path, monkeypatch):
-    """A mark on a row that the note does not name is noise on the page."""
+    """
+    A mark on a row that the note does not name is noise on the page.
+
+    The carry mark lives in the cross table, because all three carried arms
+    are crossings; so does the note that has to explain it.
+    """
     import make_paper_tables as tables
 
     out = _emitted(tmp_path, monkeypatch)
-    note = (out / "selection_axis.tex").read_text()
+    note = (out / "selection_axis_cross.tex").read_text()
     assert "$%s$ marks" % tables.SELECTION_CARRY_MARK in note
     assert "tab:scaling" in note
 
@@ -360,6 +374,81 @@ def test_the_selection_axis_note_explains_the_carry_mark(
     marks = tables.selection_marks(
         _pick_axis_row(cell, family), family)
     assert marks == tables.SELECTION_CARRY_MARK, marks
+
+
+def test_the_cross_prints_every_crossing_of_both_schedules(
+        tmp_path, monkeypatch):
+    """
+    Nine per schedule, not a cut of them.
+
+    The paper argues about the crossings at validation ranks 1, 2, 3 and 9.
+    A block cut at five prints the argument and hides one of the arms it is
+    made of, which is what it did.
+    """
+    import make_paper_tables as tables
+    import paper_names
+
+    out = _emitted(tmp_path, monkeypatch)
+    printed = (out / "selection_axis_cross.tex").read_text()
+    view = [r for r in _rows(PAPER / "selection_axis.csv")
+            if r["stage"] == "combination"]
+    assert len(view) == 18, len(view)
+    for row in view:
+        assert paper_names.label(row["cell"]) in printed, row["cell"]
+    for family, _ in tables.SCHEDULE_BLOCKS:
+        block = [r for r in view if r["schedule"] == family]
+        _, within, _ = tables.selection_block(view, "combination", family)
+        assert len(within) == len(block) == 9, (family, len(block))
+
+
+def test_the_test_leading_composite_is_printed_in_both_penalty_blocks(
+        tmp_path, monkeypatch):
+    """
+    The claim is that no validation ordering selected it, so both ranks are on
+    the page.
+
+    It sits at cyclic validation rank 3 - inside any depth - and at parallel
+    validation rank 6, which is below the cut. Printing only the cyclic one
+    lets a reader check half a claim.
+    """
+    import make_paper_tables as tables
+    import paper_names
+
+    out = _emitted(tmp_path, monkeypatch)
+    printed = (out / "selection_axis.tex").read_text()
+    label = paper_names.label(tables.BLEND_TEST_LEADING)
+    assert printed.count(label) == 2, printed.count(label)
+    for family, _ in tables.SCHEDULE_BLOCKS:
+        row = _pick_axis_row(tables.BLEND_TEST_LEADING, family)
+        assert not row["role"], (family, row["role"])
+        _, within, extra = tables.selection_block(
+            [r for r in _rows(PAPER / "selection_axis.csv")
+             if r["stage"] == "regularisation"], "regularisation", family)
+        assert row in within + extra, family
+        assert tables.BLEND_MARK[0][1] in tables.selection_marks(row, family)
+
+
+def test_the_note_names_the_rule_that_carried_each_marked_arm(
+        tmp_path, monkeypatch):
+    """
+    Two of the three carried arms were carried by rules that appear in no
+    record. A mark whose rule is only in the prose of a section is a mark the
+    table cannot be checked against.
+    """
+    import make_paper_tables as tables
+
+    out = _emitted(tmp_path, monkeypatch)
+    note = (out / "selection_axis_cross.tex").read_text()
+    assert "least preservation" in note
+    assert "strongest cyclic pair" in note
+    assert "crowning record" in note
+    # and the rules are true of the view, which is what the generator asserts
+    parallel = [r for r in _rows(PAPER / "selection_axis.csv")
+                if r["stage"] == "combination" and r["schedule"] == "parallel"]
+    balanced = _pick_axis_row(*tables.BALANCED)
+    assert float(balanced["val_preservation"]) == max(
+        float(r["val_preservation"]) for r in parallel)
+    assert int(_pick_axis_row(*tables.CYCLIC_ARM)["val_score_rank"]) == 1
 
 
 def _pick_axis_row(cell, family):

@@ -532,9 +532,9 @@ def test_the_selection_axis_counts_are_over_the_rows_that_table_prints():
     "Most arms move between the two axes" is a claim about the page, and a
     count taken over selection_axis.csv would be a claim about sixty rows the
     table does not print.  So the two macros are rebuilt here the way the
-    table builds its blocks, and the arms that do NOT move are named: the
-    sentence they serve says three, and three is a small enough number that a
-    drift in any one of them would otherwise read as a plausible new total.
+    table builds its blocks, and the arms that do NOT move are named: they
+    are few enough that a drift in any one of them would otherwise read as a
+    plausible new total.
     """
     import make_numbers
     import make_paper_tables as tables
@@ -549,23 +549,38 @@ def test_the_selection_axis_counts_are_over_the_rows_that_table_prints():
             block = sorted([r for r in view if r["stage"] == stage
                             and r["schedule"] == family],
                            key=lambda r: int(r["val_score_rank"]))
-            printed += block[:tables.SELECTION_DEPTH]
-            printed += [r for r in block[tables.SELECTION_DEPTH:]
+            # The cross prints all nine; a selecting block prints the depth
+            # plus every arm a mark is owed to below it.
+            depth = (len(block) if stage in tables.SELECTION_FULL
+                     else tables.SELECTION_DEPTH)
+            printed += block[:depth]
+            printed += [r for r in block[depth:]
                         if r["role"]
-                        or (r["cell"], family) in tables.SELECTION_CARRIED]
+                        or (r["cell"], family) in tables.SELECTION_CARRIED
+                        or (r["cell"], family) in tables.SELECTION_SHOWN]
 
     assert registry["nSelectionRankTotal"][0] == str(len(printed))
-    # The blocks times the depth, plus one: the balanced arm of tab:scaling is
-    # carried without ever having been selected, validation put it ninth of
-    # nine, and the table prints it from below the cut for that reason.
+    # Two selecting stages at the depth, plus the one arm a mark is owed to
+    # below it -- the test-leading composite on the parallel penalties, which
+    # no validation ordering selected -- plus both cross blocks entire. The
+    # balanced arm of tab:scaling is inside that last term now: validation put
+    # it ninth of nine and the cross block prints all nine.
+    selecting = [s for s, _, _ in tables.SELECTION_STAGES
+                 if s not in tables.SELECTION_FULL]
+    crossings = len([r for r in view if r["stage"] in tables.SELECTION_FULL])
     assert int(registry["nSelectionRankTotal"][0]) == (
-        len(tables.SELECTION_STAGES) * len(tables.SCHEDULE_BLOCKS)
-        * tables.SELECTION_DEPTH + 1)
+        len(selecting) * len(tables.SCHEDULE_BLOCKS) * tables.SELECTION_DEPTH
+        + 1 + crossings)
     still = {(r["cell"], r["schedule"]) for r in printed
              if r["val_score_rank"] == r["test_score_rank"]}
+    # Five, and it was three while the cross printed five crossings of nine:
+    # the two new ones sit at the foot of their cross blocks, where the two
+    # orderings agree because there is nothing below them to disagree about.
     assert still == {("fedavgm_b0p3", "parallel"),
                      ("seq_delta_capped", "cyclic"),
-                     ("hybrid_seq_mix0p5", "parallel")}, sorted(still)
+                     ("hybrid_seq_mix0p5", "parallel"),
+                     ("weight_q0_hybrid_seq_mix0p5", "parallel"),
+                     ("seq_fedavg_hybrid_mix0p5", "cyclic")}, sorted(still)
     assert registry["nSelectionRankMoved"][0] == str(len(printed) - len(still))
     for name in ("nSelectionRankTotal", "nSelectionRankMoved"):
         assert "selection_axis.csv" in registry[name][1]

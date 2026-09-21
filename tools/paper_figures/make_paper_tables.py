@@ -1115,10 +1115,43 @@ SELECTION_CARRY_MARK = "\\S"
 #: table now prints every arm with a carried role at whatever depth it sits.
 SELECTION_CARRIED = (CROWNED, BALANCED, CYCLIC_ARM)
 
+#: WHICH RULE CARRIED EACH MARKED ARM.  Three arms are run again at the four
+#: federation settings and only one of them was ever selected; the other two
+#: were carried by rules stated in the prose and nowhere in the view, so the
+#: rule is written beside the arm here and printed in the note.  A reader can
+#: then check each against the block it is printed in instead of taking the
+#: sentence on trust.
+SELECTION_CARRY_RULE = {
+    CROWNED: "crowned by the cross on validation",
+    BALANCED: "least preservation given up of the nine parallel crossings "
+              "on validation",
+    CYCLIC_ARM: "strongest cyclic pair on the crowning record's validation "
+                "ranking",
+}
+
+#: Stages whose blocks print EVERY ranked arm instead of the top
+#: SELECTION_DEPTH.  The cross is nine crossings per schedule, and the paper
+#: argues about the arms at ranks 1, 2, 3 and 9 of them: a block cut at five
+#: prints the claim and hides the arm it is made of.  Nine rows is also the
+#: whole population, so the block header stops having a depth to state.
+SELECTION_FULL = ("combination",)
+
+#: Arms printed in their block at whatever depth they sit, because a claim
+#: made elsewhere is about them.  The composite at m = 0.75 leads BOTH test
+#: orderings of tab:reg_winners and no validation ordering selected it; that
+#: sentence is checkable only when its validation rank is on the page in both
+#: penalty blocks, and on the parallel one it sits at rank six, below the cut.
+#: It carries the same dagger tab:reg_winners marks it with, which is free
+#: here because the crowning dagger lives in the cross table and not this one.
+SELECTION_SHOWN = ((BLEND_TEST_LEADING, "parallel"),
+                   (BLEND_TEST_LEADING, "cyclic"))
+
 
 def selection_marks(row, family):
     """Every mark a selection-axis row carries: role first, then carry."""
     marks = SELECTION_MARK[row["role"]] if row["role"] else ""
+    if (row["cell"], family) in SELECTION_SHOWN:
+        marks += BLEND_MARK[0][1]
     if (row["cell"], family) in SELECTION_CARRIED:
         marks += SELECTION_CARRY_MARK
     return marks
@@ -1135,35 +1168,57 @@ def selection_block(sel, stage, family):
                     and r["schedule"] == family],
                    key=lambda r: int(r["val_score_rank"]))
     assert block, (stage, family)
-    carried = [r for r in block[SELECTION_DEPTH:] if selection_marks(r, family)]
-    return block, block[:SELECTION_DEPTH], carried
+    depth = len(block) if stage in SELECTION_FULL else SELECTION_DEPTH
+    carried = [r for r in block[depth:] if selection_marks(r, family)]
+    return block, block[:depth], carried
 
 
-def t_selection_axis(sel, agg, regu, combo):
-    """A1 --- the axis the selecting ran on, beside the axis the tables report.
+SELECTION_BASIS = (
+    "Basis, column by column: the four columns under "
+    "\\textbf{validation} are the fold-mean cohort accuracy, the "
+    "fold-mean source accuracy and the selection score of "
+    "Eq.~\\eqref{eq:score} that each selection record was cut on, and "
+    "the arm's place in that score's ordering --- which is the "
+    "ordering that did the choosing. Both scores are taken against one "
+    "pair of baselines, the shipped model's \\emph{test}-axis $A_0$ "
+    "and $P_0$, on the validation side as well as the test side: that "
+    "is what the selection records themselves did, so the validation "
+    "score printed here is the number each shortlist was cut on and "
+    "not a re-derivation of it. The four columns under "
+    "\\textbf{test} are the row the reporting table prints for the "
+    "same arm, and \\emph{Rank} there is that arm's place in the same "
+    "population ordered by the test score. A rank is over every arm "
+    "that schedule's record ranked, which the block header states. "
+    "The two orderings are not the same ordering. ")
 
-    THE RANK COLUMNS ARE ON THE SCORE, AND THEY DID NOT USE TO BE.  Every
-    shortlist of this study was cut by ``study_emit.ranked_by_trade`` --- the
-    selection score of Eq. 2, what an arm gained on the cohort less what it
-    spent on the source population, at w = 1.  The rank this table printed came
-    from the records' ``rankings`` block instead, which
-    ``study_emit.both_rankings`` writes ordered by ADAPTATION alone.  So the
-    table ranked the arms on a quantity that chose nothing, its ranks
-    reproduced the adaptation ordering exactly, and it printed no preservation
-    on the validation side at all -- which is the half of the score that makes
-    the ordering differ.  Both validation columns and both orderings are now
-    in the view and both are printed, the score rank first because it is the
-    one that selected.
+SELECTION_HEAD = ("Arm & \\multicolumn{4}{c}{Validation (the axis that selected)} & "
+                  "\\multicolumn{4}{c}{Test (the axis the tables report)} \\\\\n"
+                  "\\cmidrule(lr){2-5}\\cmidrule(lr){6-9}\n"
+                  " & Adapt. & Pres. & Score (pts) & Rank & "
+                  "Adapt. & Pres. & Score (pts) & Rank \\\\")
 
-    The test columns are read from the table that REPORTS the arm and not from
-    the view, which carries a test figure of its own for the same runs.  They
-    agree --- the two assertions below are what say so --- and printing the
-    reported one is what stops this table from becoming a second, slightly
-    different copy of Tables 2 to 4.
+SELECTION_SOURCE = ("source: data/selection_axis.csv, grouped by col stage then\n"
+                    "by col schedule, ordered by col val_score_rank inside each\n"
+                    "block; a selecting block is cut at the first five plus any\n"
+                    "row a mark is owed to, the cross block prints all nine; the\n"
+                    "four test columns are joined by (cell, family) onto\n"
+                    "data/agg-winners.csv, data/reg-winners.csv and\n"
+                    "data/combos.csv")
+
+
+def selection_body(sel, reported, stages):
+    """The rows of one selection-axis table, block by block.
+
+    THE TABLE IS TWO TABLES AND WAS ONE.  Printing all nine crossings per
+    schedule, and the test-leading composite in both penalty blocks, put the
+    single float 47pt over a page; at an ``\\arraystretch`` tight enough to
+    close that gap the rows touch.  So the selecting stages and the cross they
+    were built into are two floats, which also frees the dagger: it marks the
+    crowned pair in one table and the test-leading composite in the other, and
+    neither table ever prints both meanings.
     """
-    reported = {"agg": agg, "reg": regu, "combo": combo}
     body = []
-    for stage, title, which in SELECTION_STAGES:
+    for stage, title, which in stages:
         stage_rows = [r for r in sel if r["stage"] == stage]
         assert stage_rows, stage
         if body:
@@ -1171,16 +1226,18 @@ def t_selection_axis(sel, agg, regu, combo):
         body.append("\\rowcolor{blockband}\\multicolumn{9}{@{}l}{\\textbf{%s}} \\\\"
                     % title)
         for fam, fam_title in SCHEDULE_BLOCKS:
-            # The top of the score ordering, plus every arm the study carried
-            # from below it -- an arm the paper runs again is never off its
-            # block, whatever validation thought of it.
-            block, within, carried = selection_block(stage_rows, stage, fam)
-            shown = within + carried
-            head = ("%s: the top %s of %s arms by validation score"
-                    % (fam_title, len(within), count(block[0], "ranked")))
-            if carried:
-                head += (", plus the %s the paper carries from below that "
-                         "depth" % ("arm" if len(carried) == 1 else "arms"))
+            block, within, extra = selection_block(stage_rows, stage, fam)
+            shown = within + extra
+            if len(within) == len(block):
+                head = ("%s: all %s ranked arms, by validation score"
+                        % (fam_title, count(block[0], "ranked")))
+            else:
+                head = ("%s: the top %s of %s arms by validation score"
+                        % (fam_title, len(within), count(block[0], "ranked")))
+                if extra:
+                    head += (", plus %s printed from below that depth"
+                             % ("one arm" if len(extra) == 1
+                                else "%d arms" % len(extra)))
             body.append("\\multicolumn{9}{@{}l}{\\emph{%s}} \\\\" % head)
             for r in shown:
                 row = pick(reported[which], cell=r["cell"], family=fam)
@@ -1201,78 +1258,157 @@ def t_selection_axis(sel, agg, regu, combo):
                     num(row, "adaptation"), num(row, "preservation"),
                     num(row, "score", 2, 100), count(r, "test_score_rank"),
                 ]) + " \\\\")
+    return body
+
+
+def selection_rank_of(sel, cell, family, stage):
+    """One arm's validation-score rank, read rather than written down."""
+    row = next(r for r in sel if r["cell"] == cell
+               and r["schedule"] == family and r["stage"] == stage)
+    return int(row["val_score_rank"])
+
+
+def t_selection_axis(sel, agg, regu, combo):
+    """A1 --- the two selecting stages, on the axis that selected them.
+
+    THE RANK COLUMNS ARE ON THE SCORE, AND THEY DID NOT USE TO BE.  Every
+    shortlist of this study was cut by ``study_emit.ranked_by_trade`` --- the
+    selection score of Eq. 2, what an arm gained on the cohort less what it
+    spent on the source population, at w = 1.  The rank this table printed came
+    from the records' ``rankings`` block instead, which
+    ``study_emit.both_rankings`` writes ordered by ADAPTATION alone.  So the
+    table ranked the arms on a quantity that chose nothing, its ranks
+    reproduced the adaptation ordering exactly, and it printed no preservation
+    on the validation side at all -- which is the half of the score that makes
+    the ordering differ.  Both validation columns and both orderings are now
+    in the view and both are printed, the score rank first because it is the
+    one that selected.
+
+    The test columns are read from the table that REPORTS the arm and not from
+    the view, which carries a test figure of its own for the same runs.  They
+    agree --- the two assertions inside ``selection_body`` are what say so ---
+    and printing the reported one is what stops this table from becoming a
+    second, slightly different copy of Tables 2 to 4.
+    """
+    reported = {"agg": agg, "reg": regu, "combo": combo}
+    body = selection_body(sel, reported, SELECTION_STAGES[:2])
     check_schedules([{"family": r["schedule"]} for r in sel])
 
-    note = ("Basis, column by column: the four columns under "
-            "\\textbf{validation} are the fold-mean cohort accuracy, the "
-            "fold-mean source accuracy and the selection score of "
-            "Eq.~\\eqref{eq:score} that each selection record was cut on, and "
-            "the arm's place in that score's ordering --- which is the "
-            "ordering that did the choosing. Both scores are taken against one "
-            "pair of baselines, the shipped model's \\emph{test}-axis $A_0$ "
-            "and $P_0$, on the validation side as well as the test side: that "
-            "is what the selection records themselves did, so the validation "
-            "score printed here is the number each shortlist was cut on and "
-            "not a re-derivation of it. The four columns under "
-            "\\textbf{test} are the row the reporting table prints for the "
-            "same arm, and \\emph{Rank} there is that arm's place in the same "
-            "population ordered by the test score. A rank is over every arm "
-            "that schedule's record ranked, which the block header states; "
-            "the block prints the top \\nSelectionDepth{} of them, and "
-            "every arm the paper carried onward, at whatever depth it sits. "
-            "The two orderings are not the same ordering: on the parallel "
-            "schedule the rule the cross was built from is the one validation "
-            "put first, and it is not the one that leads "
-            "Table~\\ref{tab:agg_winners}. "
-            "$\\ddagger$ marks an arm the stage carried forward; on the "
-            "penalty blocks the composite it marks is the composite that "
-            "schedule selected, $m{=}0.5$ on both. The cyclic-tuned "
-            "composite at $m{=}0.75$, at cyclic validation rank 3 and "
-            "unmarked, is the \\emph{test-leading} composite of "
-            "Table~\\ref{tab:reg_winners}: it leads both test orderings and "
-            "no validation ordering selected it. A shortlist "
-            "is the first three arms of the validation-score ordering that "
-            "belong to three \\emph{different} methods --- a family's three "
-            "slots are three ideas, not three settings of one, and the "
-            "composite penalty competes for a slot of its own --- which is "
-            "why a shortlist need not read $1,2,3$: on the cyclic penalties "
-            "it reads $1,2,5$, the arms at 3 and 4 being further settings of "
-            "a composite whose slot was already taken. "
-            "$\\dagger$ marks the pair the cross crowned, on validation, and "
-            "therefore the arm every later stage carried; the cross cut no "
-            "shortlist, it crowned once, and that arm leads the validation "
-            "score ordering of all eighteen pairs. "
-            "$\\S$ marks an arm carried past the selecting stages and run "
-            "again at the four federation settings of "
-            "Table~\\ref{tab:scaling}. Only one of the three also carries a "
-            "mark of selection: the cross crowned once and shortlisted "
-            "nothing, so the other two are marked $\\S$ alone. One of those "
-            "two, the server step at $\\eta_s{=}0.95$ crossed with the "
-            "cyclic-tuned composite, is printed from below the depth for "
-            "exactly that reason --- validation put it last of its "
-            "schedule's nine crossings, and the paper runs it at every "
-            "setting anyway.")
+    # The claim the dagger makes is a claim about two ranks, so the two ranks
+    # are read out of the view and written into the note. A composite that had
+    # been selected somewhere would change these numbers and would change the
+    # sentence with them, rather than leaving a stale sentence beside a moved
+    # table.
+    lead_parallel = selection_rank_of(sel, BLEND_TEST_LEADING, "parallel",
+                                      "regularisation")
+    lead_cyclic = selection_rank_of(sel, BLEND_TEST_LEADING, "cyclic",
+                                    "regularisation")
+    for family, rank in (("parallel", lead_parallel), ("cyclic", lead_cyclic)):
+        row = next(r for r in sel if r["cell"] == BLEND_TEST_LEADING
+                   and r["schedule"] == family
+                   and r["stage"] == "regularisation")
+        assert not row["role"], (family, row["role"])
+
+    note = SELECTION_BASIS + (
+        "On the parallel schedule the rule the cross was built from is the "
+        "one validation put first, and it is not the one that leads "
+        "Table~\\ref{tab:agg_winners}. "
+        "$\\ddagger$ marks an arm the stage shortlisted; on the penalty "
+        "blocks the composite it marks is the composite that schedule "
+        "selected, $m{=}0.5$ on both. "
+        "$\\dagger$ marks the cyclic-tuned composite at $m{=}0.75$, the "
+        "\\emph{test-leading} composite of Table~\\ref{tab:reg_winners}: it "
+        "leads both test orderings and no validation ordering selected it. "
+        "It is printed in \\emph{both} penalty blocks at whatever depth it "
+        "sits --- validation rank %d on the cyclic schedule and %d on the "
+        "parallel one --- because that is the claim, and a rank that is not "
+        "on the page cannot be checked. A shortlist "
+        "is the first three arms of the validation-score ordering that "
+        "belong to three \\emph{different} methods --- a family's three "
+        "slots are three ideas, not three settings of one, and the "
+        "composite penalty competes for a slot of its own --- which is "
+        "why a shortlist need not read $1,2,3$: on the cyclic penalties "
+        "it reads $1,2,5$, the arms at 3 and 4 being further settings of "
+        "a composite whose slot was already taken. The cross these two "
+        "shortlists were built into is "
+        "Table~\\ref{tab:selection_axis_cross}."
+        % (lead_cyclic, lead_parallel))
 
     return block_env(
         "tab:selection_axis",
-        "What the selecting saw, and what the tables report. Each selecting "
-        "stage's ranked arms at the top of the \\textbf{validation} ordering "
-        "that chose them, beside the \\textbf{test} row that reports them. "
-        "Five-fold means throughout; the two axes are two evaluations of one "
-        "set of runs and must not be quoted against each other.",
-        "lrrrrrrrr",
-        "Arm & \\multicolumn{4}{c}{Validation (the axis that selected)} & "
-        "\\multicolumn{4}{c}{Test (the axis the tables report)} \\\\\n"
-        "\\cmidrule(lr){2-5}\\cmidrule(lr){6-9}\n"
-        " & Adapt. & Pres. & Score (pts) & Rank & "
-        "Adapt. & Pres. & Score (pts) & Rank \\\\",
-        body, size="\\scriptsize", colsep="3pt", stretch="0.95", note=note,
-        comment="source: data/selection_axis.csv, all rows, grouped by col\n"
-                "stage then by col schedule, ordered by col val_score_rank\n"
-                "inside each block and cut at the first five plus any row\n"
-                "with a col role or a carried arm of tab:scaling; the four test columns are joined by\n"
-                "(cell, family) onto data/agg-winners.csv,\n"
-                "data/reg-winners.csv and data/combos.csv")
+        "What the selecting saw, and what the tables report: the two "
+        "selecting stages. Each stage's ranked arms at the top of the "
+        "\\textbf{validation} ordering that chose them, beside the "
+        "\\textbf{test} row that reports them. Five-fold means throughout; "
+        "the two axes are two evaluations of one set of runs and must not be "
+        "quoted against each other.",
+        "lrrrrrrrr", SELECTION_HEAD, body,
+        size="\\scriptsize", colsep="3pt", stretch="0.95", note=note,
+        comment=SELECTION_SOURCE)
+
+
+def t_selection_axis_cross(sel, combo):
+    """A1b --- the cross, all nine crossings per schedule.
+
+    EVERY CROSSING IS PRINTED AND FIVE OF THEM USED TO BE.  The paper argues
+    about the arms at validation ranks 1, 2, 3 and 9 of this stage: the pair
+    the cross crowned, the pair that leads the test ordering, the cyclic
+    sibling, and the balanced arm that validation put last and Table 7 runs at
+    every federation setting anyway.  A block cut at five printed the argument
+    and hid one of the arms it is made of.
+    """
+    body = selection_body(sel, {"combo": combo}, SELECTION_STAGES[2:])
+
+    # WHICH RULE CARRIED WHICH ARM, CHECKED RATHER THAN ASSERTED IN PROSE.
+    # Two of the three carried arms were carried by rules that appear nowhere
+    # in the records, so the note states them - and a note that states a rule
+    # has to be a note the table can fail on.
+    cross = [r for r in sel if r["stage"] == "combination"]
+    parallel = [r for r in cross if r["schedule"] == "parallel"]
+    balanced = pick(parallel, cell=BALANCED[0], schedule="parallel")
+    assert float(balanced["val_preservation"]) == max(
+        float(r["val_preservation"]) for r in parallel), \
+        "the balanced arm is no longer the parallel crossing that gave up least"
+    assert selection_rank_of(sel, CYCLIC_ARM[0], "cyclic", "combination") == 1, \
+        "the cyclic sibling is no longer the strongest cyclic pair on validation"
+    assert pick(cross, cell=CROWNED[0],
+                schedule=CROWNED[1])["role"] == "crowned"
+
+    note = SELECTION_BASIS + (
+        "Every one of the nine crossings of each schedule is printed rather "
+        "than a cut of them, because the arms this stage is argued about sit "
+        "at ranks 1, 2, 3 and 9 of it. "
+        "$\\dagger$ marks the pair the cross crowned, on validation, and "
+        "therefore the arm every later stage carried; the cross cut no "
+        "shortlist, it crowned once, and that arm leads the validation "
+        "score ordering of all eighteen pairs. "
+        "$\\S$ marks an arm carried past the selecting stages and run again "
+        "at the four federation settings of Table~\\ref{tab:scaling}. Three "
+        "arms carry it and only one of them was selected, so the rule that "
+        "carried each of the other two is stated here and is checkable "
+        "against the block above it: the crowned pair was carried because "
+        "the cross crowned it; the \\emph{balanced} arm, the server step at "
+        "$\\eta_s{=}0.95$ crossed with the cyclic-tuned composite, was "
+        "carried as the crossing that gave up the least preservation of the "
+        "nine on the parallel schedule, which is also why the score ordering "
+        "puts it ninth; and the \\emph{cyclic sibling} was carried as the "
+        "strongest cyclic pair on the crowning record's own validation "
+        "ranking, which is rank one of its schedule --- the cross crowned "
+        "nothing there, so it carries $\\S$ without a mark of selection. "
+        "The two shortlists this cross was built from are "
+        "Table~\\ref{tab:selection_axis}.")
+
+    return block_env(
+        "tab:selection_axis_cross",
+        "What the selecting saw, and what the tables report: the cross. All "
+        "nine crossings of each schedule in the \\textbf{validation} "
+        "ordering that crowned one of them, beside the \\textbf{test} row "
+        "that reports them. Five-fold means throughout; the two axes are two "
+        "evaluations of one set of runs and must not be quoted against each "
+        "other.",
+        "lrrrrrrrr", SELECTION_HEAD, body,
+        size="\\scriptsize", colsep="3pt", stretch="0.95", note=note,
+        comment=SELECTION_SOURCE)
 
 
 # --------------------------------------------------------------------------
@@ -1953,7 +2089,10 @@ def main():
         ("plateau.tex", t_plateau(pst), len(pst) - 1),
         ("kholdout.tex", t_kholdout(prot), len(prot)),
         ("cohort.tex", t_cohort(cohort), len(cohort)),
-        ("selection_axis.tex", t_selection_axis(sel, agg, regu, combo), len(sel)),
+        ("selection_axis.tex", t_selection_axis(sel, agg, regu, combo),
+         len([r for r in sel if r["stage"] != "combination"])),
+        ("selection_axis_cross.tex", t_selection_axis_cross(sel, combo),
+         len([r for r in sel if r["stage"] == "combination"])),
     ]
     ids = identifiers(refs, agg, regu, blend, combo, extr, stopx, sigs,
                       sel, *fair.values(), *sizes.values())
