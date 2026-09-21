@@ -65,6 +65,18 @@ core's own README names them as the one thing it excludes). What the manifests
 prove is that you hold the fold assignments, writer lists, selection records,
 task files and experiment definitions that produced the published numbers.
 
+**No rendered image is in either manifest, on purpose.** Every `*.png` under
+`study/artifacts` is redrawn by matplotlib from a CSV view that *is* in the
+manifest, and a redraw is not byte-stable across machines: on a different
+matplotlib the six `signals/signals_pareto_*.png` come out 10-13% different
+pixel for pixel and `figures/extreme_stopping.png` about 7.5%, while
+`tables/stopping/stopping_extreme.csv` and the signals extracts they are drawn
+from regenerate byte for byte. Hashing the picture would fail a reviewer whose
+numbers are right, so `tools/artifact_checksums.py` leaves renders out of the
+manifest and out of the unlisted-files report both - the data is checksummed and
+the pictures are checked by redrawing them and diffing their views
+(`docs/REPRODUCE.md` [section 6](REPRODUCE.md#6-which-command-produces-which-claim)).
+
 Six run records are in there too, which looks like an exception and is not:
 `signalcheck_*` and the five `d01_extreme_single_*` folds are the six runs of
 the frozen signals population that the records asset does not carry, and a pass

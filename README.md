@@ -59,13 +59,19 @@ prove your cache matches ours.
 
 ```bash
 git clone https://github.com/keshtkarsadegh/federated-outlier-adaptation.git && cd federated-outlier-adaptation
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && pip install -e . --no-deps
 export FOA_ENV="$PWD/.venv"                  # the runner resolves this; see below
 
 pytest -q tests                              # ~2 minutes, no GPU; it prints the count
 cd study/artifacts && sha256sum -c SHA256SUMS && cd ../..
 ```
+
+**`python3`, not `python`.** Ubuntu and Debian ship `/usr/bin/python3` and
+no `python` at all, so the one line that has to run before the venv exists is
+the one line that cannot say `python`. Inside the activated venv either name
+works, which is why the commands elsewhere in this file and throughout `docs/`
+say `python`.
 
 **Install from `requirements.txt`, not from `pyproject.toml` alone.** `pip
 install -e .` resolves the loose ranges in `pyproject.toml` and gives you a
@@ -328,7 +334,11 @@ and that line is the one to read when a result surprises you.
 
 Python 3.12, PyTorch (CUDA 12.1 wheels pinned in `requirements.txt`), NumPy,
 Pillow, matplotlib, pandas, SciPy. `environment.yml` for conda,
-`requirements.txt` for pip; `pip install -e .` installs the `foa` entry point.
+`requirements.txt` for pip - install the pins from it first and then
+`pip install -e . --no-deps` for the `foa` entry point, which is what the
+[Quickstart](#quickstart) does. `pip install -e .` on its own re-resolves the
+loose ranges in `pyproject.toml` and hands you a pandas, matplotlib and
+scikit-learn this study never ran on.
 
 A GPU is needed only to produce accuracy numbers. Everything about how they were
 produced — the splits, the selections, the task definitions, the participation

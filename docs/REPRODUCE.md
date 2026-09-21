@@ -670,8 +670,19 @@ One run per line - the run folder, the fold/seed directory, the scenario and the
 arm, which is the identity `signal_correlations.csv` carries in its own `run`
 column. The file's own header says what the population is, why it is frozen, and
 which six of its runs are in the metadata core rather than in the records asset.
-With it, the pass reproduces the three signal CSVs, the six Pareto plots and both
-shipped extracts byte for byte from the published records:
+With it, the pass reproduces **the two shipped extracts** -
+`signals_summary_extract.csv` and `signals_extras_extract.csv` - byte for byte
+from the published records, and those two are exactly what
+`tests/test_reviewer_tree.py` pins, in
+`test_the_signals_pass_reproduces_the_two_shipped_extracts`. Nothing else the
+pass writes has a byte target. The three signal CSVs - `signal_correlations.csv`, `signal_stopping.csv`,
+`signal_selection.csv` - are derived, are 195 MB, and are published in neither
+half, so there is no shipped copy to diff them against. The six
+`signals_pareto_*.png` are renders, and no render here is byte-stable across
+machines: on another matplotlib and another font set they redraw the same
+numbers into 10-13% different pixels, which is why no image carries a hash in
+`study/artifacts/SHA256SUMS` (see [the note on
+renders](#and-which-command-produces-which-figure)).
 
 ```bash
 foa signals --root "$FOA_STUDY_DIR" --out <dir> \
@@ -958,6 +969,17 @@ to diff, and its absence is not a failed render.
 **`fig_baselines.pdf` is also the one figure whose bytes are not reproducible
 run to run.** The text is identical - `pdftotext` on two renders matches - and
 the difference is in the PDF's own object stream. The other six are byte-stable.
+
+**No rendered image is byte-stable across *machines*,** which is the wider
+statement: the six stable PDFs are stable on one machine, run to run. Move to
+another matplotlib build or another set of installed fonts and every PDF and
+every PNG changes - `figures/extreme_stopping.png` by about 7.5% of its pixels,
+the six `signals/signals_pareto_*.png` by 10-13% - while the CSV views they are
+drawn from, `tables/stopping/stopping_extreme.csv` among them, regenerate byte
+for byte. So the pictures are not checksummed: `study/artifacts/SHA256SUMS`
+carries no `*.png` or `*.pdf` line, `tools/artifact_checksums.py` skips renders
+when it writes a manifest and again when it checks one, and a re-render that
+differs is not a failed check. **Diff the view, not the picture.**
 
 ### And which command produces the numbers and the tables
 

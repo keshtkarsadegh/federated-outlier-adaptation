@@ -30,6 +30,17 @@ until it is written. ``--check`` therefore also reports files that exist and are
 NOT listed, which is the failure ``sha256sum -c`` cannot see - a shipped artefact
 that no manifest covers verifies perfectly by saying nothing about it.
 
+RENDERS ARE NOT RECORDS, and are skipped on both sides. A `*.png` under
+`study/artifacts` is redrawn by matplotlib from a CSV view that this manifest
+does cover, and a redraw is not byte-stable across machines: on a different
+matplotlib the six `signals/signals_pareto_*.png` come out 10-13% different
+pixel for pixel and `figures/extreme_stopping.png` about 7.5%, while the views
+they are drawn from regenerate byte for byte. Hashing the picture would fail a
+reviewer whose numbers are right, so a render is neither written into the
+manifest nor reported by ``--check`` as a file no manifest covers - the second
+half matters as much as the first, because the unlisted-files report is what
+would otherwise turn the exclusion straight back into a failure.
+
 RUN IT AFTER `sanitize_artifacts.py`, never before: normalising a machine path
 rewrites the file, and a hash taken first would condemn every artefact the
 sanitiser touched.
@@ -48,6 +59,16 @@ MANIFEST = "SHA256SUMS"
 #: How sha256sum writes a line, and therefore how it reads one.
 SEPARATOR = "  "
 
+#: Suffixes the manifest does not cover, because their bytes depend on the
+#: machine that drew them rather than on the study that produced them. See
+#: RENDERS ARE NOT RECORDS above; `docs/VERIFY.md` states the same to readers.
+RENDERED = (".png", ".pdf", ".svg", ".eps")
+
+
+def is_render(path: Path) -> bool:
+    """A picture, whose bytes are a property of the renderer, not of the run."""
+    return path.suffix.lower() in RENDERED
+
 
 def digest(path: Path) -> str:
     """One file's SHA-256, read in blocks so a fold book does not have to fit."""
@@ -59,10 +80,14 @@ def digest(path: Path) -> str:
 
 
 def catalogue(root: Path) -> Dict[str, str]:
-    """``{relative path: sha256}`` for every file under ``root`` but the manifest."""
+    """``{relative path: sha256}`` for every file under ``root`` but the manifest.
+
+    Renders are left out here rather than at the two call sites, so that writing
+    a manifest and checking one can never disagree about what it covers.
+    """
     found: Dict[str, str] = {}
     for path in root.rglob("*"):
-        if not path.is_file() or path.name == MANIFEST:
+        if not path.is_file() or path.name == MANIFEST or is_render(path):
             continue
         found[path.relative_to(root).as_posix()] = digest(path)
     return dict(sorted(found.items()))

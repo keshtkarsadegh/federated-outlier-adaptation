@@ -78,14 +78,7 @@ grep -E ' (by_write\.zip|by_write_md5\.log|by_class_md5\.log)$' \
     /path/to/repo/study/UPSTREAM.sha256 | sha256sum -c -
 ```
 
-Three `OK` lines and exit 0. After section 2 has built the cache, the whole file
-checks in one go, from the cache directory:
-
-```bash
-cd "$FOA_NIST28_DIR" && sha256sum -c /path/to/repo/study/UPSTREAM.sha256
-```
-
-or by hand:
+Three `OK` lines and exit 0, or by hand:
 
 ```
 39958e28827eb0d7d54f7e4c31c6cc36689b38aa218a4fc1e810c5413e7a35b8  by_write.zip
@@ -95,6 +88,23 @@ b2a76dfb555a1fc3764672bb8514455727d28fbdd18df4ce5abbd85a879f430c  by_class_md5.l
 
 These are the bytes the published results were produced from. A mismatch means
 you have a different release of SD19, and nothing below will reproduce.
+
+**After section 2 has built the cache, all seven entries can be checked - but
+still not from one directory.** `UPSTREAM.sha256` lists every entry as a bare
+basename, and the three source files live in `$FOA_DATA_DIR/nist` while the four
+cache files live in `$FOA_NIST28_DIR`, so no `cd` makes `sha256sum -c` of the
+whole file pass: whichever directory you stand in, the other directory's entries
+come back `FAILED open or read`. Check each half where this document told you to
+put it:
+
+```bash
+M=/path/to/repo/study/UPSTREAM.sha256
+( cd "$FOA_DATA_DIR/nist" && grep -E ' (by_write\.zip|by_write_md5\.log|by_class_md5\.log)$' "$M" | sha256sum -c - ) &&
+( cd "$FOA_NIST28_DIR"    && grep -E ' nist28_' "$M" | sha256sum -c - )
+```
+
+Seven `OK` lines and exit 0 - every entry in the manifest, each verified against
+the bytes in the directory that holds it.
 
 ---
 

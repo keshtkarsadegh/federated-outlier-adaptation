@@ -1,7 +1,11 @@
 # Checksums of everything this study consumes or ships that is NOT in this
 # repository, so a reviewer can prove they hold the same bytes we did.
 #
-# Verify with:  sha256sum -c UPSTREAM.sha256   (from the directory holding them)
+# The seven entries are bare basenames living in TWO directories - the three
+# sources in $FOA_DATA_DIR/nist, the four cache files in $FOA_NIST28_DIR - so
+# `sha256sum -c` of this whole file from either one reports the other as FAILED
+# open or read. Verify each half where it lives; docs/DATA.md section 1 gives
+# the command that checks all seven and exits 0.
 #
 # --- source data, from https://s3.amazonaws.com/nist-srd/SD19/ -------------
 # by_write.zip is the only archive needed; by_class.zip (~4 GB) is not - only

@@ -39,8 +39,11 @@ converts, trains, and reproduces nothing.
 **MNIST is not optional.** It is the public proxy set, and without it two of the
 eight forgetting signals record `None` for every round of every run, silently.
 
-Verify: `sha256sum -c study/UPSTREAM.sha256` from the cache directory. Laptop is
-fine — the conversion peaks at 2.5 GB and takes about ten minutes.
+Verify: the two-directory command in
+[`docs/DATA.md`](DATA.md#verify-what-you-downloaded) section 1 - the manifest's
+seven entries live in `$FOA_DATA_DIR/nist` and `$FOA_NIST28_DIR`, so no single
+`cd` plus `sha256sum -c` checks them all. Laptop is fine — the conversion peaks
+at 2.5 GB and takes about ten minutes.
 
 ## 2. The detector
 
