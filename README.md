@@ -23,7 +23,7 @@ two hundred retained writers, five-fold cross-validation throughout.
 | `tools/` | task-file generators, screen selectors, the SD19 fetcher, the table generator, the figure-view exporters |
 | `tools/paper_figures/` | the manuscript's seven figures, its `numbers.tex` and its twelve tables: render only, from the shipped CSV views |
 | `slurm/` | the array runner, the data-preparation job, a plain-bash fallback |
-| `tests/` | 1,961 tests, no GPU and no dataset required |
+| `tests/` | the suite, no GPU and no dataset required - `pytest -q tests` prints the count |
 | `study/jobs/` | the submission chains, one TOML per wave, with a `SHA256SUMS` |
 | `study/artifacts/` | the derived artefacts needed to *check* results, every task file the study ran among them, with a `SHA256SUMS` |
 | `study/UPSTREAM.sha256` | checksums of the source data and the packed cache |
@@ -60,11 +60,26 @@ prove your cache matches ours.
 ```bash
 git clone https://github.com/keshtkarsadegh/federated-outlier-adaptation.git && cd federated-outlier-adaptation
 python -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -r requirements.txt && pip install -e . --no-deps
+export FOA_ENV="$PWD/.venv"                  # the runner resolves this; see below
 
-pytest -q tests                              # 1,961 tests, ~2 minutes, no GPU
+pytest -q tests                              # ~2 minutes, no GPU; it prints the count
 cd study/artifacts && sha256sum -c SHA256SUMS && cd ../..
 ```
+
+**Install from `requirements.txt`, not from `pyproject.toml` alone.** `pip
+install -e .` resolves the loose ranges in `pyproject.toml` and gives you a
+different pandas, matplotlib and scikit-learn from the ones the study ran on -
+the figures and tables then render on a matplotlib this study never used.
+`requirements.txt` carries the pins. `pip install -e ".[dev]"` adds pytest,
+black and isort to an install that already has the runtime.
+
+**`export FOA_ENV` is not decoration.** `slurm/env.sh` looks for an environment
+under `$FOA_PROJECT_DIR/envs/`, which is not where this Quickstart puts one; with
+neither found it falls through to whatever `python3` is on PATH, and a system
+python that happens to import torch passes its checks. Naming the venv is what
+makes the runner use the interpreter you just built. Every job logs which python
+it chose - read that line.
 
 That verifies the code and the shipped artefacts. To check that the study's
 selection chain is internally consistent — that each cohort really is cut from
@@ -79,18 +94,53 @@ foa prepare-data --dataset nist --zip "$FOA_DATA_DIR/nist/by_write.zip" \
     --out "$FOA_NIST28_DIR" --resolution 28 --classes all
 ```
 
-With a GPU and the cache built, the cheapest real rung is **the extremes**: 10
-tasks and under an hour of GPU, the smallest stage of the programme and the one
-whose finding - that a fixed horizon at one client is a hazard - needs the least
-compute to see. Every task file the study ran ships in the metadata core.
+### Running something for real
+
+**No GPU, no data, seconds: the dry run.** `FOA_DRY_RUN=1` walks every line of a
+task file, expands it, parses it against the real CLI and executes nothing. It
+is the check to run first and it needs nothing but the clone.
 
 ```bash
 export FOA_PROJECT_DIR=/path/to/workspace
 export FOA_STUDY_DIR="$FOA_PROJECT_DIR/results/studies/Digits_study01"
 JOBS=study/artifacts/Digits_study01/jobs
 FOA_DRY_RUN=1 slurm/run_tasks.sh $JOBS/d01_extreme.txt   # checks, runs nothing
-slurm/run_tasks.sh $JOBS/d01_extreme.txt                 # then for real
 ```
+
+**With a GPU and the cache built, the cheapest real rung is still the extremes -
+but it is not the first thing you can run.** All ten of its task lines carry
+`--init global --global-name g0`: they load `$FOA_STUDY_DIR/g0_model`, and **this
+study publishes no weights** (`docs/VERIFY.md` Level 3 says why). No stage
+anywhere in the programme runs a federated round without g-0, so there is no
+federated smoke test that skips it. The shipped model has to be trained first,
+and that is three short stages rather than the whole programme:
+
+| # | task file | tasks | what it does | measured, one A100 |
+|---|---|---|---|---|
+| 2 | `s01a_book.txt` | 2 | writer census, all-writer fold book | ~1 min |
+| 3 | `s01b_detector.txt` | 2 | trains **g-init** and scores every writer with it | **~21 min** |
+| 4 | `s02_selection.txt` | 29 | cuts the pools, draws the 200 source writers, trains **g-0** once per fold, crowns one, cuts the three cohorts | **~23 min** |
+| 17 | `d01_extreme.txt` | 10 | the extremes themselves | ~1 GPU-h |
+
+```bash
+for f in s01a_book s01b_detector s02_selection d01_extreme; do
+    slurm/run_tasks.sh $JOBS/$f.txt        # or sbatch --array, as below
+done
+```
+
+**About one and three quarter GPU-hours to the cheapest real result, 43 tasks.**
+The three preparatory stages are cheap because they are centralised trainings on
+one GPU with early stopping: g-init stopped after 23 epochs and the five g-0
+folds after 20 to 50, read off the shipped `global_metrics.json`. The times are
+the scheduler's own, for the array that produced this study.
+
+Two riders. To *read* the extremes against doing nothing you also need
+`d01_extreme_references.txt` - five `foa evaluate-book` lines, forward passes,
+minutes (`docs/REPRODUCE.md` section 6 has the command that emits it). And
+`tools/fetch_mnist.py` is not optional if you want the forgetting signals: two
+of the eight are silently empty without the proxy set.
+
+Every task file the study ran ships in the metadata core.
 
 ---
 
@@ -250,7 +300,7 @@ exceptions are:
 | `G0_FOLD` | winning g-0 fold, for Fisher-weighted penalties | derived from `g0_selection.json` |
 | `FOA_DRY_RUN` | run every check, execute nothing | unset |
 | `FOA_ACCOUNT`, `FOA_GPU_PARTITION`, `FOA_CPU_PARTITION` | scheduler | unset — pass at submit time |
-| `FOA_ENV` | conda prefix or virtualenv to run in | auto: `$FOA_PROJECT_DIR/envs/{foa,fal}`, else a single unambiguous `envs/*` |
+| `FOA_ENV` | conda prefix or virtualenv to run in - **set it to the Quickstart's `.venv`** | auto: `$FOA_PROJECT_DIR/envs/{foa,fal}`, else a single unambiguous `envs/*`, else `python3` on PATH |
 | `FOA_PYTHON` | the interpreter the runner resolved | derived; printed by every job |
 | `FOA_MODULES`, `FOA_HTTP_PROXY` | site specifics, both optional | unset |
 
@@ -260,10 +310,17 @@ An unconfigured site gets plain behaviour rather than somebody else's cluster.
 **The interpreter is resolved and vetted before anything runs.** Batch nodes
 routinely put an old `/usr/bin/python3` first on PATH, and running under it
 fails deep inside an import with a `SyntaxError` that reads as a broken source
-file. `slurm/env.sh` finds an environment under `$FOA_PROJECT_DIR/envs/`, checks
-the version, checks that the package actually imports, and **refuses** with a
-message naming the interpreter rather than proceeding. Every job logs which
-python it chose.
+file. `slurm/env.sh` prefers `$FOA_ENV`, else an environment under
+`$FOA_PROJECT_DIR/envs/` - `foa`, then `fal`, then a single unambiguous
+`envs/*` - and checks the version and that the package imports, **refusing** with
+a message naming the interpreter rather than proceeding.
+
+**What it does not do is guess.** With no `FOA_ENV` and no `envs/` it falls
+through to `python3` on PATH, and if that interpreter passes both checks the job
+runs under it - which is what happens to a reader who follows the Quickstart,
+whose venv lives inside the clone and not under `$FOA_PROJECT_DIR/envs/`. That
+is why the Quickstart exports `FOA_ENV`. Every job logs which python it chose,
+and that line is the one to read when a result surprises you.
 
 ---
 
@@ -278,6 +335,24 @@ produced — the splits, the selections, the task definitions, the participation
 arithmetic — is checkable on a laptop.
 
 ---
+
+## Before submission - the owner's checklist
+
+Every document here gives public URLs, and none of them resolves while the
+repository is private. A reader who cannot execute step 1 cannot execute
+anything, so this is the first thing to check and the easiest to forget:
+
+- [ ] the repository is **public** - `gh api repos/<owner>/<repo> --jq .private`
+      prints `false`
+- [ ] the **`records` release is public** and both assets are attached -
+      `curl -fLI https://github.com/<owner>/<repo>/releases/download/records/Digits_study01_records.tar.gz`
+      returns 200 unauthenticated
+- [ ] the asset's sha256 is still the one `docs/REPRODUCE.md` section 10 quotes;
+      it is replaced in place whenever a stage adds records
+- [ ] `git log -1` is the commit the manuscript cites
+
+`docs/REPRODUCE.md` section 10 carries the same list beside the URLs it hands
+out.
 
 ## Citation
 

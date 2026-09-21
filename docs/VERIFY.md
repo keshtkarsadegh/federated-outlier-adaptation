@@ -10,11 +10,20 @@ download**.
 ### The test suite
 
 ```bash
-pip install -e ".[dev]"    # or: pip install -r requirements.txt
+pip install -r requirements.txt    # the pins the study ran on
+pip install -e . --no-deps         # the `foa` entry point, nothing resolved
 pytest -q tests
 ```
 
-2,000 tests, on synthetic fixtures. They pin the study's invariants, not just
+`pip install -e ".[dev]"` installs the same test tooling on top of an
+environment that already has the runtime. What it must not be asked to do is
+build the runtime: `pyproject.toml` carries loose ranges, so installing from it
+alone gives a different pandas, matplotlib and scikit-learn from the ones every
+figure and table in this study was rendered on. `requirements.txt` is the pinned
+set and is what the numbers below were produced under.
+
+The suite runs on synthetic fixtures and prints its own count - quoting it here
+would be one more number to keep true. They pin the study's invariants, not just
 the plumbing. The ones that matter most to a reader of the paper:
 
 | Test file | What it pins |
@@ -30,6 +39,7 @@ the plumbing. The ones that matter most to a reader of the paper:
 | `test_paper_figures.py` | that every CSV view a figure, `numbers.tex` or a table reads is shipped and resolves, that round 0 of every trace is one shared point, that no view carries a column its tool no longer writes, and that the signals table's delta column is the difference of the two numbers printed beside it - the one column in the paper not rounded once from full precision, and the reason three of its rows used to be a hundredth away from the subtraction a reader does |
 | `test_plateau.py` | what the plateau stopping rule means, on synthetic traces; that its basis is `stopping_table.py`'s own rather than a copy; and that the shipped view still says +1.19p over the fixed horizon on all 83 arms, so a silently regenerated table is a failure and not a diff |
 | `test_plateau_holdout.py` | that the plateau's setting is what all 28 hold-out protocols choose - held out by fold, by stage and by seeded random halves of the arms - that none of them loses on the set it did not see, that the two extremes keep the published rounds under every one, and that the three shipped views regenerate byte for byte from an assembled root |
+| `test_reviewer_tree.py` | that all twenty-four task files regenerate from their generators byte for byte, and - against an assembled root - that the signals pass over the population `signals_population.txt` names reproduces the two shipped signal extracts byte for byte. Both were promises the documents made and nothing checked |
 | `test_shipped_view_membership.py` | that the blend's finals reach every regularisation view a reg-full arm belongs in, that no core view carries an arm of the joint-tuning extension, and that the record generator counts a stage's folders without the ones a later stage lodged under its prefix |
 | `test_appendix_tables.py` | the four things an appendix table can say about itself and not keep: that the fairness table's Mean column is the same cohort accuracy the score tables print for the same arm (it was an unweighted mean over clients, and disagreed by up to a point), that it lists every carried arm at every setting (there was no five-client block and one arm of three at twenty), that the selection-axis ranks are computed on the selection score rather than on the stored adaptation ordering and that each shortlist is the first three distinct methods of that ordering, that both schedule blocks of the regularisation table print a no-penalty control, and that all 28 hold-out protocols reach the page |
 
@@ -47,11 +57,20 @@ cd study/artifacts && sha256sum -c SHA256SUMS
 cd ../jobs        && sha256sum -c SHA256SUMS
 ```
 
-165 derived artefacts and 19 submission chains - no model checkpoint among
-them, because this study ships no weights (`study/UPSTREAM.sha256` says so, and
-the metadata core's own README names them as the one thing it excludes). This
-proves you hold the fold assignments, writer lists, selection records, task
-files and experiment definitions that produced the published numbers.
+Both manifests print their own totals - 19 submission chains, and the derived
+artefacts of `study/artifacts`, which grows whenever a view or a record is added
+and is therefore not quoted here. **No model checkpoint is among them**, because
+this study ships no weights (`study/UPSTREAM.sha256` says so, and the metadata
+core's own README names them as the one thing it excludes). What the manifests
+prove is that you hold the fold assignments, writer lists, selection records,
+task files and experiment definitions that produced the published numbers.
+
+Six run records are in there too, which looks like an exception and is not:
+`signalcheck_*` and the five `d01_extreme_single_*` folds are the six runs of
+the frozen signals population that the records asset does not carry, and a pass
+cannot be reproduced without the runs it was taken over.
+`study/artifacts/Digits_study01/signals_population.txt` says which runs those
+are and why.
 
 Both manifests are written from the tree by
 
@@ -89,9 +108,13 @@ print(n, "task lines parse")
 PY
 ```
 
-And that the runner accepts them:
+And that the runner accepts them. **`FOA_PROJECT_DIR` has to be exported
+first** - it is the writable root every other path is derived from, and the
+runner refuses by name without it rather than inventing one. Nothing is written
+under it here; `FOA_DRY_RUN=1` executes nothing.
 
 ```bash
+export FOA_PROJECT_DIR=/path/to/workspace
 FOA_DRY_RUN=1 SLURM_ARRAY_TASK_ID=1 bash slurm/study_phase.sbatch \
     study/artifacts/Digits_study01/jobs/s20_combos4.txt
 ```
@@ -236,6 +259,17 @@ Follow `docs/RUNBOOK.md`. The cheapest meaningful rung is **the extremes**,
 `jobs/d01_extreme.txt`: 10 tasks and under an hour of GPU, the smallest stage
 of the programme.
 
+**It cannot be the first thing you run.** All ten of its lines carry
+`--init global --global-name g0` and load `$FOA_STUDY_DIR/g0_model`, which this
+study does not publish - and no stage anywhere in the programme runs a federated
+round without g-0, so no cheaper federated rung exists. The shipped model comes
+from three short stages first: `s01a_book.txt` (2 tasks, ~1 min),
+`s01b_detector.txt` (2 tasks, ~21 min, trains g-init) and `s02_selection.txt`
+(29 tasks, ~23 min, trains the five g-0 folds and crowns one). Those are the
+scheduler's measured times for the array that produced this study, on one A100.
+About **1.75 GPU-hours and 43 tasks** to the cheapest real result. The README's
+Quickstart carries the same table.
+
 The most expensive are the screens: the aggregation screen (480 tasks,
 ~16 GPU-h), the regularisation screen (700 tasks, ~25 GPU-h) and the blend's own
 screen (1,170 tasks, ~30 GPU-h). You do not
@@ -249,7 +283,7 @@ file and its task count, and §9 the GPU-hours quoted here.
 
 ## What a reviewer can verify without a GPU
 
-- Every test in the suite (2,033).
+- Every test in the suite - the count is the one `pytest -q tests` prints.
 - Every task file parses and passes the runner's guard.
 - Every derived artefact matches its checksum.
 - The cohort chain: worst-5 ⊂ worst-10 ⊂ worst-20, all cut from one ranking.

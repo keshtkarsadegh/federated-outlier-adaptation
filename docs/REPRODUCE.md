@@ -249,7 +249,17 @@ what they do and do not settle.
 ## 4. Regenerating a stage's task file
 
 Every task file is generated, never hand-edited, and regenerating one must
-reproduce it byte for byte:
+reproduce it byte for byte. `tests/test_reviewer_tree.py` runs all twenty-four
+of the regenerations below and diffs them, so the promise is a test rather than
+a paragraph.
+
+**The emitters are deterministic**: a header carries no timestamp, no path and
+no hostname, so the only way a shipped file and its generator can disagree is if
+one of them was edited. One had been. `s24_combo_full.txt` differed from its
+generator in thirteen header lines - the prose had been improved after the file
+was emitted - while all ten of its task lines were byte-identical. The artefact
+has been re-emitted from the generator, which is the only thing that can produce
+it; nothing about what ran changed, and the test now pins it.
 
 **No flags.** Every command below is the whole command; a task file that needs
 an argument remembered by hand is a task file nobody can regenerate.
@@ -516,6 +526,22 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 
 ## 6. Which command produces which claim
 
+> **THESE COMMANDS WRITE, AND SEVERAL WRITE INTO `--root`.** The examples below
+> take `--root $FOA_STUDY_DIR` and some of them write back into it: `foa signals`
+> replaces the six shipped `signals/*.png`, the two `reg-hybrid` emissions rewrite
+> their own construction record, and the `--csv`/`--out` examples that name
+> `$FOA_STUDY_DIR/tables/paper/` overwrite the views you just checksummed. A
+> reader who verified `study/artifacts/SHA256SUMS` and then ran section 6 against
+> the assembled tree can no longer re-verify it.
+>
+> **Write somewhere else.** Every reporting tool takes `--csv <dir>`, every
+> exporter `--out <dir>`, `foa signals` takes `--out <dir>`, and the figure and
+> table generators take `FOA_PAPER_OUT`. Point them at a scratch directory and
+> diff against the shipped copies; that is what the byte-for-byte claims in this
+> section mean. `tests/test_reviewer_tree.py` does the same thing for the
+> emitters that rewrite a selection record - it builds a shadow root whose run
+> folders are symlinks and whose `tables/` is a copy.
+
 | the claim | the command |
 |---|---|
 | the reference rungs | `report_tables.py --root $FOA_STUDY_DIR --what references` |
@@ -536,7 +562,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | how much of the coarse pre-filter each cohort actually needed | `export_prefilter_coverage.py --root $FOA_STUDY_DIR --csv <dir>` -> `prefilter_coverage.csv` |
 | the four plateau views, and the grid the setting was fixed on | `plateau_rule.py --root $FOA_STUDY_DIR --out $FOA_STUDY_DIR/tables/stopping` |
 | does that plateau setting survive being chosen where it is not measured? | `plateau_holdout.py --root $FOA_STUDY_DIR --out $FOA_STUDY_DIR/tables/stopping` |
-| do the eight signals track forgetting? | `foa signals --root $FOA_STUDY_DIR` |
+| do the eight signals track forgetting? | `foa signals --root $FOA_STUDY_DIR --population study/artifacts/Digits_study01/signals_population.txt --out <dir>` - **the manifest is not optional**, see [below](#the-signals-population) |
 | does a combination beat its halves? | `compare_arms.py --what combos` |
 | penalty vs server rule | `compare_arms.py --what composition` |
 | does a blend beat the two cells it was built from? | `compare_arms.py --what blends` |
@@ -546,7 +572,8 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | are the seeds sound? | `check_seeds.py $FOA_STUDY_DIR/jobs/*.txt` |
 | is the cohort the same cohort? | `freeze_selection.py verify $FOA_STUDY_DIR` |
 | does every stage read what an earlier stage wrote? | `check_programme.py $FOA_STUDY_DIR/jobs` |
-| how much data does each cohort writer hold, and does it hold every class? | `describe_cohort.py --all --csv $FOA_STUDY_DIR/tables/` (same) |
+| how much data does each cohort writer hold, and does it hold every class? | `describe_cohort.py --all --csv <dir>` (same) -> `cohort_composition.csv` |
+| the cohort table: each cohort writer's rows, its g-init and g-0 scores, and the rule that cut it | `foa cohort-table` (same: needs the cache, not a GPU) - [below](#the-one-view-a-stage-writes) -> `cohort_table.csv` |
 | the whole paper bundle, one command | `report_tables.py --what all --csv $FOA_STUDY_DIR/tables/paper/` |
 | the six per-round views, and the two rounds the extreme figure marks | `export_traces.py --root $FOA_STUDY_DIR --out <dir>` |
 | g-0's own training history, and the isolated clients | `export_baseline_views.py --root $FOA_STUDY_DIR --out <dir>` |
@@ -560,7 +587,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | every figure in the manuscript | [below](#and-which-command-produces-which-figure) - two commands per figure |
 | every number the manuscript sets | `paper_figures/make_numbers.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
 | every table the manuscript sets | `paper_figures/make_paper_tables.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
-| what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
+| what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR` - the tracked copy is **frozen**, see [below](#the-study-record-is-a-frozen-record) |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
 
 **Two extreme arrangements, and the table says two because a reader counts rather
@@ -619,6 +646,86 @@ cell per METHOD, with the composite penalty competing for a slot of its own, and
 validation preservation and both scores are read from the runs, because the
 records store neither, and the adaptation that read produces is asserted against
 the adaptation the record stored, arm for arm.
+
+### The signals population
+
+**`foa signals` is the one reader here that pools across runs, and it therefore
+has to be told which.** Every other tool in this table is pointed at a stage - a
+folder prefix, a selection record, a task file - and is blind to whatever else
+the root holds. The signals pass reads the whole tree, so its correlations,
+its shares and its selection are a property of the disk it ran on: a stage that
+lands afterwards silently re-weights every median the manuscript prints.
+
+That happened. The shipped signal views were computed on 2026-09-01, over
+**2,471 runs**, before the blend's own screen (stage 20) and the four joint-tuning
+extension stages (E1-E4) had run. Run over the tree as it stands today the same
+command pools **7,005** runs and eighteen macros move, five of them values the
+manuscript prints in prose - `\nSignalKLShare` by eighteen points.
+
+So the population is named rather than globbed:
+
+    study/artifacts/Digits_study01/signals_population.txt
+
+One run per line - the run folder, the fold/seed directory, the scenario and the
+arm, which is the identity `signal_correlations.csv` carries in its own `run`
+column. The file's own header says what the population is, why it is frozen, and
+which six of its runs are in the metadata core rather than in the records asset.
+With it, the pass reproduces the three signal CSVs, the six Pareto plots and both
+shipped extracts byte for byte from the published records:
+
+```bash
+foa signals --root "$FOA_STUDY_DIR" --out <dir> \
+    --population study/artifacts/Digits_study01/signals_population.txt
+python tools/export_signals_summary.py --root "$FOA_STUDY_DIR" \
+    --signals <dir> --out <dir2>
+```
+
+`tests/test_reviewer_tree.py` is that check. A manifest the tree cannot supply
+is refused by name rather than quietly taken - a pass over part of a population
+is a different pass.
+
+**Without `--population` the same command is a different and equally legitimate
+measurement**: the same question asked of today's tree. What is not legitimate is
+printing one population's numbers under the other's name. Adding a stage does
+not make the 2026-09-01 answer wrong; it asks the question of a different set of
+runs, and the manuscript quotes the first.
+
+### The one view a stage writes
+
+`tables/cohort_table.csv` is written inside `s02_selection.txt`, the GPU stage
+that cuts the cohorts - but the command itself needs no GPU, only the packed
+cache, so a reviewer can run it. It is line 17 of that task file:
+
+```bash
+foa cohort-table --results-dir "$FOA_STUDY_DIR" --resolution 28 --classes digits \
+    --clients-file "$FOA_STUDY_DIR/outliers/cohort_worst10.json" \
+    --fold-book    "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz" \
+    --scores       "$FOA_STUDY_DIR/outliers/bad_acc_on_g0.json" \
+    --extra-scores ginit="$FOA_STUDY_DIR/outliers/clients_acc_on_global.json" \
+    --rule "the 10 worst of the bad pool under the shipped model g-0" \
+    --out <dir>/cohort_table.json --csv <dir>/cohort_table.csv
+```
+
+Like `describe_cohort.py` it reads the dataset rather than the records, so it
+needs `FOA_NIST28_DIR` and the `fetch_sd19.py` step of
+[§2](#2-environment-and-data). It reproduces the shipped CSV byte for byte.
+
+### The study record is a frozen record
+
+`docs/STUDY_RECORD.md` is generated, and the command above regenerates it off
+any root - but **the tracked copy is the record of the programme the manuscript
+was written against**, and it is not re-run when a stage lands. Two things in it
+move on a current root, and neither is a result:
+
+* the not-walked list gains `d01_extreme_references`, and the stage counts gain
+  the extension's folders;
+* **"Winners still on an edge after the last selection"** grows, because its
+  source `tables/BOUNDARY_HITS.txt` is an append-only log: `note_boundaries`
+  appends a block every time a stage is emitted, so re-emitting any task file
+  adds lines and the count only ever rises. It counts emissions, not winners.
+
+Regenerate it to read what a root holds now; do not expect it to equal the
+tracked copy, and do not treat the difference as a disagreement about a number.
 
 ### The extensions' own views
 
@@ -839,6 +946,19 @@ must not be quoted against each other; every caption says so. `fig_baselines` is
 the exception and is on test throughout, because the isolation records store test
 evaluations only.
 
+**`fig_baselines.py` writes no caption file, and it is the only one that does
+not.** The other six each write `<name>_caption.txt` beside their PDF, and those
+six appear in the manuscript verbatim. The baselines figure's caption is
+hand-set in the manuscript because it is the one figure whose basis has to be
+stated against the other seven rather than restated from the view - it is on
+test while every other figure is on validation, which is a sentence about the
+set of figures and not about this one. So there is no `fig_baselines_caption.txt`
+to diff, and its absence is not a failed render.
+
+**`fig_baselines.pdf` is also the one figure whose bytes are not reproducible
+run to run.** The text is identical - `pdftotext` on two renders matches - and
+the difference is in the PDF's own object stream. The other six are byte-stable.
+
 ### And which command produces the numbers and the tables
 
 One step further along the same shape. `numbers.tex` - the file every
@@ -847,9 +967,18 @@ sixteen `tables/*.tex` it sets are written from the views too, by two generators
 beside the figure scripts and compute nothing:
 
 ```bash
-cp /path/to/manuscript/numbers.tex /tmp/paper/     # rewritten in place: see below
 FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_numbers.py
 FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_paper_tables.py
+```
+
+`make_numbers.py` seeds `$FOA_PAPER_OUT/numbers.tex` from
+`tools/paper_figures/numbers.template.tex` when there is none there, and says so
+on stdout. That is what lets a reader with no manuscript checkout run the step at
+all. Copy the manuscript's own `numbers.tex` in first when you want the macro
+list the manuscript actually sets rather than the template's:
+
+```bash
+cp /path/to/manuscript/numbers.tex /tmp/paper/     # optional; rewritten in place
 ```
 
 **Sixteen, because the selection axis is two tables, and it was one.**
@@ -885,7 +1014,7 @@ already and now feeds `tables/kholdout.tex` rather than a hand-typed float.
 | `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view, the two schedule views, the selection axis, the pre-filter coverage, the client recipe | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py`, `export_schedule_views.py`, `export_selection_axis.py`, `export_prefilter_coverage.py`, `export_recipe_view.py` |
 | `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
 | `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, three of which the generators read - `plateau_stages.csv` builds `plateau.tex`, `plateau_arms.csv` and `plateau_extremes.csv` fill macros, and `fig_extremes.py` marks its stopping rounds from the last - while `docs/STOPPING.md` reads all four; of the three `plateau_holdout_*.csv` beside them, `plateau_holdout_protocols.csv` now builds `kholdout.tex` and fills five macros, and the other two answer that rule's own objection and feed neither generator and no figure | `stopping_table.py --csv`, `plateau_rule.py --out`, `plateau_holdout.py --out` |
-| `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
+| `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --all --csv`, and `foa cohort-table` for the last - [above](#the-one-view-a-stage-writes) |
 
 `tables/paper/` also holds the extension's four views. They feed neither
 generator and no figure, they are named `extension_*` for that reason, and the
@@ -900,8 +1029,9 @@ order the four directories are tried in is part of the contract, not a detail;
 **`numbers.tex` IS REWRITTEN IN PLACE, NOT WRITTEN FROM NOTHING.** The file
 carries `% BEGIN GENERATED` and `% END GENERATED` and only the block between them
 is touched: the macro *names* are read out of that block and each is filled from
-the registry the script builds from the views. So a copy of the manuscript's own
-`numbers.tex` has to be in `$FOA_PAPER_OUT` before the command is run. Every
+the registry the script builds from the views. Which is why what is already in
+`$FOA_PAPER_OUT` decides the macro list - and why, when there is nothing there,
+the script seeds itself from `numbers.template.tex` rather than refusing. Every
 definition it writes carries a trailing comment naming the CSV file, the row and
 the column the value came from, and a name with no registry entry is written back
 as `\TBD{unmapped}`, reported on stdout, and exits non-zero - so an unsourced
@@ -924,8 +1054,10 @@ landed, and the rest - the proxy-set constants, the good pool, the per-writer
 sample counts - were macros nothing set. A macro no page calls is a macro no
 reader can check: `\TBD{}` cannot fire on a name nobody writes.
 
-The other 197 macros are generated: 138 after the 2026-09-21 pruning pass, plus
-the 59 the appendix rebuild and the review pass beside it added the same day. Of
+The rest are generated - `make_numbers.py` prints the total, which on the
+current views is **221 macros, 221 filled, 0 unmapped**. 138 survived the
+2026-09-21 pruning pass and the appendix rebuild and the review pass beside it
+added 59 the same day. Of
 those 59, thirty-two are the remaining cells of the signals table - the budget,
 the fire count, the stopped score and the delta of each of the eight signals - so
 that every number on that table can be quoted in prose without being retyped off
@@ -945,8 +1077,15 @@ captions set for it, and `make_numbers.py` reports any registry entry with no
 macro between the markers, so the registry was pruned to match rather than left
 to answer names that had gone. `tables/sensitivity_agg.tex` and
 `tables/sensitivity_reg.tex` are the two table files `make_paper_tables.py` does
-not write: a third generator in the manuscript checkout does, from the two
-`weight_sensitivity_*.csv` that ship here.
+not write. **A third generator writes them, and it ships here**, beside the other
+two, from the two `weight_sensitivity_*.csv` that also ship here:
+
+```bash
+FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_sensitivity_tables.py
+```
+
+It runs against a clone with no study root assembled, exactly as the other two
+do.
 
 **THREE VIEWS ARE EXTRACTS OF OTHER RECORDS, AND EACH HAS A COMMAND.**
 `signals_summary_extract.csv` and `signals_extras_extract.csv` join what `foa
@@ -966,8 +1105,10 @@ The second reads only `outliers/`, so it runs against
 unpacked records: the three CSVs it joins them to are `foa signals`' own output,
 which is derived, is 195 MB, and is published in neither half - so on a freshly
 assembled reviewer tree it stops and says the files are not there, and the
-`foa signals` pass of [§6](#6-which-command-produces-which-claim) is what puts
-them there. Neither writes into the study tree.
+`foa signals` pass of [§6](#the-signals-population) is what puts them there.
+**That pass has to name its population**, or the join is made against a different
+set of runs and both extracts move; `--signals <dir>` then points this tool at
+wherever the pass was written. Neither writes into the study tree.
 
 ---
 
@@ -1057,7 +1198,7 @@ either, so they are priced in `s23_combo_screen_README.md` and
 
 ## 10. The published records
 
-**In git - `study/artifacts/Digits_study01/`, 8.8 MB.** The metadata core: the
+**In git - `study/artifacts/Digits_study01/`, about 9 MB.** The metadata core: the
 frozen cohort, the g-0 evaluation books both baselines are measured against, the
 fold books, the outlier and cohort records, every shipped table and CSV - the ten
 views the manuscript's figures are drawn on among them - every task file that was
@@ -1104,6 +1245,14 @@ nothing else; the core carries the selection records, fold books, task files and
 tables that every tool reads alongside them. Both are laid out relative to the
 study root, so assembling one is two copies into an empty directory:
 
+> **Owner, before submission:** every URL on this page is public and none of
+> them resolves while the repository is private. Check, in this order: the
+> repository is public (`gh api repos/<owner>/<repo> --jq .private` prints
+> `false`); the `records` release is public with both assets attached
+> (`curl -fLI <the URL below>` returns 200 **unauthenticated**); the sha256 above
+> is still the asset's, since the archive is replaced in place whenever a stage
+> adds records. The README carries the same list.
+
 ```bash
 export FOA_STUDY_DIR=/path/to/Digits_study01        # any empty directory
 mkdir -p "$FOA_STUDY_DIR"
@@ -1115,8 +1264,9 @@ tar -xzf Digits_study01_records.tar.gz -C "$FOA_STUDY_DIR"
 cp -r study/artifacts/Digits_study01/. "$FOA_STUDY_DIR/"
 ```
 
-The result is 14,555 files - the asset's 14,390 plus this directory's 165 -
-across 4,970 top-level entries, and every row of
+The result is the asset's 14,390 files plus this directory's own - the number
+`cd study/artifacts && sha256sum -c SHA256SUMS` prints, which grows whenever a
+view or a record is added and is therefore not quoted here. Every row of
 [§6](#6-which-command-produces-which-claim) runs against it from the repository
 root. `report_tables.py --what all --csv` reproduces `tables/paper/*.csv` byte
 for byte from it, and so do `compare_arms.py --csv`, `stopping_table.py --csv`,
@@ -1129,14 +1279,33 @@ which is the check that the two halves were assembled correctly.
 Two things behave differently on such a tree, and neither is a defect.
 `describe_cohort.py` reads the dataset rather than the records, so it needs
 `FOA_NIST28_DIR` and the `fetch_sd19.py` step in [§2](#2-environment-and-data);
-every other row of §6 runs without it. And `foa signals` recomputes the derived
-signal files over **six runs fewer** than the machine that ran the study saw:
-a one-task smoke run that predates the stage and was never part of it, and the
-five runs of the one-client extreme arrangement the study does not define. The
-difference is named rather than the two totals, which move whenever a stage is
-added and say nothing when they do. Neither belongs to a shipped table. Every selected arm,
-oracle and gap comes out identical - only the `num_candidates` and `num_allowed`
-populations shift.
+every other row of §6 runs without it. And **`foa signals` must be given the population manifest**, because it is the
+one tool here that pools across runs rather than reading a stage. Over the
+assembled tree it finds 7,005 runs; the shipped signal views were computed over
+the 2,471 the programme held on 2026-09-01, before the blend's own screen and the
+four extension stages. Pooled over the larger set, every stopping-derived value
+is unchanged and every *correlation* moves - eighteen macros, five of them
+printed in the manuscript's prose. So:
+
+```bash
+foa signals --root "$FOA_STUDY_DIR" --out <dir> \
+    --population study/artifacts/Digits_study01/signals_population.txt
+```
+
+reproduces the shipped views byte for byte, and without the flag the same command
+measures this tree instead. [§6](#the-signals-population) says what the
+population is and why it is frozen; the manifest's own header says it again
+beside the names.
+
+**Six of those 2,471 runs are not in the asset**, and ship in the metadata core
+instead: a one-task smoke run that predates the stage and was never part of it,
+and the five folds of the one-client extreme arrangement the study no longer
+defines. `report_tables.in_study` keeps the latter out of every table, every
+stage total and every all-arms mean, and the same predicate is what decides what
+`build_records_asset.py` packs - so they are excluded from the asset for the
+right reason and published beside it for another: a pass cannot be repeated
+without the runs it was taken over. Only their `summary_*.json` and
+`accuracies_*.json`, as for every other run.
 
 **Not published: the weights.** `g0_model`, the five `g0_fold*/global_model` and
 `global_results/fisher_g0` - 51 MB of checkpoints, which answer no question the

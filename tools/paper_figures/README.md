@@ -28,7 +28,8 @@ FOA_PAPER_OUT=/tmp/figures python fig_baselines.py      # and the other five
 
 `FOA_PAPER_OUT` is where the PDF and its draft caption are written; without it
 they land beside the script, which is what the manuscript build wants and not
-what a source checkout does. `FOA_PAPER_DATA` overrides where the views are read
+what a source checkout does. Six of the seven write a caption - `fig_baselines`
+does not, for the reason below. `FOA_PAPER_DATA` overrides where the views are read
 from — one directory, or several separated the way `PATH` is.
 
 ## The numbers and the tables
@@ -178,12 +179,20 @@ a view whose arms do not agree at round 0.
 **`fig_baselines` is on the test basis**, because the isolation records store
 test evaluations only. It is the one figure here that is, and the one that reads no
 trace view and writes no draft caption; the canvas is the shared text-width one the
-other six are drawn on.
+other six are drawn on. Its caption is hand-set in the manuscript, because what it
+has to say — that this one figure is on test while the other six are on validation
+— is a sentence about the set of figures rather than about this view, and a draft
+written from the view could not carry it. So there is no `fig_baselines_caption.txt`
+to diff, and its absence is not a failed render.
 
 **Nothing is rasterised and nothing is dated.** The PDFs are vector throughout
 and are written with no creation timestamp, so two runs over the same views
 produce the same bytes — a regenerated figure that differs means the data
-differed.
+differed. **`fig_baselines` is the exception here too.** Two renders of it from
+one view differ in the PDF's own object stream while the drawn content is
+identical — `pdftotext` on the two matches — so it is the one figure to compare
+by content rather than by hash. The other six are byte-stable and were checked
+twice over.
 
 ## The files
 

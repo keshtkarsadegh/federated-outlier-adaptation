@@ -5,8 +5,18 @@
 Left panel basis: g-0's stored training history (training and validation
 accuracy on the source population, per fold; folds stop at different epochs
 because training early-stops on validation).  Right panel basis: test rows,
-fold-mean per client --- the isolation records store test evaluations only,
-and the caption says so.
+fold-mean per client --- the isolation records store test evaluations only.
+
+TWO THINGS THIS FIGURE DOES THAT THE OTHER SIX DO NOT, both deliberate:
+
+* **It writes no draft caption.** What its caption has to say is that this one
+  figure is on TEST while the other six are on VALIDATION, which is a statement
+  about the set of figures and not about this view; a draft generated from the
+  view could not carry it, so the caption is hand-set in the manuscript. Its
+  absence is not a failed render.
+* **Its bytes are not stable run to run.** Two renders from one view differ in
+  the PDF's object stream while the drawn content is identical (`pdftotext` on
+  the two matches). Compare this one by content; the other six by hash.
 """
 
 import csv

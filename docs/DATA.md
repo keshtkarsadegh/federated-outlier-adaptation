@@ -66,8 +66,23 @@ is what the original run used.
 
 ### Verify what you downloaded
 
+`study/UPSTREAM.sha256` carries **seven** entries: the three source files and
+the four cache files, which do not exist yet at this point in the document. So
+check the three by name rather than the file as a whole - a command that checks
+all seven here fails on a correct download, and piping it through `head` hides
+the four failures rather than answering them.
+
 ```bash
-sha256sum -c <(grep -v '^#' /path/to/repo/study/UPSTREAM.sha256) 2>/dev/null | head -3
+cd "$FOA_DATA_DIR/nist"
+grep -E ' (by_write\.zip|by_write_md5\.log|by_class_md5\.log)$' \
+    /path/to/repo/study/UPSTREAM.sha256 | sha256sum -c -
+```
+
+Three `OK` lines and exit 0. After section 2 has built the cache, the whole file
+checks in one go, from the cache directory:
+
+```bash
+cd "$FOA_NIST28_DIR" && sha256sum -c /path/to/repo/study/UPSTREAM.sha256
 ```
 
 or by hand:
@@ -182,10 +197,10 @@ hash matches, your cache is ours.
 
 ## 4. If you cannot download SD19
 
-Much of this repository can still be checked. The test suite (1600+ tests)
-runs on synthetic fixtures and needs no SD19 and no GPU, and every task file,
-selection record and fold book in `study/` can be verified against the shipped
-checksums. See `docs/VERIFY.md` for what is checkable without the data.
+Much of this repository can still be checked. The test suite runs on synthetic
+fixtures and needs no SD19 and no GPU - it prints its own count - and every task
+file, selection record and fold book in `study/` can be verified against the
+shipped checksums. See `docs/VERIFY.md` for what is checkable without the data.
 
 There is **no** documented command that builds a small subset cache from
 `by_write.zip`: `foa prepare-data` converts the whole archive or nothing. The
