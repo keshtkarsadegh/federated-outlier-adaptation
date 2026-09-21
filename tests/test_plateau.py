@@ -299,10 +299,17 @@ def test_the_shipped_all_row_still_says_what_the_paper_says():
     The one pin on the values themselves, and it is here on purpose.
 
     Everything above says what the rule MEANS; nothing above would notice if a
-    regenerated view moved the headline by a point. These two numbers - 8.93p
-    against the horizon's 7.74p, +1.19p, firing on 50 of the 83 arms - are what
+    regenerated view moved the headline by a point. These two numbers - 9.04p
+    against the horizon's 7.85p, +1.19p, firing on 50 of the 83 arms - are what
     the manuscript prints, so a regeneration that changes them has to be a
     failing test rather than a diff nobody read.
+
+    THE TWO MEANS MOVED AND THE GAIN DID NOT. Both were 0.11p lower while the
+    arms of the five-, twenty- and two-client settings were scored against the
+    ten-writer cohort's A0; scoring each against its own moved the level of
+    this pool and not the distance between stopping and not stopping, because
+    a per-arm constant cancels in a difference of two means over the same
+    arms. The gain is the claim, and the gain is unchanged.
 
     THE POPULATION IS PART OF THE PIN. It was 81 arms at +1.22p until the
     blend's own finals were run: those are two more reg-full arms, they belong
@@ -313,17 +320,23 @@ def test_the_shipped_all_row_still_says_what_the_paper_says():
     """
     row = next(r for r in _rows("plateau_stages.csv") if r["stage"] == plateau.ALL)
     assert int(row["arms"]) == 83 and int(row["fires"]) == 50
-    assert float(row["rule_mean"]) * 100 == pytest.approx(8.93, abs=0.005)
+    assert float(row["rule_mean"]) * 100 == pytest.approx(9.04, abs=0.005)
     assert float(row["gain"]) * 100 == pytest.approx(1.19, abs=0.005)
-    assert float(row["fixed_mean"]) * 100 == pytest.approx(7.74, abs=0.005)
-    assert float(row["oracle_mean"]) * 100 == pytest.approx(9.22, abs=0.005)
+    assert float(row["fixed_mean"]) * 100 == pytest.approx(7.85, abs=0.005)
+    assert float(row["oracle_mean"]) * 100 == pytest.approx(9.33, abs=0.005)
     assert float(row["rule_mean"]) - float(row["fixed_mean"]) == pytest.approx(float(row["gain"]))
 
 
 def test_the_extremes_still_say_what_the_paper_says():
-    """The pair the rule was written for, and the rounds the prose names."""
+    """
+    The pair the rule was written for, and the rounds the prose names.
+
+    The scores are the extreme cohort's own: these two writers held alone, and
+    not the ten the search ran on. The rounds are the same four they always
+    were, which is what says the baseline fix moved a level and not a decision.
+    """
     rows = {row["cell"]: row for row in _rows("plateau_extremes.csv")}
     assert (int(rows["dual"]["fire_round"]), int(rows["dual"]["kept_round"])) == (28, 8)
-    assert float(rows["dual"]["kept_score"]) * 100 == pytest.approx(16.60, abs=0.005)
+    assert float(rows["dual"]["kept_score"]) * 100 == pytest.approx(22.95, abs=0.005)
     assert (int(rows["double"]["fire_round"]), int(rows["double"]["kept_round"])) == (56, 36)
-    assert float(rows["double"]["kept_score"]) * 100 == pytest.approx(15.68, abs=0.005)
+    assert float(rows["double"]["kept_score"]) * 100 == pytest.approx(22.03, abs=0.005)

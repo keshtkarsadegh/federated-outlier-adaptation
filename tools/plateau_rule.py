@@ -83,6 +83,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from stopping_table import (  # noqa: E402
     STAGES,
+    stage_baselines,
     Verdict,
     arm_of,
     baselines,
@@ -177,9 +178,11 @@ def verdicts(root: Path, tag: str, min_folds: int) -> List[Tuple[str, Verdict]]:
     `stopping_table.judge`, so an arm that appears here appears in
     `stopping_all.csv` with the same final score and the same oracle round.
     """
-    a0, p0 = baselines(root)
+    refs = stage_baselines(root)
     found: List[Tuple[str, Verdict]] = []
     for stem, _title in STAGES:
+        # Each stage against its own cohort's shipped-model accuracy.
+        a0, p0 = refs[stem.strip("_")]
         for (cell, family), stored in sorted(read_arms(root, f"{tag}_{stem}").items()):
             arm = arm_of(cell, family, stored)
             if arm is None or arm.folds < min_folds or arm.rounds < 2:

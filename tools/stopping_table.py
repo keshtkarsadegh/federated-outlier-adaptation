@@ -72,7 +72,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(REPO / "src"))
 
 from extreme_stopping import fold_mean, oracle_round, scores  # noqa: E402
-from report_tables import baselines, cell_and_family, in_study  # noqa: E402
+from report_tables import (  # noqa: E402
+    baselines,
+    baselines_for,
+    cell_and_family,
+    in_study,
+)
 
 from federated_outlier_adaptation.analysis.forgetting_signals import (  # noqa: E402
     DEFAULT_DELTAS,
@@ -101,6 +106,20 @@ STAGES = (
 
 #: The two series every decision here is made on. Both are validation halves.
 SERIES = ("pool_val_accuracies", "source_val_accuracies")
+
+
+def stage_baselines(root: Path) -> Dict[str, Tuple[float, float]]:
+    """
+    Each stage's own ``(A0, P0)``, keyed by the bare stage name.
+
+    THE STAGES DO NOT SHARE A COHORT. Three of them searched on the ten-writer
+    cohort and a fourth carried the winners back into it, but ``five_``,
+    ``c20d10_``, ``c20d20_`` and ``extreme_`` federate different writers, and
+    the shipped model is not equally good on them. One A0 across the eight
+    would read the distance between two populations as something an arm did.
+    P0 is the same number in every entry: there is one source population.
+    """
+    return {stem.strip("_"): baselines_for(root, stem) for stem, _ in STAGES}
 
 
 # --------------------------------------------------------------- an arm
@@ -459,13 +478,14 @@ def main() -> int:
     args = ap.parse_args()
 
     deltas = tuple(args.deltas) if args.deltas else DEFAULT_DELTAS
-    a0, p0 = baselines(args.root)
+    refs = stage_baselines(args.root)
     wanted = [(stem, title) for stem, title in STAGES
               if args.stage is None or stem.strip("_") in args.stage]
 
     staged: List[Tuple[str, str, List[Verdict]]] = []
     for stem, title in wanted:
         prefix = f"{args.study_tag}_{stem}"
+        a0, p0 = refs[stem.strip("_")]
         verdicts = []
         for (cell, family), stored in sorted(read_arms(args.root, prefix).items()):
             arm = arm_of(cell, family, stored)
@@ -487,7 +507,7 @@ def main() -> int:
             continue
         stage_rows = [row_of(verdict, stage, rule) for verdict in verdicts]
         stage_rows.sort(key=lambda r: -r["final_score"])
-        show_horizon(stage_rows, title, a0, p0)
+        show_horizon(stage_rows, title, *refs[stage])
         show_rules(stage_rows, title)
         rows += stage_rows
         if args.csv:

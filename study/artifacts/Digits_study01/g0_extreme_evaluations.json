@@ -1,0 +1,72 @@
+{
+  "extreme_cohort_fold1": {
+    "fold": 1,
+    "part": "test",
+    "accuracy": 0.6666666666666666,
+    "samples": 30,
+    "writers": 2,
+    "per_writer": {
+      "f3642_03": 0.6875,
+      "f0048_00": 0.6428571428571429
+    },
+    "tag": "extreme_cohort_fold1",
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
+  },
+  "extreme_cohort_fold2": {
+    "fold": 2,
+    "part": "test",
+    "accuracy": 0.7575757575757576,
+    "samples": 33,
+    "writers": 2,
+    "per_writer": {
+      "f3642_03": 0.7222222222222222,
+      "f0048_00": 0.8
+    },
+    "tag": "extreme_cohort_fold2",
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
+  },
+  "extreme_cohort_fold3": {
+    "fold": 3,
+    "part": "test",
+    "accuracy": 0.7586206896551724,
+    "samples": 29,
+    "writers": 2,
+    "per_writer": {
+      "f3642_03": 0.8,
+      "f0048_00": 0.7142857142857143
+    },
+    "tag": "extreme_cohort_fold3",
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
+  },
+  "extreme_cohort_fold4": {
+    "fold": 4,
+    "part": "test",
+    "accuracy": 0.8620689655172413,
+    "samples": 29,
+    "writers": 2,
+    "per_writer": {
+      "f3642_03": 0.8666666666666667,
+      "f0048_00": 0.8571428571428571
+    },
+    "tag": "extreme_cohort_fold4",
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
+  },
+  "extreme_cohort_fold5": {
+    "fold": 5,
+    "part": "test",
+    "accuracy": 0.75,
+    "samples": 32,
+    "writers": 2,
+    "per_writer": {
+      "f3642_03": 0.7222222222222222,
+      "f0048_00": 0.7857142857142857
+    },
+    "tag": "extreme_cohort_fold5",
+    "model": "$FOA_STUDY_DIR/g0_model",
+    "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz"
+  }
+}

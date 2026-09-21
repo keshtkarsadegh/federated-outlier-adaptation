@@ -96,6 +96,7 @@ from stopping_table import (  # noqa: E402
     SERIES,
     SIGNAL_KEYS,
     STAGES,
+    stage_baselines,
     Verdict,
     arm_of,
     baselines,
@@ -140,8 +141,13 @@ NO_DELTAS: Tuple[float, ...] = ()
 #: round kept and the score it was kept at, which are the two numbers section 5
 #: of `docs/STOPPING.md` prints. A protocol matches when it keeps the same round
 #: at the same score.
-PUBLISHED_EXTREMES = {"dual": (8, 0.16595212361500455),
-                      "double": (36, 0.15679144223707087)}
+#: Re-pinned when each setting started being scored against its own cohort's
+#: shipped-model accuracy: the extreme pair is two writers, not the ten-writer
+#: cohort, so its A0 is 0.7590 and not 0.8225. The ROUNDS did not move - a stop
+#: is an argmax along one trace and a constant added to every round of it
+#: changes nothing - and that they did not is the check this table performs.
+PUBLISHED_EXTREMES = {"dual": (8, 0.22948574038421832),
+                      "double": (36, 0.22032505900628463)}
 
 
 # ------------------------------------------------------- the fold-aware read
@@ -193,10 +199,14 @@ def library(root: Path, tag: str) -> Dict[Tuple[str, str, str], Dict[int, Dict[s
     return found
 
 
-def staged_for(lib, a0: float, p0: float, folds: Sequence[int],
+def staged_for(lib, refs: Dict[str, Tuple[float, float]], folds: Sequence[int],
                min_folds: int) -> List[Tuple[str, Verdict]]:
     """
     ``(stage, verdict)`` for every arm, re-averaged over ``folds`` alone.
+
+    ``refs`` is the stage-to-``(A0, P0)`` table: an arm is scored against the
+    cohort it actually federated, not against the ten-writer one every stage
+    used to share.
 
     The fold-count filter is applied to the FULL five folds rather than to the
     subset, so the arm population is the published one in every split: a fold
@@ -209,6 +219,7 @@ def staged_for(lib, a0: float, p0: float, folds: Sequence[int],
         arm = arm_of(cell, family, stored_for(per_fold, folds))
         if arm is None or arm.rounds < 2:
             continue
+        a0, p0 = refs[stage]
         found.append((stage, judge(arm, a0, p0, NO_DELTAS)))
     return found
 
@@ -424,13 +435,13 @@ def main() -> int:
                     help="Arms with fewer folds than this are not reported.")
     args = ap.parse_args()
 
-    a0, p0 = baselines(args.root)
+    refs = stage_baselines(args.root)
     lib = library(args.root, args.study_tag)
     if not lib:
         print("no hundred-round arm on disk under this root.")
         return 1
 
-    full = staged_for(lib, a0, p0, FOLDS, args.min_folds)
+    full = staged_for(lib, refs, FOLDS, args.min_folds)
     grids = {label(FOLDS): priced(full)}
     full_grid = grids[label(FOLDS)]
     arms_all = sorted(full_grid[(PRIMARY_PATIENCE, PRIMARY_MARGIN)])
@@ -447,7 +458,8 @@ def main() -> int:
         """Price one protocol, keep its row, and read the extremes under it."""
         for folds in (sel_folds, held_folds):
             if label(folds) not in grids:
-                grids[label(folds)] = priced(staged_for(lib, a0, p0, folds, args.min_folds))
+                grids[label(folds)] = priced(
+                    staged_for(lib, refs, folds, args.min_folds))
         row = protocol_row(protocol, sel_label, grids[label(sel_folds)], sel_arms,
                            label(sel_folds), held_label, grids[label(held_folds)],
                            held_arms, label(held_folds))

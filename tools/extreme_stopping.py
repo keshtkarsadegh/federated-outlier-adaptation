@@ -49,7 +49,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from report_tables import baselines  # noqa: E402  - one definition of A0 and P0
+# One definition of the baselines, and one place that says which cohort's
+# book each setting is read against. These cases are the two worst writers
+# of the cohort, not the cohort, so their A0 is the extreme book's.
+from report_tables import baselines  # noqa: E402
 
 from federated_outlier_adaptation.training.extreme_cells import (  # noqa: E402
     CASES as DEFINED_CASES,
@@ -276,7 +279,7 @@ def main() -> int:
                     help="Also write the per-case figure here.")
     args = ap.parse_args()
 
-    a0, p0 = baselines(args.root)
+    a0, p0 = baselines(args.root, "extreme")
     found = read_cases(args.root, args.prefix)
     print(f"reference: the shipped model  adapt {a0:.4f}  preserve {p0:.4f}")
     print("basis: VALIDATION (pool_val_accuracies against source_val_accuracies), "

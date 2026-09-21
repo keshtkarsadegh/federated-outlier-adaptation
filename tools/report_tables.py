@@ -20,9 +20,14 @@ the new clients less the source knowledge it spent to get it:
 
     score = (adaptation - A0) - (P0 - preservation)
 
-A0 is the shipped model on the cohort's test rows, P0 the shipped model on the
-source population's. Both are read from the selection stage's own evaluations,
-never assumed, and a root without them is refused rather than defaulted.
+A0 is the shipped model on THAT SETTING'S OWN cohort test rows, P0 the shipped
+model on the source population's. P0 is one number because there is one source
+population; A0 is not, because five writers, ten, twenty and the extreme pair
+are four different cohorts and g-0 is not equally good on them. Reading a
+twenty-client run against the ten-client cohort's do-nothing accuracy reports a
+gain the run never made. Both are read from the study's own evaluations, never
+assumed, and a root missing the book a setting needs is refused rather than
+defaulted to another cohort's.
 """
 
 from __future__ import annotations
@@ -50,8 +55,60 @@ SIGNALS = ["dist_l2_to_global", "dist_fisher_to_global", "dist_fisher_norm_to_gl
 
 
 # --------------------------------------------------------------- baselines
-def baselines(root: Path) -> tuple:
-    """The shipped model's own two accuracies: A0 on the cohort, P0 on the source."""
+#: The shipped model's own accuracy on each cohort this study measures against,
+#: one evaluation file per cohort. All four were produced the same way - forward
+#: passes of g-0 over that cohort's test rows, per fold, no training - and they
+#: disagree because the cohorts do. A setting scored against another cohort's
+#: number reports a gain that is really the difference between two populations.
+COHORT_BOOKS = {
+    "c10": "g0_perfold_evaluations.json",
+    "c5": "g0_c5_evaluations.json",
+    "c20": "g0_c20_evaluations.json",
+    "extreme": "g0_extreme_evaluations.json",
+}
+
+#: Which cohort each run-folder stem federates. The search stages and the
+#: study's own carry setting all ran on the ten-writer cohort, so they share a
+#: book; the settings the winners were carried into do not.
+SETTING_COHORT = {
+    "agg_": "c10", "aggfull_": "c10", "reg_": "c10", "regfull_": "c10",
+    "combo_": "c10", "ctune_": "c10", "ctunesel_": "c10", "c10d10_": "c10",
+    "five_": "c5",
+    "c20d10_": "c20", "c20d20_": "c20",
+    "extreme_": "extreme",
+}
+
+
+def cohort_of(stem: str) -> str:
+    """
+    Which cohort a run-folder stem belongs to.
+
+    Matched on the LONGEST registered stem, so ``c20d20_`` is never read as
+    ``c20d10_`` and ``c10d10_`` is never read as a size reference. A stem this
+    table does not know is refused rather than defaulted to the ten-writer
+    cohort - defaulting is precisely the mistake the table exists to stop.
+    """
+    bare = stem.split("_", 1)[1] if stem.startswith("d01_") else stem
+    bare = bare.rstrip("_") + "_"
+    for key in sorted(SETTING_COHORT, key=len, reverse=True):
+        if bare.startswith(key):
+            return SETTING_COHORT[key]
+    raise SystemExit(
+        f"{stem!r} names no cohort this study evaluated g-0 on. Add it to "
+        "SETTING_COHORT with the book its rows came from: a setting read "
+        "against another cohort's shipped-model accuracy has no score."
+    )
+
+
+def baselines(root: Path, cohort: str = "c10") -> tuple:
+    """
+    The shipped model's own two accuracies: A0 on ``cohort``, P0 on the source.
+
+    ``cohort`` names one of :data:`COHORT_BOOKS`. Ten writers is the default
+    because that is where the search ran; every setting the winners were
+    carried into must name its own, and :func:`baselines_for` does it from the
+    run-folder stem so no caller has to remember.
+    """
     def mean_accuracy(name):
         path = root / name
         if not path.is_file():
@@ -62,14 +119,23 @@ def baselines(root: Path) -> tuple:
                   if isinstance(r, dict) and isinstance(r.get("accuracy"), (int, float))]
         return sum(values) / len(values) if values else None
 
-    a0 = mean_accuracy("g0_perfold_evaluations.json")
+    book = COHORT_BOOKS.get(cohort)
+    if book is None:
+        raise SystemExit(f"{cohort!r} is not a cohort this study evaluated g-0 on")
+    a0 = mean_accuracy(book)
     p0 = mean_accuracy("g0_evaluations.json")
     if a0 is None or p0 is None:
         raise SystemExit(
-            f"{root} has no shipped-model evaluations; every table is measured "
+            f"{root} has no shipped-model evaluations for cohort {cohort!r} "
+            f"({book} and g0_evaluations.json); every table is measured "
             "against them and they are not guessed."
         )
     return a0, p0
+
+
+def baselines_for(root: Path, stem: str) -> tuple:
+    """The two accuracies the runs under ``stem`` must be read against."""
+    return baselines(root, cohort_of(stem))
 
 
 #: The settings the selected arms were carried into, in the order they are
@@ -292,7 +358,6 @@ def main() -> int:
     ap.add_argument("--csv", type=Path, default=None, help="Also write CSVs here.")
     args = ap.parse_args()
 
-    a0, p0 = baselines(args.root)
     t = args.study_tag
     wanted = {"all": ("references", "agg-screen", "agg-winners",
                       "reg-screen", "reg-winners",
@@ -306,6 +371,11 @@ def main() -> int:
         # measurement at two sizes.
         if what == "sizes":
             for name, title in CARRY_SETTINGS:
+                # EACH SETTING AGAINST ITS OWN COHORT. The shipped model is not
+                # equally good on five writers, ten and twenty, so one A0 across
+                # the four rows would report the difference between cohorts as a
+                # gain the arm made.
+                a0, p0 = baselines_for(args.root, name)
                 rows = summarise(read_runs(args.root, f"{t}_{name}_"), a0, p0)
                 if not rows:
                     print(f"\n{title}\n  nothing on disk yet")
@@ -315,8 +385,9 @@ def main() -> int:
                     write_csv(rows, args.csv / f"sizes_{name}.csv")
             continue
         if what == "references":
+            a0, p0 = baselines(args.root, args.tag)
             rows = references(args.root, a0, p0, args.tag)
-            title = "THE REFERENCE RUNGS"
+            title = f"THE REFERENCE RUNGS ({args.tag})"
         else:
             prefix, title = {
                 "agg-screen":  (f"{t}_agg_",     "AGGREGATION SCREEN (short horizon: a ranking, not a result)"),
@@ -328,6 +399,7 @@ def main() -> int:
                                                  "THE EXTREME CASES (full participation): "
                                                  "two writers, and the same two merged into one client"),
             }[what]
+            a0, p0 = baselines_for(args.root, prefix)
             rows = summarise(read_runs(args.root, prefix), a0, p0)
         if not rows:
             print(f"\n{title}\n  nothing on disk yet")

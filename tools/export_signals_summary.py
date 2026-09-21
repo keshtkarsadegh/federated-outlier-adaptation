@@ -144,9 +144,13 @@ def correlations(root: Path) -> Tuple[Dict[str, dict], int]:
 
 def verdicts(root: Path):
     """Every stopping arm of every stage, judged by the whole-study rule."""
-    a0, p0 = ST.baselines(root)
+    refs = ST.stage_baselines(root)
+    a0, p0 = refs["c10d10"]
     staged = []
     for stem, _title in ST.STAGES:
+        # The stage's own cohort, not the study's: the same rule every table
+        # this summarises is now read by.
+        a0, p0 = refs[stem.strip("_")]
         prefix = f"d01_{stem}"
         found = []
         for (cell, family), stored in sorted(ST.read_arms(root, prefix).items()):

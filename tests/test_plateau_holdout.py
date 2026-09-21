@@ -187,7 +187,7 @@ def test_no_protocol_loses_on_the_set_it_did_not_see():
 def test_the_in_sample_row_is_the_published_headline():
     """
     The first row prices the published setting where it was chosen, so it has to
-    reproduce `plateau_stages.csv`'s all row - +1.19p over the horizon's 7.74p,
+    reproduce `plateau_stages.csv`'s all row - +1.19p over the horizon's 7.85p,
     firing on 50 of the 83 arms - or the two tools are reading different runs.
     """
     row = next(r for r in _rows("plateau_holdout_protocols.csv")
@@ -195,7 +195,7 @@ def test_the_in_sample_row_is_the_published_headline():
     assert int(row["sel_arms"]) == int(row["held_arms"]) == 83
     assert int(row["held_fires"]) == 50 and int(row["primary_is_chosen"]) == 1
     assert float(row["held_gain"]) * 100 == pytest.approx(1.19, abs=0.005)
-    assert float(row["held_fixed"]) * 100 == pytest.approx(7.74, abs=0.005)
+    assert float(row["held_fixed"]) * 100 == pytest.approx(7.85, abs=0.005)
 
 
 def test_the_extremes_keep_the_published_rounds_under_every_protocol():

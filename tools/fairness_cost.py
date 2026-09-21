@@ -120,7 +120,7 @@ ARM_COST_PREFIXES = ("{t}_c10d10_", "{t}_aggfull_control_")
 #: the same model on the same rows; they differ in which fold book cut the test
 #: split, so a run is matched to one by coverage rather than by name.
 G0_BOOKS = ("g0_perfold_evaluations.json", "g0_c5_evaluations.json",
-            "g0_c20_evaluations.json")
+            "g0_c20_evaluations.json", "g0_extreme_evaluations.json")
 
 
 # ------------------------------------------------------------ pure helpers
@@ -515,7 +515,6 @@ def main() -> int:
     ap.add_argument("--csv", type=Path, default=None, help="Also write CSVs here.")
     args = ap.parse_args()
 
-    a0, _ = report_tables.baselines(args.root)
     tag = args.study_tag
 
     if args.what in ("all", "fairness"):
@@ -544,6 +543,12 @@ def main() -> int:
                 if not rows:
                     print(f"\nPER-CLIENT SPREAD - {title}\n  nothing on disk yet")
                     continue
+                # THE SETTING'S OWN REFERENCE, and only for a setting that ran:
+                # the pooled number printed beside the spread is the same
+                # shipped-model accuracy this setting's score table subtracts,
+                # not the ten-writer cohort's. Read after the rows so a root
+                # that never ran a size is not asked for its book.
+                a0, _ = report_tables.baselines_for(args.root, name)
                 show_fairness(rows, f"PER-CLIENT SPREAD - {title}", a0)
                 if args.csv:
                     for row in rows:

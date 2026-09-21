@@ -265,15 +265,18 @@ def stop_rounds(root: Path, tag: str, a0: float, p0: float) -> List[dict]:
     """
     import stopping_table as stopping
 
+    refs = stopping.stage_baselines(root)
     staged = []
     for stem, _ in stopping.STAGES:
+        stage_a0, stage_p0 = refs[stem.strip("_")]
         verdicts = []
         for (cell, family), stored in sorted(
                 stopping.read_arms(root, f"{tag}_{stem}").items()):
             arm = stopping.arm_of(cell, family, stored)
             if arm is None or arm.folds < 5 or arm.rounds < 2:
                 continue
-            verdicts.append(stopping.judge(arm, a0, p0, stopping.DEFAULT_DELTAS))
+            verdicts.append(
+                stopping.judge(arm, stage_a0, stage_p0, stopping.DEFAULT_DELTAS))
         staged.append((stem.strip("_"), verdicts))
 
     every = [verdict for _, verdicts in staged for verdict in verdicts]
@@ -310,6 +313,15 @@ def write_stop_rounds(path: Path, rows: Sequence[dict]) -> None:
 # --------------------------------------------------------------------- views
 VIEWS = ("traces_control", "traces_aggfull", "traces_regfull", "traces_blends",
          "traces_combo", "traces_extreme", "extreme_stop_rounds")
+
+#: Which cohort each view's rows were measured on. Five of the seven are the
+#: ten-writer search cohort; the two extreme views are the two worst writers of
+#: it held alone, which is a different population and a different A0.
+VIEW_COHORT = {
+    "traces_control": "c10", "traces_aggfull": "c10", "traces_regfull": "c10",
+    "traces_blends": "c10", "traces_combo": "c10",
+    "traces_extreme": "extreme", "extreme_stop_rounds": "extreme",
+}
 
 
 def build(records: Records, what: str, a0: float, p0: float) -> Optional[list]:
@@ -361,13 +373,17 @@ def main() -> int:
     ap.add_argument("--study-tag", default="d01")
     args = ap.parse_args()
 
-    a0, p0 = baselines(args.root)
-    print(f"reference: the shipped model  adapt {a0:.4f}  preserve {p0:.4f}")
     print("basis: VALIDATION (pool_val_accuracies against source_val_accuracies), "
           "which is what a selection is allowed to read.")
 
     records = Records(args.root, args.study_tag)
     for what in (VIEWS if args.what == "all" else (args.what,)):
+        # EACH VIEW AGAINST ITS OWN COHORT. The extreme views draw two writers
+        # held alone; scoring them against the ten-writer cohort's do-nothing
+        # accuracy moves every point on the figure by a constant that belongs
+        # to a different population.
+        a0, p0 = baselines(args.root, VIEW_COHORT[what])
+        print(f"{what}: the shipped model  adapt {a0:.4f}  preserve {p0:.4f}")
         if what == "extreme_stop_rounds":
             write_stop_rounds(args.out / f"{what}.csv",
                               stop_rounds(args.root, args.study_tag, a0, p0))
