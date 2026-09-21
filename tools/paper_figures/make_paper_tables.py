@@ -708,7 +708,8 @@ def t_combos(combo, agg, regu, printed):
     return block(
         "tab:combos",
         "All eighteen combinations: each schedule's three best server rules "
-        "crossed with its three best penalties, at the full horizon. Five-fold "
+        "crossed with the three best penalty families on validation score, "
+        "one cell per family, at the full horizon. Five-fold "
         "means, \\textbf{test} axis, grouped by schedule and ordered by score "
         "within each block.",
         "llrrrr",
@@ -1301,8 +1302,8 @@ def t_signals(sigs, pst):
             "this table, at $\\delta=\\nOneRuleDelta{}$. $\\dagger$ The "
             "three "
             "parameter-space distances share no scale with that one grid: "
-            "the $\\ell_2$ distance crosses every budget on it inside a "
-            "single round and the two Fisher distances reach almost none of "
+            "the $\\ell_2$ distance crosses every budget on it by the "
+            "second round and the two Fisher distances reach almost none of "
             "them, so their rule columns report a units problem and not an "
             "information one. The last three rows are not signals: the "
             "horizon itself, the patience rule of "
