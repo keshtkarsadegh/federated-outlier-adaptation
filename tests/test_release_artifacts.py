@@ -219,8 +219,12 @@ def test_both_shipped_tables_are_what_the_generator_emits():
     must fail loudly rather than be quietly overwritten - which is why the
     generator has a --check mode and why it is exercised here.
 
-    Skipped without the run folders: a clone has the tables but not the 1,900
-    run directories they were computed from.
+    **The two tables live in the study root, not in the metadata core.** They
+    are `make_tables.py`'s own markdown summaries of the run folders, not views
+    the manuscript reads - `report_tables.py` writes those - so the core does
+    not carry them and neither does the records asset. The comparison is
+    therefore against the root's own copy, and is skipped by name where there is
+    none rather than failing on a file that was never meant to be there.
     """
     import os
 
@@ -233,5 +237,9 @@ def test_both_shipped_tables_are_what_the_generator_emits():
 
     for name, builder in (("master", make_tables.master_table),
                           ("scaling", make_tables.scaling_table)):
-        shipped = (ARTIFACTS / "tables" / f"{name}_table.md").read_text()
-        assert builder(Path(root)) == shipped, f"{name}_table.md is out of date"
+        written = Path(root) / "tables" / f"{name}_table.md"
+        if not written.is_file():
+            pytest.skip(f"{written} is not on this root; make_tables.py writes it")
+        assert builder(Path(root)) == written.read_text(), (
+            f"{name}_table.md is out of date"
+        )
