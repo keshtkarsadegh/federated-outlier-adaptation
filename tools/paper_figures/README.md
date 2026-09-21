@@ -16,7 +16,7 @@ commands rather than by a script somebody ran once at a terminal.
 
 Every view these scripts need already travels in this repository, under
 `study/artifacts/Digits_study01/tables/`: `paper_figures/` for the ten per-round
-and per-fold views, `paper/` for the twenty-one views of the paper bundle,
+and per-fold views, `paper/` for the twenty-three views of the paper bundle,
 `stopping/` for the stopping tables and `tables/` itself for what the stage tools
 left there. So with nothing downloaded and no study root assembled:
 
@@ -96,18 +96,21 @@ The first three reproduce the ten views in `tables/paper_figures/` byte for byte
 the fourth supplies `references.csv`, which `fig_problem` and `fig_baselines`
 read for the centralized ceiling and for `g-0`'s own source accuracy.
 
-The numbers and the tables read wider than the figures do — thirty views between
-them — so rebuilding *their* inputs takes seven more commands into the same
-directory:
+The numbers and the tables read wider than the figures do — thirty-three views
+between them — so rebuilding *their* inputs takes nine more commands into the
+same directory:
 
 ```bash
 python tools/fairness_cost.py      --root "$FOA_STUDY_DIR" --what all  --csv views/
 python tools/stopping_table.py     --root "$FOA_STUDY_DIR"             --csv views/
+python tools/plateau_holdout.py    --root "$FOA_STUDY_DIR"             --out views/
 python tools/compare_arms.py       --root "$FOA_STUDY_DIR" --what all  --csv views/
 python tools/weight_sensitivity.py --root "$FOA_STUDY_DIR" --grid both --csv views/
 python tools/describe_cohort.py    --root "$FOA_STUDY_DIR" --all       --csv views/
+python tools/export_selection_axis.py   --root "$FOA_STUDY_DIR" --csv views/
 python tools/export_signals_summary.py  --root "$FOA_STUDY_DIR" --out views/
 python tools/export_decouple_example.py --root "$FOA_STUDY_DIR" --out views/
+python tools/export_prefilter_coverage.py --root "$FOA_STUDY_DIR" --csv views/
 FOA_PAPER_DATA=$PWD/views FOA_PAPER_OUT=/tmp/paper \
     python tools/paper_figures/make_numbers.py
 ```
@@ -136,6 +139,13 @@ python tools/export_decouple_example.py \
 ```
 
 All three views still ship, so that `make_numbers.py` runs from a bare clone.
+`export_prefilter_coverage.py` is the third of that kind and the reason it
+exists is the same one: the outlier detector is two stages, the second has a
+view and the first had none, so nothing said how wide the coarse pre-filter was
+or how much of its width the cohorts actually used. It reads `outliers/` only,
+so it runs against `study/artifacts/Digits_study01/` in a bare clone too, and
+`tests/test_appendix_tables.py` checks the shipped view byte for byte against
+what it rebuilds.
 
 ## Which figure reads what
 

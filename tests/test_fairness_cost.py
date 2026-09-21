@@ -252,7 +252,9 @@ def test_the_view_runs_end_to_end(study: Path, capsys, monkeypatch):
     assert fairness_cost.main() == 0
     printed = capsys.readouterr().out
     assert "PER-CLIENT SPREAD" in printed
-    assert "basis: TEST (final_evaluation.clients.per_client)" in printed
+    assert "basis: TEST." in printed
+    assert "final_evaluation.clients.accuracy" in printed
+    assert "final_evaluation.clients.per_client" in printed
     assert "THE PROGRAMME'S MEASURED COMPUTE" in printed
 
 

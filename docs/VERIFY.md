@@ -14,7 +14,7 @@ pip install -e ".[dev]"    # or: pip install -r requirements.txt
 pytest -q tests
 ```
 
-1,961 tests, on synthetic fixtures. They pin the study's invariants, not just
+2,000 tests, on synthetic fixtures. They pin the study's invariants, not just
 the plumbing. The ones that matter most to a reader of the paper:
 
 | Test file | What it pins |
@@ -27,10 +27,11 @@ the plumbing. The ones that matter most to a reader of the paper:
 | `test_nist28_pipeline.py` | the 28x28 conversion and the packed cache contract |
 | `test_selection.py`, `test_outlier_selection.py` | the two-phase g-init/g-0 selection and its no-leakage property |
 | `test_release_artifacts.py` | that no absolute machine path survives in the release; that the fetcher's checksums are the documented ones; that the scaling table pins fold 1 explicitly and carries no spread on a single-fold cell |
-| `test_paper_figures.py` | that every CSV view a figure, `numbers.tex` or a table reads is shipped and resolves, that round 0 of every trace is one shared point, and that no view carries a column its tool no longer writes |
+| `test_paper_figures.py` | that every CSV view a figure, `numbers.tex` or a table reads is shipped and resolves, that round 0 of every trace is one shared point, that no view carries a column its tool no longer writes, and that the signals table's delta column is the difference of the two numbers printed beside it - the one column in the paper not rounded once from full precision, and the reason three of its rows used to be a hundredth away from the subtraction a reader does |
 | `test_plateau.py` | what the plateau stopping rule means, on synthetic traces; that its basis is `stopping_table.py`'s own rather than a copy; and that the shipped view still says +1.19p over the fixed horizon on all 83 arms, so a silently regenerated table is a failure and not a diff |
 | `test_plateau_holdout.py` | that the plateau's setting is what all 28 hold-out protocols choose - held out by fold, by stage and by seeded random halves of the arms - that none of them loses on the set it did not see, that the two extremes keep the published rounds under every one, and that the three shipped views regenerate byte for byte from an assembled root |
 | `test_shipped_view_membership.py` | that the blend's finals reach every regularisation view a reg-full arm belongs in, that no core view carries an arm of the joint-tuning extension, and that the record generator counts a stage's folders without the ones a later stage lodged under its prefix |
+| `test_appendix_tables.py` | the four things an appendix table can say about itself and not keep: that the fairness table's Mean column is the same cohort accuracy the score tables print for the same arm (it was an unweighted mean over clients, and disagreed by up to a point), that it lists every carried arm at every setting (there was no five-client block and one arm of three at twenty), that the selection-axis ranks are computed on the selection score rather than on the stored adaptation ordering and that each shortlist is the first three distinct methods of that ordering, that both schedule blocks of the regularisation table print a no-penalty control, and that all 28 hold-out protocols reach the page |
 
 ### The shipped artefacts
 

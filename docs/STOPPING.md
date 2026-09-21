@@ -274,7 +274,12 @@ five-fold mean, and a noisier trace is one the fixed horizon costs more on.
 The two extreme arrangements are read off the full five-fold traces whatever
 the setting was chosen on, because that is what the rounds above are quoted
 from: **`dual` keeps round 8 and `double` round 36, at the same scores, under
-all 28 protocols.** `plateau_holdout_protocols.csv` carries the rows,
+all 28 protocols.** All 28 are on the page: `tables/kholdout.tex` prints the six
+families, each headed with the number of protocols it stands for, and the two
+whose splits are interchangeable are summarised with a mean and a standard
+deviation rather than dropped. The appendix table used to print six rows that
+expanded to nineteen, so the twenty-eight its own caption counted could not be
+reached from it. `plateau_holdout_protocols.csv` carries the rows,
 `plateau_holdout_extremes.csv` the 56 extreme checks and
 `plateau_holdout_grids.csv` the thirteen fold sets against all sixteen cells;
 `tests/test_plateau_holdout.py` pins the count, the patience, the sign of every

@@ -130,7 +130,11 @@ def test_every_csv_the_numbers_and_the_tables_read_resolves():
     for module in (make_numbers, make_paper_tables):
         source = Path(module.__file__).read_text()
         wanted = set(re.findall(r'rows\("([A-Za-z0-9_.-]+\.csv)"\)', source))
-        assert len(wanted) >= 15, f"{module.__name__}: the pattern stopped matching"
+        # The table generator names ten of its views by interpolation now -
+        # the four carry settings and the five fairness blocks - so the literal
+        # count is lower there than in the macro generator. The interpolated
+        # names are checked by the test below, which reads the block lists.
+        assert len(wanted) >= 14, f"{module.__name__}: the pattern stopped matching"
         for name in sorted(wanted):
             module.locate(name)        # raises SystemExit when it is not there
 
@@ -151,6 +155,17 @@ def test_the_view_names_built_by_interpolation_are_shipped_too():
         make_numbers.locate(f"sizes_{tag}.csv")
     for tag in ("c20d10", "c20d20"):
         make_numbers.locate(f"fairness_{tag}.csv")
+
+    # THE FAIRNESS TABLE NAMES ITS OWN BLOCKS NOW, one per setting an arm was
+    # carried to plus the search setting it was chosen at. A block whose view
+    # stopped shipping is a block that vanishes from the table with no error,
+    # which is exactly how the five-client block came to be missing from it.
+    keys = [key for key, _, _ in make_paper_tables.FAIRNESS_BLOCKS]
+    assert sorted(keys) == ["c10d10", "c20d10", "c20d20", "combo", "five"], keys
+    assert set(keys) - {"combo"} == set(tags), (
+        "tab:fairness and tab:scaling no longer report the same settings")
+    for key in keys:
+        make_paper_tables.locate(f"fairness_{key}.csv")
 
 
 def test_the_paper_bundle_wins_when_two_bundles_carry_one_name():
@@ -428,15 +443,27 @@ def test_the_signals_table_prices_all_eight_signals_from_the_shipped_view(tmp_pa
         cells = [c.strip() for c in printed[0].rstrip("\\ ").split(" & ")]
         assert len(cells) == 8, cells
 
-        gain = "%.2f" % (100 * float(row["mean_vs_fixed"]))
         assert cells[1] == row["observed_on"]
         assert cells[2] == "%.3f" % float(row["median_rho"])
         assert cells[3] == "%.1f" % (100 * float(row["share_ge_0p9"])) + r"\%"
         assert cells[4] == row["best_delta"]
         assert cells[5] == "%d" % int(row["arms_fired"])
         assert cells[6] == "%.2f" % (100 * float(row["mean_stopped_score"]))
-        assert cells[7] == ("$%s$" % gain if gain.startswith("-")
-                            else "$+%s$" % gain)
+
+        # THE DELTA COLUMN CLOSES ON THE PAGE. Both of its operands are printed
+        # in this table - the score of the row, and the fixed-horizon score at
+        # the foot of it - so the column is the difference of the two printed
+        # values and not the stored difference rounded once. Rounded once,
+        # three of these eight rows came out a hundredth away from the
+        # subtraction a reader does: 1.46 less 7.74 printed as -6.27. The
+        # stored value is still checked, to within the hundredth that
+        # separates the two conventions, so a real drift still fails here.
+        fixed = "%.2f" % (100 * float(tables.pick(
+            tables.rows("plateau_stages.csv"), stage="all")["fixed_mean"]))
+        delta = "%.2f" % (float(cells[6]) - float(fixed))
+        assert cells[7] == ("$%s$" % delta if delta.startswith("-")
+                            else "$+%s$" % delta), row["signal"]
+        assert abs(float(delta) - 100 * float(row["mean_vs_fixed"])) <= 0.01 + 1e-9
 
     # The three reference rows are what make the eight readable as worth
     # something: all of them are the one plateau row that runs over every arm,
@@ -449,6 +476,17 @@ def test_the_signals_table_prices_all_eight_signals_from_the_shipped_view(tmp_pa
         printed = [ln for ln in lines if label in ln]
         assert len(printed) == 1, label
         assert "%.2f" % (100 * float(every[column])) in printed[0], label
+
+    # The same identity for the two reference rows that carry a delta: the
+    # whole column subtracts the fixed horizon as printed, references included.
+    fixed = 100 * float(every["fixed_mean"])
+    for label, column in (("Patience rule", "rule_mean"),
+                          ("Oracle stop", "oracle_mean")):
+        row = [ln for ln in lines if label in ln][0]
+        cells = [c.strip() for c in row.rstrip("\\ ").split(" & ")]
+        delta = "%.2f" % (float(cells[6]) - float("%.2f" % fixed))
+        assert cells[7] == ("$%s$" % delta if delta.startswith("-")
+                            else "$+%s$" % delta), (label, cells)
 
     caption = [ln for ln in lines if ln.startswith("\\caption{")]
     assert len(caption) == 1, caption

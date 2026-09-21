@@ -498,6 +498,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | what the fixed horizon cost every arm | `stopping_table.py --root $FOA_STUDY_DIR` |
 | what a permitted signal would have delivered | `stopping_table.py --root $FOA_STUDY_DIR --csv $FOA_STUDY_DIR/tables/stopping` |
 | what a plateau on the cohort's own accuracy would have delivered | `plateau_rule.py --root $FOA_STUDY_DIR` |
+| how much of the coarse pre-filter each cohort actually needed | `export_prefilter_coverage.py --root $FOA_STUDY_DIR --csv <dir>` -> `prefilter_coverage.csv` |
 | the four plateau views, and the grid the setting was fixed on | `plateau_rule.py --root $FOA_STUDY_DIR --out $FOA_STUDY_DIR/tables/stopping` |
 | does that plateau setting survive being chosen where it is not measured? | `plateau_holdout.py --root $FOA_STUDY_DIR --out $FOA_STUDY_DIR/tables/stopping` |
 | do the eight signals track forgetting? | `foa signals --root $FOA_STUDY_DIR` |
@@ -517,7 +518,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | each combination against BOTH of its halves, by fold | `export_combo_folds.py --root $FOA_STUDY_DIR --out <dir>` |
 | does the schedule matter? six pairs, each schedule's own selected arm against the other's, cyclic minus parallel and paired by fold | `export_schedule_views.py --root $FOA_STUDY_DIR --csv <dir>` -> `schedule_pairs.csv` |
 | the study's eight strongest arms across the three reporting stages, and which schedule ran each | the same command -> `schedule_top.csv` |
-| what each selection saw: the VALIDATION ordering every shortlist was cut on, beside the same runs' test ordering, per schedule | `export_selection_axis.py --root $FOA_STUDY_DIR --csv <dir>` -> `selection_axis.csv` |
+| what each selection saw: every arm each record ranked, on the VALIDATION score that cut the shortlist and on the test score that reports it, per schedule | `export_selection_axis.py --root $FOA_STUDY_DIR --csv <dir>` -> `selection_axis.csv` |
 | the client recipe the methods section states, read back off every stored payload | `export_recipe_view.py --root $FOA_STUDY_DIR --csv <dir>` -> `recipe.csv` |
 | the two extracts the forgetting-signals section is written on | `export_signals_summary.py --root $FOA_STUDY_DIR --out <dir>` |
 | the five writers the two selection rankings disagree about | `export_decouple_example.py --root $FOA_STUDY_DIR --out <dir>` |
@@ -558,6 +559,23 @@ schedule, the crowned pair and the arm carried beside it out of
 an arm a selection record names - the control is the fixed control, which is
 what the selecting is measured against - and no row is ranked into the table by
 the numbers the table then prints. Both views are TEST, because both report.
+
+**`selection_axis.csv` CARRIES TWO ORDERINGS PER AXIS, AND THEY ARE NOT THE
+SAME ORDERING.** Each selection record's `rankings` block is written by
+`study_emit.both_rankings`, which orders by ADAPTATION; the choosing was done by
+`study_emit.ranked_by_trade`, which orders by the selection score - gained less
+spent, at `w = 1`. `val_rank` and `test_rank` are the first; `val_score_rank`
+and `test_score_rank` are the second, and they are the ones `tab:selection_axis`
+prints, because they are the ones that selected. The view carries EVERY arm each
+record ranked rather than only the three that went forward, because a shortlist
+whose score ranks read 1, 2 and 5 cannot be reconciled against a table of three
+rows: the arms the rule stepped over have to be on the page. The rule is one
+cell per METHOD, with the composite penalty competing for a slot of its own, and
+`method` is a column of the view so that rule is checkable from the view alone -
+`tests/test_appendix_tables.py` reconstructs each shortlist from it. The
+validation preservation and both scores are read from the runs, because the
+records store neither, and the adaptation that read produces is asserted against
+the adaptation the record stored, arm for arm.
 
 ### The extensions' own views
 
@@ -604,7 +622,20 @@ three more beside them: `plateau_holdout_protocols.csv`,
 `docs/STOPPING.md` reads all of it.
 `fairness_cost.py --csv` writes one CSV per stage plus a per-client detail CSV
 beside each, and `cost_stages.csv` and `cost_arms.csv`. `docs/FAIRNESS_AND_COST.md`
-reads all of it.
+reads all of it. Five of its stage views ship in `tables/paper/` - the
+combination stage and the four carry settings - because those are the five
+blocks `tab:fairness` prints; the rest are written into the study root and are
+not part of the manuscript bundle.
+
+**THE FAIRNESS VIEWS CARRY BOTH READINGS OF ONE EVALUATION.** `cohort` is
+`final_evaluation.clients.accuracy`, pooled over the cohort's test rows, which
+is the exact column `report_tables.py` reports as `adaptation`; `mean` is the
+unweighted mean over the cohort's CLIENTS of the same evaluation. The writers
+hold between seventy and two hundred-odd digit rows apiece, so the two disagree
+- by up to a point at twenty clients, which is larger than most margins this
+study reports. `tab:fairness` prints `cohort`, so that an arm appearing in two
+tables prints one adaptation in both; the spread columns beside it are still the
+per-client reading, which is what the table is for.
 
 **The four stopping tools are the exception to the test basis below**:
 `extreme_stopping.py`, `stopping_table.py`, `plateau_rule.py` and
@@ -645,6 +676,24 @@ would select on test while claiming validation.
 `A0` and `P0` are the shipped model's own two accuracies, read from
 `g0_perfold_evaluations.json` and `g0_evaluations.json` at selection time, never
 written down. Both terms are therefore differences from doing nothing.
+
+**AND THE SHORTLISTS WERE CUT ON THAT SCORE, NOT ON ADAPTATION.** The `rankings`
+block each selection record stores is ordered by adaptation alone; the cut was
+made by `study_emit.ranked_by_trade` on the score above. The two orders differ,
+and `selection_axis.csv` carries both so that no table has to choose between
+them silently. See [the selection-axis note](#6-which-command-produces-which-claim).
+
+**ONE ROUNDING EXCEPTION, AND IT IS NAMED WHERE IT IS TAKEN.** Every quantity in
+`numbers.tex` and in `tables/*.tex` is rounded once from the full-precision
+value, differences included, so that no macro can disagree with the table beside
+it. The `$\Delta$ vs. fixed` column of `tab:signals` is the one exception: both
+of its operands are printed in the same table - the row's score, and the fixed
+horizon at the foot of it - and rounded once, three of its eight rows came out a
+hundredth away from the subtraction a reader does on the page. That column is
+therefore the difference of the two PRINTED values; the generator asserts the
+two conventions agree to within a hundredth, the table's own note says which it
+is, and no macro reads it. `nSignal*VsFixed` carry the stored difference for
+prose that needs it.
 
 ### And which command produces which figure
 
@@ -703,7 +752,7 @@ evaluations only.
 
 One step further along the same shape. `numbers.tex` - the file every
 quantitative sentence of the manuscript reads its value from - and the
-fourteen `tables/*.tex` it sets are written from the views too, by two generators that sit
+fifteen `tables/*.tex` it sets are written from the views too, by two generators that sit
 beside the figure scripts and compute nothing:
 
 ```bash
@@ -720,19 +769,24 @@ will write into a source checkout: with no `FOA_PAPER_OUT` set they say so and
 stop, rather than drop LaTeX into the tracked tree. `FOA_PAPER_DATA` overrides
 where the views are read from, exactly as it does for the figures.
 
-Thirty-two views feed the two of them and all thirty-two ship here, spread over
-four directories because four different tools write them:
+Thirty-five views feed the two of them and all thirty-five ship here, spread over
+four directories because four different tools write them. Three arrived with the
+appendix rebuild of 2026-09-21: `fairness_five.csv`, because the fairness table
+promises every carried arm at every setting and the five-client setting had no
+view at all; `prefilter_coverage.csv`, because the detector is two stages and
+only the second one had one; and `plateau_holdout_protocols.csv`, which shipped
+already and now feeds `tables/kholdout.tex` rather than a hand-typed float.
 
 | where | what is in it | written by |
 |---|---|---|
-| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view, the two schedule views, the selection axis, the client recipe | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py`, `export_schedule_views.py`, `export_selection_axis.py`, `export_recipe_view.py` |
+| `tables/paper/` | the reference rungs, both winner tables, the combinations, the four carry settings, the extremes, the two screens, the fairness and cost views, the two signal extracts, the decoupling view, the two schedule views, the selection axis, the pre-filter coverage, the client recipe | `report_tables.py --what all --csv`, `fairness_cost.py --what all --csv`, `export_signals_summary.py`, `export_decouple_example.py`, `export_schedule_views.py`, `export_selection_axis.py`, `export_prefilter_coverage.py`, `export_recipe_view.py` |
 | `tables/paper_figures/` | the per-round traces, `extreme_stop_rounds.csv`, `isolated_clients.csv`, `combos_folds.csv` | `export_traces.py`, `export_baseline_views.py`, `export_combo_folds.py` |
-| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, three of which the generators read - `plateau_stages.csv` builds `plateau.tex`, `plateau_arms.csv` and `plateau_extremes.csv` fill macros, and `fig_extremes.py` marks its stopping rounds from the last - while `docs/STOPPING.md` reads all four; the three `plateau_holdout_*.csv` beside them answer that rule's own objection and feed neither generator and no figure | `stopping_table.py --csv`, `plateau_rule.py --out`, `plateau_holdout.py --out` |
+| `tables/stopping/` | `stopping_all.csv`, `stopping_extreme.csv` and the per-stage rest; the four `plateau_*.csv` beside them, three of which the generators read - `plateau_stages.csv` builds `plateau.tex`, `plateau_arms.csv` and `plateau_extremes.csv` fill macros, and `fig_extremes.py` marks its stopping rounds from the last - while `docs/STOPPING.md` reads all four; of the three `plateau_holdout_*.csv` beside them, `plateau_holdout_protocols.csv` now builds `kholdout.tex` and fills five macros, and the other two answer that rule's own objection and feed neither generator and no figure | `stopping_table.py --csv`, `plateau_rule.py --out`, `plateau_holdout.py --out` |
 | `tables/` | `blends.csv`, `composition.csv`, `weight_sensitivity_*.csv`, `cohort_composition.csv`, `cohort_table.csv` | `compare_arms.py --csv`, `weight_sensitivity.py --csv`, `describe_cohort.py --csv`, and the cohort stage |
 
 `tables/paper/` also holds the extension's four views. They feed neither
 generator and no figure, they are named `extension_*` for that reason, and the
-thirty-two above are thirty-two without them.
+thirty-five above are thirty-five without them.
 
 **THE PAPER BUNDLE IS SEARCHED FIRST, AND THAT MATTERS.** `tables/combos.csv` is
 the raw grid dump the combination stage left behind and `tables/paper/combos.csv`
@@ -767,7 +821,16 @@ landed, and the rest - the proxy-set constants, the good pool, the per-writer
 sample counts - were macros nothing set. A macro no page calls is a macro no
 reader can check: `\TBD{}` cannot fire on a name nobody writes.
 
-The other 138 macros are generated, down from 205 in the same pass: the template
+The other 196 macros are generated: 138 after the 2026-09-21 pruning pass, plus
+the 58 the appendix rebuild added the same day. Of those 58, thirty-two are the
+remaining cells of the signals table - the budget, the fire count, the stopped
+score and the delta of each of the eight signals - so that every number on that
+table can be quoted in prose without being retyped off the page; eleven are the
+pre-filter's shape and reach; seven are the held-out stopping table's own counts
+and extremes; and eight are quantities two sentences of the paper used to quote
+as one, chiefly the two shipped-model worst-client figures and the replicate
+spread of a single configuration. No macro that existed before that day changed
+its value. The template
 now defines what the manuscript sets plus the handful the tables and the figure
 captions set for it, and `make_numbers.py` reports any registry entry with no
 macro between the markers, so the registry was pruned to match rather than left
