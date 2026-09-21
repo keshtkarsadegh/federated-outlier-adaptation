@@ -1090,6 +1090,46 @@ SELECTION_DEPTH = 5
 #: The mark a printed arm carries for the role it played.
 SELECTION_MARK = {"crowned": "\\dagger", "shortlist": "\\ddagger"}
 
+#: The mark for an arm the paper carries PAST the selecting stages.
+SELECTION_CARRY_MARK = "\\S"
+
+#: The arms tab:scaling runs at the four federation settings, keyed the way
+#: selection_axis.csv keys its rows.
+#:
+#: A CARRIED ARM IS NOT ALWAYS A SELECTED ONE, AND THE TABLE USED TO PRINT ONLY
+#: THE SELECTED.  The role column of the view marks what a SELECTING stage did
+#: -- crowned, or shortlisted -- and the balanced arm was neither: validation
+#: put it last of the eighteen crossings, at rank nine, three ranks below the
+#: depth this table prints.  So the one carried arm whose validation standing a
+#: reader would most want to see, the arm Table~\ref{tab:scaling} runs at every
+#: setting and the only one of the eighteen with a negative delta against its
+#: better component, was the one arm the selection-axis table left out.  The
+#: table now prints every arm with a carried role at whatever depth it sits.
+SELECTION_CARRIED = (CROWNED, BALANCED, CYCLIC_ARM)
+
+
+def selection_marks(row, family):
+    """Every mark a selection-axis row carries: role first, then carry."""
+    marks = SELECTION_MARK[row["role"]] if row["role"] else ""
+    if (row["cell"], family) in SELECTION_CARRIED:
+        marks += SELECTION_CARRY_MARK
+    return marks
+
+
+def selection_block(sel, stage, family):
+    """One stage-by-schedule block of tab:selection_axis, as it is printed.
+
+    Returned as (every ranked arm, the arms inside the depth, the marked arms
+    below it) so that make_numbers counts the rows the PAGE prints and not the
+    rows the view holds -- the two differ by the carried arms below the cut.
+    """
+    block = sorted([r for r in sel if r["stage"] == stage
+                    and r["schedule"] == family],
+                   key=lambda r: int(r["val_score_rank"]))
+    assert block, (stage, family)
+    carried = [r for r in block[SELECTION_DEPTH:] if selection_marks(r, family)]
+    return block, block[:SELECTION_DEPTH], carried
+
 
 def t_selection_axis(sel, agg, regu, combo):
     """A1 --- the axis the selecting ran on, beside the axis the tables report.
@@ -1123,16 +1163,17 @@ def t_selection_axis(sel, agg, regu, combo):
         body.append("\\rowcolor{blockband}\\multicolumn{9}{@{}l}{\\textbf{%s}} \\\\"
                     % title)
         for fam, fam_title in SCHEDULE_BLOCKS:
-            block = sorted([r for r in stage_rows if r["schedule"] == fam],
-                           key=lambda r: int(r["val_score_rank"]))
-            assert block, (stage, fam)
-            # The top of the score ordering, plus any arm that went forward
-            # from below it -- an arm the study carried is never off its block.
-            shown = block[:SELECTION_DEPTH]
-            shown += [r for r in block[SELECTION_DEPTH:] if r["role"]]
-            body.append("\\multicolumn{9}{@{}l}{\\emph{%s: the top %s of %s "
-                        "arms by validation score}} \\\\"
-                        % (fam_title, len(shown), count(block[0], "ranked")))
+            # The top of the score ordering, plus every arm the study carried
+            # from below it -- an arm the paper runs again is never off its
+            # block, whatever validation thought of it.
+            block, within, carried = selection_block(stage_rows, stage, fam)
+            shown = within + carried
+            head = ("%s: the top %s of %s arms by validation score"
+                    % (fam_title, len(within), count(block[0], "ranked")))
+            if carried:
+                head += (", plus the %s the paper carries from below that "
+                         "depth" % ("arm" if len(carried) == 1 else "arms"))
+            body.append("\\multicolumn{9}{@{}l}{\\emph{%s}} \\\\" % head)
             for r in shown:
                 row = pick(reported[which], cell=r["cell"], family=fam)
                 # One set of runs, two readings of it.  A drift here would mean
@@ -1143,7 +1184,7 @@ def t_selection_axis(sel, agg, regu, combo):
                            - float(row["adaptation"])) < 5e-5, (stage, r["cell"])
                 assert abs(float(r["test_score"])
                            - float(row["score"])) < 5e-5, (stage, r["cell"])
-                mark = SELECTION_MARK.get(r["role"], "")
+                mark = selection_marks(r, fam)
                 body.append(" & ".join([
                     "\\quad " + label(r["cell"])
                     + ("$^{%s}$" % mark if mark else ""),
@@ -1169,8 +1210,8 @@ def t_selection_axis(sel, agg, regu, combo):
             "same arm, and \\emph{Rank} there is that arm's place in the same "
             "population ordered by the test score. A rank is over every arm "
             "that schedule's record ranked, which the block header states; "
-            "the block prints the top \\nSelectionDepth{} of them, and any "
-            "arm carried forward from below that depth. "
+            "the block prints the top \\nSelectionDepth{} of them, and "
+            "every arm the paper carried onward, at whatever depth it sits. "
             "The two orderings are not the same ordering: on the parallel "
             "schedule the rule the cross was built from is the one validation "
             "put first, and it is not the one that leads "
@@ -1192,7 +1233,16 @@ def t_selection_axis(sel, agg, regu, combo):
             "$\\dagger$ marks the pair the cross crowned, on validation, and "
             "therefore the arm every later stage carried; the cross cut no "
             "shortlist, it crowned once, and that arm leads the validation "
-            "score ordering of all eighteen pairs.")
+            "score ordering of all eighteen pairs. "
+            "$\\S$ marks an arm carried past the selecting stages and run "
+            "again at the four federation settings of "
+            "Table~\\ref{tab:scaling}. Only one of the three also carries a "
+            "mark of selection: the cross crowned once and shortlisted "
+            "nothing, so the other two are marked $\\S$ alone. One of those "
+            "two, the server step at $\\eta_s{=}0.95$ crossed with the "
+            "cyclic-tuned composite, is printed from below the depth for "
+            "exactly that reason --- validation put it last of the eighteen "
+            "crossings, and the paper runs it at every setting anyway.")
 
     return block_env(
         "tab:selection_axis",
@@ -1211,7 +1261,7 @@ def t_selection_axis(sel, agg, regu, combo):
         comment="source: data/selection_axis.csv, all rows, grouped by col\n"
                 "stage then by col schedule, ordered by col val_score_rank\n"
                 "inside each block and cut at the first five plus any row\n"
-                "with a col role; the four test columns are joined by\n"
+                "with a col role or a carried arm of tab:scaling; the four test columns are joined by\n"
                 "(cell, family) onto data/agg-winners.csv,\n"
                 "data/reg-winners.csv and data/combos.csv")
 

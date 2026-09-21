@@ -550,12 +550,17 @@ def test_the_selection_axis_counts_are_over_the_rows_that_table_prints():
                             and r["schedule"] == family],
                            key=lambda r: int(r["val_score_rank"]))
             printed += block[:tables.SELECTION_DEPTH]
-            printed += [r for r in block[tables.SELECTION_DEPTH:] if r["role"]]
+            printed += [r for r in block[tables.SELECTION_DEPTH:]
+                        if r["role"]
+                        or (r["cell"], family) in tables.SELECTION_CARRIED]
 
     assert registry["nSelectionRankTotal"][0] == str(len(printed))
+    # The blocks times the depth, plus one: the balanced arm of tab:scaling is
+    # carried without ever having been selected, validation put it ninth of
+    # nine, and the table prints it from below the cut for that reason.
     assert int(registry["nSelectionRankTotal"][0]) == (
         len(tables.SELECTION_STAGES) * len(tables.SCHEDULE_BLOCKS)
-        * tables.SELECTION_DEPTH)
+        * tables.SELECTION_DEPTH + 1)
     still = {(r["cell"], r["schedule"]) for r in printed
              if r["val_score_rank"] == r["test_score_rank"]}
     assert still == {("fedavgm_b0p3", "parallel"),

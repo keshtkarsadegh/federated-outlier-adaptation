@@ -1140,7 +1140,7 @@ def build():
 
     # ---- how deep tab:selection_axis prints ------------------------------
     from make_paper_tables import (SCHEDULE_BLOCKS, SELECTION_DEPTH,  # noqa: E402
-                                   SELECTION_STAGES)
+                                   SELECTION_STAGES, selection_block)
     put("nSelectionDepth", word(SELECTION_DEPTH),
         "make_paper_tables.SELECTION_DEPTH: how many arms of each block"
         " tab:selection_axis prints, in words")
@@ -1158,23 +1158,20 @@ def build():
     printed = []
     for stage, _, _ in SELECTION_STAGES:
         for family, _ in SCHEDULE_BLOCKS:
-            block = sorted([r for r in sel if r["stage"] == stage
-                            and r["schedule"] == family],
-                           key=lambda r: int(r["val_score_rank"]))
-            assert block, (stage, family)
-            printed += block[:SELECTION_DEPTH]
-            printed += [r for r in block[SELECTION_DEPTH:] if r["role"]]
+            _, within, carried = selection_block(sel, stage, family)
+            printed += within + carried
     blocks = len(SELECTION_STAGES) * len(SCHEDULE_BLOCKS)
-    # Every arm the study carried forward happens to sit inside the depth, so
-    # the printed set is exactly the blocks times the depth.  Asserted rather
-    # than assumed: an arm shortlisted from below the cut would add a row to
-    # the table, and the sentence quoting this macro would be a row short.
-    assert len(printed) == blocks * SELECTION_DEPTH, len(printed)
+    # The blocks times the depth is the floor, not the count: an arm the paper
+    # carries onward is printed from wherever validation left it, and one of
+    # the three sits below the cut.  Asserted as a floor rather than assumed
+    # equal, so that the sentence quoting this macro cannot go a row short.
+    assert len(printed) >= blocks * SELECTION_DEPTH, len(printed)
     put("nSelectionRankTotal", "%d" % len(printed),
         "selection_axis.csv, the rows tab:selection_axis prints: the first %d"
         " by col val_score_rank of each of the %d stage-by-schedule blocks,"
         " plus any row below that depth that col role marks as carried"
-        " forward, counted" % (SELECTION_DEPTH, blocks))
+        " forward or that tab:scaling runs again, counted"
+        % (SELECTION_DEPTH, blocks))
     still = [r for r in printed
              if int(r["val_score_rank"]) == int(r["test_score_rank"])]
     put("nSelectionRankMoved", "%d" % (len(printed) - len(still)),

@@ -306,6 +306,65 @@ def test_the_selection_axis_table_prints_every_arm_it_carried(
     assert tables.SELECTION_DEPTH >= 3
 
 
+def test_every_arm_the_scaling_table_runs_is_on_the_selection_axis(
+        tmp_path, monkeypatch):
+    """
+    The table that says where an arm came from must carry every arm the paper
+    runs again.
+
+    tab:scaling runs four arms at four federation settings. Three of them are
+    search arms and the fourth is the plain-FedAvg control, which never entered
+    a selecting stage and has no row in the view. For the three, the question a
+    reader asks of tab:selection_axis -- where did validation put this thing?
+    -- has to have an answer on the page, and for the balanced arm it did not:
+    validation ranked it ninth of nine and the table cut at five.
+    """
+    import make_paper_tables as tables
+    import paper_names
+
+    out = _emitted(tmp_path, monkeypatch)
+    axis = (out / "selection_axis.tex").read_text()
+    scaling = (out / "scaling.tex").read_text()
+
+    carried = dict(zip(["winner", "balanced", "sequential"],
+                       tables.SELECTION_CARRIED))
+    assert set(carried) == set(tables.ARM_ORDER) - {"control"}, tables.ARM_ORDER
+    view = {(r["cell"], r["schedule"]) for r in _rows(PAPER / "selection_axis.csv")}
+
+    for arm, (cell, family) in carried.items():
+        assert paper_names.ARM[arm] in scaling, arm
+        assert (cell, family) in view, (cell, family)
+        assert paper_names.label(cell) in axis, (
+            "tab:scaling runs %s (%s/%s) and tab:selection_axis does not print "
+            "it" % (arm, cell, family))
+        assert tables.SELECTION_CARRY_MARK in axis
+
+
+def test_the_selection_axis_note_explains_the_carry_mark(
+        tmp_path, monkeypatch):
+    """A mark on a row that the note does not name is noise on the page."""
+    import make_paper_tables as tables
+
+    out = _emitted(tmp_path, monkeypatch)
+    note = (out / "selection_axis.tex").read_text()
+    assert "$%s$ marks" % tables.SELECTION_CARRY_MARK in note
+    assert "tab:scaling" in note
+
+    # The balanced arm is the whole reason the mark exists: it is carried and
+    # nothing selected it, so it must carry the carry mark and no other.
+    cell, family = tables.BALANCED
+    marks = tables.selection_marks(
+        _pick_axis_row(cell, family), family)
+    assert marks == tables.SELECTION_CARRY_MARK, marks
+
+
+def _pick_axis_row(cell, family):
+    hit = [r for r in _rows(PAPER / "selection_axis.csv")
+           if r["cell"] == cell and r["schedule"] == family]
+    assert len(hit) == 1, (cell, family, hit)
+    return hit[0]
+
+
 # ------------------------------------------------------- tab:reg_winners
 def test_both_schedule_blocks_print_a_no_penalty_control(
         tmp_path, monkeypatch):
