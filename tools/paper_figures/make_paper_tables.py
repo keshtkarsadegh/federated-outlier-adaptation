@@ -157,24 +157,44 @@ BLEND_SELECTED = "hybrid_seq_mix0p75"
 BLEND_MARK = (("selected", "\\dagger"), ("crossed", "\\ddagger"))
 
 #: What the two control rows of tab:agg_winners are, said where the rows are
-#: printed.  The second one arms the oracle stop rule and is otherwise the
-#: first, which a reader of a table headed "server rule" cannot be expected to
-#: guess -- and "early stop" is a thing the protocol forbids, so a row whose
+#: printed.  The second one arms the accuracy-floor stop rule and is otherwise
+#: the first, which a reader of a table headed "server rule" cannot be expected
+#: to guess -- and "early stop" is a thing the protocol forbids, so a row whose
 #: name is only that reads as a run that stopped.  None did: the rule fired on
 #: no fold of either schedule, at either horizon, which `cost_arms.csv` records
 #: as a full hundred rounds on both control arms and `tests/test_recipe.py`
 #: holds it to.
+#:
+#: THE LAST SENTENCE IS THE ONE THAT HAD TO BE CHECKED.  It used to say the two
+#: rows differ "under a different client-sampling seed" and stop there, which
+#: invited the reader to price the difference at nothing.  The two rows are
+#: emitted by consecutive blocks of one task file (`s10_agg_full2.txt`), at the
+#: same hundred rounds, the same five folds, the same eight-of-ten
+#: participation and the same run seeds 1--5; the sampler-seed block is
+#: 704151--704155 for one and 704161--704165 for the other, and the stop flag
+#: is the only other difference and never fired.  So the gap between them IS a
+#: re-run of one configuration, and on the cyclic schedule it is
+#: \nControlSeedSpread{} points -- larger than \nReplicateGap{}, the gap the
+#: text calls a replicate gap, which is measured between two rows that differ
+#: by more than a seed (different stage, task file, seed block and trainer
+#: entry point).  Both numbers are macros so neither can be retyped.
 CONTROL_NOTE = (
     "``FedAvg (control)'' is plain FedAvg at $\\eta_s{=}1$, the row every "
     "other row of this table is measured against. "
     "``FedAvg (control, stop rule armed)'' is that same configuration with the "
-    "oracle stop rule switched on --- it ends a run the round the global "
-    "accuracy first falls below the participating clients' own accuracy or "
-    "below $0.90$ --- and it is a second control rather than a server rule. "
+    "accuracy-floor stop rule switched on --- it ends a run the round the "
+    "global accuracy first falls below the participating clients' own "
+    "accuracy or below $0.90$ --- and it is a second control rather than a "
+    "server rule. "
     "\\textbf{It never fired.} Both control arms ran the full hundred rounds on "
-    "every fold of both schedules, so this row is a second measurement of the "
-    "first under a different client-sampling seed, and nothing in this paper "
-    "reports a run that stopped early.")
+    "every fold of both schedules, so the pair is one configuration run twice: "
+    "same task file, same horizon, same folds, same participation and the same "
+    "run seeds, differing only in the client-sampling seed block. They "
+    "disagree by \\nControlSeedSpread{} points on the cyclic schedule and "
+    "\\nControlSeedSpreadPar{} on the parallel one, which is the run-to-run "
+    "spread of a single configuration at this horizon and is the scale every "
+    "margin in this paper should be read against. Nothing here reports a run "
+    "that stopped early.")
 
 RAW = {}
 CHECKED = [0]
@@ -377,6 +397,7 @@ def t_references(refs):
     return block(
         "tab:references",
         "The reference ladder, five-fold means, \\textbf{test} axis. Gained "
+        "(Eq.~\\eqref{eq:fg}) "
         "and spent are the differences from $\\thg$, score their difference, "
         "Eq.~\\eqref{eq:score}; centralized training is a ceiling the "
         "constraint forbids.",
@@ -459,8 +480,33 @@ def reg_printed(regu, combo, agg_cells):
     return out
 
 
-def t_reg(reg_rows):
+#: The cell of tab:agg_winners that IS the no-penalty control: plain FedAvg,
+#: no client penalty, at the same horizon.  A table of penalties borrows it
+#: and marks the borrowed row, so no reader takes it for a row the
+#: regularisation stage ran.
+NO_PENALTY_CONTROL = "control_fedavg"
+NO_PENALTY_MARK = "\\S"
+
+
+def t_reg(reg_rows, agg):
+    """T3 --- every penalty at its best setting, with a control on both blocks.
+
+    WHY THE PARALLEL BLOCK HAS TO BORROW ITS CONTROL.  The regularisation
+    finals ran one cell per penalty family per schedule, at that family's own
+    best setting.  The proximal family's best setting is mu = 0 on the cyclic
+    schedule -- which IS the no-penalty control, and prints as one -- and
+    mu = 1e-4 on the parallel schedule, which is not.  So the stage left the
+    parallel block with no zero-penalty row at all, and a reader comparing the
+    two blocks read the cyclic penalties against a control and the parallel
+    ones against nothing at all.  The run that answers it exists and is
+    already printed one table earlier: plain FedAvg, no penalty, the same
+    hundred rounds, the same five folds and the same participation, is the
+    control row of tab:agg_winners.  It is borrowed here, on BOTH schedules so
+    that the two blocks are read the same way, and marked.  The assertion at
+    the end is what stops a block losing it again.
+    """
     body = []
+    controls = []
     for fam, title in SCHEDULE_BLOCKS:
         if body:
             body.append("\\midrule")
@@ -473,8 +519,37 @@ def t_reg(reg_rows):
                                     num(r, "adaptation"), num(r, "preservation"),
                                     num(r, "spent", 2, 100),
                                     num(r, "score", 2, 100)]) + " \\\\")
+        control = pick(agg, cell=NO_PENALTY_CONTROL, family=fam)
+        controls.append(fam)
+        body.append(" & ".join([
+            "\\quad " + label(NO_PENALTY_CONTROL) + "$^{%s}$" % NO_PENALTY_MARK,
+            num(control, "adaptation"), num(control, "preservation"),
+            num(control, "spent", 2, 100),
+            num(control, "score", 2, 100)]) + " \\\\")
     check_schedules([r for r, _ in reg_rows])
-    note = ("The composite penalty is the one the construction stage built, "
+    assert sorted(controls) == sorted(fam for fam, _ in SCHEDULE_BLOCKS), (
+        "a schedule block of tab:reg_winners carries no no-penalty control, so "
+        "its penalties are read against nothing while the other block's are "
+        "read against one: %s" % controls)
+    note = ("$\\S$ The no-penalty control: plain FedAvg with no client penalty, "
+            "at the same horizon, the same five folds and the same "
+            "participation --- the row of Table~\\ref{tab:agg_winners} that "
+            "every penalty here is measured against. It is borrowed on both "
+            "schedules because this stage ran one cell per penalty family at "
+            "that family's own best setting, and the proximal family's best "
+            "setting is $\\mu{=}0$ on the cyclic schedule --- which is the "
+            "control, and is the ``No penalty (control)'' row of that block "
+            "--- but $\\mu{=}10^{-4}$ on the parallel one, which is not. The "
+            "cyclic block therefore carries the same nominal configuration "
+            "twice --- no penalty, plain FedAvg, a hundred rounds --- once "
+            "from each stage, and they disagree by \\nReplicateGap{} points. "
+            "That gap is not a pure replicate: the two runs come from "
+            "different task files, different seed blocks and different "
+            "trainer entry points. The pure one, two runs of one task file "
+            "differing only in the client-sampling seed, is the pair of "
+            "control rows of Table~\\ref{tab:agg_winners} and is "
+            "\\nControlSeedSpread{} points. "
+            "The composite penalty is the one the construction stage built, "
             "$\\lambda\\,[\\,m\\,D_{\\mathrm{kd}} + (1-m)\\,D_{\\mathrm{fisher}}\\,]$, "
             "out of a schedule's own selected distillation and consolidation "
             "components: it inherited their $\\lambda$ and $T$ and swept the "
@@ -492,7 +567,10 @@ def t_reg(reg_rows):
         "under plain FedAvg on the server, together with the composite rows "
         "the other tables read. Five-fold means, \\textbf{test} axis, "
         "grouped by schedule and ordered by score within each block; "
-        "``No penalty (control)'' is the proximal term at $\\mu{=}0$.",
+        "``No penalty (control)'' is the proximal term at $\\mu{=}0$, and the "
+        "row marked $\\S$ at the foot of each block is the study's own "
+        "no-penalty control, carried here so that both blocks are read "
+        "against one.",
         "lrrrr",
         "Client penalty & Adaptation & Preservation & Spent (pts) & Score (pts) \\\\",
         body, size="\\scriptsize", colsep="5pt", note=note,
@@ -501,7 +579,10 @@ def t_reg(reg_rows):
                 "reads --- the penalty component of a data/combos.csv row\n"
                 "on the same schedule, and the selected composite (mix 0.75,\n"
                 "cyclic-tuned) --- grouped by col family (parallel block\n"
-                "first, cyclic second), ordered by col score within each block")
+                "first, cyclic second), ordered by col score within each\n"
+                "block. The last row of each block is the plain-FedAvg\n"
+                "control row of data/agg-winners.csv for that family,\n"
+                "which is the study's no-penalty control")
 
 
 # --------------------------------------------------------------------------
@@ -696,49 +777,130 @@ def t_scaling(sizes, cost_s):
 # T7 --- who the gain reaches
 # --------------------------------------------------------------------------
 
-def t_fairness(fair_combo, fair10, fair20, agg_cells):
+#: Every block tab:fairness prints, in order: the key into the view bundle, the
+#: cost_stages row whose participation the block header states, and the title.
+#: The four carry settings are the four of tab:scaling, so the two tables list
+#: the same arms at the same settings and a reader can join them row for row;
+#: the search setting leads because it is the setting the arms were chosen at.
+FAIRNESS_BLOCKS = (
+    ("combo", "combinations",
+     "Search setting, the combination stage (ten clients)"),
+    ("c10d10", "ten clients, one dropped", "Carry setting, ten clients"),
+    ("five", "five clients, one dropped", "Carry setting, five clients"),
+    ("c20d10", "twenty, two dropped",
+     "Carry setting, twenty clients, two dropped"),
+    ("c20d20", "twenty, four dropped",
+     "Carry setting, twenty clients, four dropped"),
+)
+
+
+def t_fairness(fair, sizes, combo, cost_s):
+    """A1 --- the per-client distribution of every carried arm, every setting.
+
+    THE MEAN COLUMN IS THE COHORT ACCURACY, NOT THE MEAN OVER CLIENTS.  It used
+    to be the second, and the second is a different number: the clients hold
+    between seventy and two hundred digit rows apiece, so an average over
+    clients and an accuracy pooled over their rows do not agree, and the
+    fairness table printed an adaptation for the crowned arm that disagreed
+    with Tables 4 and 7 by up to a point at twenty clients.  Two tables of one
+    arm that print two adaptations are a table a reader cannot join.  So this
+    column is ``cohort`` --- ``final_evaluation.clients.accuracy``, the exact
+    column ``report_tables.py`` reports as adaptation --- and the assertion
+    below holds every row of it to the row the reporting table prints.  The
+    per-client spread is still the point of the table and is still here: it is
+    the three columns beside the mean.
+
+    AND EVERY CARRIED ARM IS PRINTED AT EVERY SETTING.  The introducing
+    sentence promised that and the table did not keep it: there was no
+    five-client block at all and the twenty-client blocks carried one arm of
+    the three, the one that came out negative.  Printing the negative case
+    alone is the version of this table a reader has the least reason to trust.
+    """
     def line(name, r):
         return " & ".join([name, r["family"],
-                           num(r, "mean"), num(r, "min"),
+                           num(r, "cohort"), num(r, "min"),
                            num(r, "lift_worst", 2, 100, signed=True),
                            num(r, "improved", 2)]) + " \\\\"
 
-    best = max(fair_combo, key=lambda r: float(r["lift_worst"]))
-    body = ["\\multicolumn{6}{@{}l}{\\emph{Search setting, the combination "
-            "stage (ten clients, eight per round)}} \\\\"]
-    for arm_name, cell, family in (
-            ("\\quad " + ARM["winner"], CROWNED[0], CROWNED[1]),
-            ("\\quad " + ARM["balanced"], BALANCED[0], BALANCED[1]),
-            ("\\quad " + ARM["sequential"], CYCLIC_ARM[0], CYCLIC_ARM[1]),
-            ("\\quad best worst-client", best["cell"], best["family"])):
-        body.append(line(arm_name, pick(fair_combo, cell=cell, family=family)))
+    def reported(key, cell, family):
+        """The row the score table prints for the same arm, or None."""
+        table = combo if key == "combo" else sizes[key]
+        hit = [x for x in table if x["cell"] == cell and x["family"] == family]
+        return hit[0] if len(hit) == 1 else None
 
-    body += ["\\midrule",
-             "\\multicolumn{6}{@{}l}{\\emph{Carry setting, ten clients, nine "
-             "per round}} \\\\"]
-    for cell in ARM_ORDER:
-        for r in [x for x in fair10 if x["cell"] == cell]:
-            body.append(line("\\quad " + ARM[cell], r))
+    best = max(fair["combo"], key=lambda r: float(r["lift_worst"]))
+    body = []
+    listed = []
+    for key, stage, title in FAIRNESS_BLOCKS:
+        if body:
+            body.append("\\midrule")
+        cs = pick(cost_s, stage=stage)
+        body.append("\\multicolumn{6}{@{}l}{\\emph{%s, %s participating per "
+                    "round}} \\\\" % (title, loose(cs, "clients_per_round")))
+        if key == "combo":
+            here = [("\\quad " + ARM["winner"], CROWNED),
+                    ("\\quad " + ARM["balanced"], BALANCED),
+                    ("\\quad " + ARM["sequential"], CYCLIC_ARM),
+                    ("\\quad best worst-client", (best["cell"], best["family"]))]
+            rows = [(name, pick(fair[key], cell=cell, family=family))
+                    for name, (cell, family) in here]
+        else:
+            rows = [("\\quad " + ARM[cell], r)
+                    for cell in ARM_ORDER
+                    for r in [x for x in fair[key] if x["cell"] == cell]]
+        for name, r in rows:
+            # ONE ARM, ONE ADAPTATION.  The mean column of this table and the
+            # adaptation column of the table that reports the same arm are the
+            # same measurement of the same runs, and this is what says so.
+            row = reported(key, r["cell"], r["family"])
+            assert row is not None and abs(float(r["cohort"])
+                                           - float(row["adaptation"])) < 5e-7, (
+                "tab:fairness would print a cohort accuracy for %s/%s at the %s "
+                "setting that the table reporting it does not print"
+                % (r["cell"], r["family"], key))
+            listed.append((key, r["cell"], r["family"]))
+            body.append(line(name, r))
 
-    body += ["\\midrule",
-             "\\multicolumn{6}{@{}l}{\\emph{Twenty clients: the one arm that "
-             "leaves a client behind}} \\\\"]
-    for key, _, title in SETTING[2:]:
-        r = pick(fair20[key], cell="balanced", family="parallel")
-        body.append(line("\\quad %s, %s" % (ARM["balanced"], title.lower().replace(
-            "twenty clients, ", "")), r))
+    # WHAT THE INTRODUCING SENTENCE PROMISES, CHECKED.  Every arm the score
+    # table prints at a carry setting is an arm this table prints at that
+    # setting; a record that never ran would be named here rather than dropped.
+    missing = []
+    for key, _, _ in FAIRNESS_BLOCKS:
+        if key == "combo":
+            continue
+        for r in sizes[key]:
+            if (key, r["cell"], r["family"]) not in listed:
+                missing.append((key, r["cell"], r["family"]))
+    assert not missing, (
+        "tab:scaling reports these arms and tab:fairness does not list them, "
+        "so the sentence that introduces it is false: %s" % missing)
 
-    note = ("$\\Delta$ worst is the worst-served client's accuracy minus "
-            "\\emph{that client's own} accuracy under the shipped model, in "
-            "points; lifted is the share of client-fold pairs that finish "
-            "above their own shipped-model accuracy. Every entry is a "
-            "five-fold mean over the per-client records, on the \\textbf{test} "
-            "axis, and each block states its own participation in its header. "
+    note = ("Mean is the cohort accuracy pooled over the cohort's test rows "
+            "--- the same number Tables~\\ref{tab:combos} "
+            "and~\\ref{tab:scaling} print as adaptation for the same arm, "
+            "which is why the two tables can be read against each other. The "
+            "three columns beside it are the per-client reading the mean "
+            "hides: the worst-served client's own accuracy, that client's "
+            "accuracy minus \\emph{its own} accuracy under the shipped model, "
+            "in points, and the share of client-fold pairs that finish above "
+            "their own shipped-model accuracy. Every entry is a five-fold "
+            "mean over the per-client records, on the \\textbf{test} axis, and "
+            "each block states its own participation in its header. "
+            "The shipped-model reference $\\Delta$ worst is taken against is "
+            "the five-fold mean of the worst-served client \\emph{of each "
+            "fold}: \\nGZeroWorstFoldMeanFive{} at five clients, "
+            "\\nGZeroWorstFoldMeanTen{} at ten and "
+            "\\nGZeroWorstFoldMeanTwenty{} at twenty. It is not "
+            "\\nGZeroClientMin{}, the figure quoted for the shipped model's "
+            "worst client elsewhere: that is the worst client's own five-fold "
+            "mean. Same writers, same rows, same model --- the minimum and "
+            "the mean taken in the other order, and the worst-served client "
+            "is not the same writer on every fold. "
             "In the ten-client carry setting every arm lifts its worst-served "
             "client, by between \\nFairWorstMinGain{} and "
             "\\nFairWorstMaxGain{} points. The only negative "
-            "$\\Delta$ worst in the study is the balanced arm at twenty "
-            "clients, in the last block: \\nBalancedWorstTwentyTwo{} points "
+            "$\\Delta$ worst in the study is the " + ARM["balanced"] + " arm "
+            "at twenty clients: \\nBalancedWorstTwentyTwo{} points "
             "with two of the twenty dropped and "
             "\\nBalancedWorstTwentyFour{} with four --- and in both the "
             "lifted column says most of the cohort still finished above its "
@@ -747,23 +909,31 @@ def t_fairness(fair_combo, fair10, fair20, agg_cells):
             "Arms: " + ARM["winner"] + " is "
             + label(CROWNED[0]) + ", " + ARM["balanced"] + " is "
             + label(BALANCED[0]) + ", " + ARM["sequential"] + " is "
-            + label(CYCLIC_ARM[0]) + ", and the best worst-client pair is "
-            + label(best["cell"]) + ".")
+            + label(CYCLIC_ARM[0]) + ", " + ARM["control"] + " is plain "
+            "FedAvg, and the best worst-client pair is "
+            + label(best["cell"]) + ". The twenty-client settings ran no "
+            "control.")
 
     return block(
         "tab:fairness",
         "The per-client distribution at the end of the budget, each client "
-        "read against its own accuracy under the shipped model. "
+        "read against its own accuracy under the shipped model. Every carried "
+        "arm at every setting it was carried to. "
         "\\textbf{Test} axis, five-fold means. The mean column is the cohort "
-        "mean the selection rule optimises; the two columns beside it are what "
-        "that mean can hide.",
+        "accuracy the selection rule optimises, the same one Tables~"
+        "\\ref{tab:combos} and~\\ref{tab:scaling} report; the three columns "
+        "beside it are what that mean can hide.",
         "llrrrr",
         "Arm & Schedule & Mean & Worst & $\\Delta$ worst & Lifted \\\\\n"
         " & & & client & (pts) & \\\\",
         body, size="\\scriptsize", colsep="4pt", note=note,
-        comment="sources: data/fairness_combo.csv (search setting),\n"
-                "data/fairness_c10d10.csv (carry setting), and\n"
-                "data/fairness_c20d10.csv + fairness_c20d20.csv (the caveat rows)")
+        comment="sources: data/fairness_combo.csv (search setting) and\n"
+                "data/fairness_{c10d10,five,c20d10,c20d20}.csv (the four\n"
+                "carry settings), every arm each one carries, in the arm order\n"
+                "of tab:scaling; participation per block is cost_stages.csv\n"
+                "col clients_per_round. The Mean column is col cohort, which\n"
+                "is asserted equal to col adaptation of the table that reports\n"
+                "the same arm (data/combos.csv, data/sizes_*.csv)")
 
 
 # --------------------------------------------------------------------------
@@ -779,18 +949,41 @@ SELECTION_STAGES = (
     ("aggregation", "Server rules: the shortlist the cross was built from", "agg"),
     ("regularisation", "Client penalties: the shortlist the cross was built from",
      "reg"),
-    ("combination", "The cross: the three strongest pairs of each schedule", "combo"),
+    ("combination", "The cross: eighteen pairs, one crowned", "combo"),
 )
+
+#: How many arms of a block are printed.  A SHORTLIST OF THREE WHOSE RANKS READ
+#: 1, 2 AND 5 CANNOT BE RECONCILED AGAINST A TABLE OF THREE ROWS: the arms the
+#: rule stepped over have to be on the page, or the rule is invisible and the
+#: ranks look like a mistake.  Five is the depth at which every shortlist of
+#: this study is covered; anything the rule reached below five is printed as
+#: well, because the promise is that a shortlisted arm is never off the block.
+SELECTION_DEPTH = 5
+
+#: The mark a printed arm carries for the role it played.
+SELECTION_MARK = {"crowned": "\\dagger", "shortlist": "\\ddagger"}
 
 
 def t_selection_axis(sel, agg, regu, combo):
-    """
-    Every arm a stage carried forward, at its place in both orderings.
+    """A1 --- the axis the selecting ran on, beside the axis the tables report.
 
-    The test columns are read from the table that reports the arm and NOT from
-    the selection record, which carries a test figure of its own for the same
-    runs.  They agree --- the assertion below is what says so --- and printing
-    the reported one is what stops this table from becoming a second, slightly
+    THE RANK COLUMNS ARE ON THE SCORE, AND THEY DID NOT USE TO BE.  Every
+    shortlist of this study was cut by ``study_emit.ranked_by_trade`` --- the
+    selection score of Eq. 2, what an arm gained on the cohort less what it
+    spent on the source population, at w = 1.  The rank this table printed came
+    from the records' ``rankings`` block instead, which
+    ``study_emit.both_rankings`` writes ordered by ADAPTATION alone.  So the
+    table ranked the arms on a quantity that chose nothing, its ranks
+    reproduced the adaptation ordering exactly, and it printed no preservation
+    on the validation side at all -- which is the half of the score that makes
+    the ordering differ.  Both validation columns and both orderings are now
+    in the view and both are printed, the score rank first because it is the
+    one that selected.
+
+    The test columns are read from the table that REPORTS the arm and not from
+    the view, which carries a test figure of its own for the same runs.  They
+    agree --- the two assertions below are what say so --- and printing the
+    reported one is what stops this table from becoming a second, slightly
     different copy of Tables 2 to 4.
     """
     reported = {"agg": agg, "reg": regu, "combo": combo}
@@ -800,14 +993,20 @@ def t_selection_axis(sel, agg, regu, combo):
         assert stage_rows, stage
         if body:
             body.append("\\midrule")
-        body.append("\\rowcolor{blockband}\\multicolumn{7}{@{}l}{\\textbf{%s}} \\\\"
+        body.append("\\rowcolor{blockband}\\multicolumn{9}{@{}l}{\\textbf{%s}} \\\\"
                     % title)
         for fam, fam_title in SCHEDULE_BLOCKS:
-            block = [r for r in stage_rows if r["schedule"] == fam]
+            block = sorted([r for r in stage_rows if r["schedule"] == fam],
+                           key=lambda r: int(r["val_score_rank"]))
             assert block, (stage, fam)
-            body.append("\\multicolumn{7}{@{}l}{\\emph{%s, %s arms ranked}} \\\\"
-                        % (fam_title, count(block[0], "ranked")))
-            for r in block:
+            # The top of the score ordering, plus any arm that went forward
+            # from below it -- an arm the study carried is never off its block.
+            shown = block[:SELECTION_DEPTH]
+            shown += [r for r in block[SELECTION_DEPTH:] if r["role"]]
+            body.append("\\multicolumn{9}{@{}l}{\\emph{%s: the top %s of %s "
+                        "arms by validation score}} \\\\"
+                        % (fam_title, len(shown), count(block[0], "ranked")))
+            for r in shown:
                 row = pick(reported[which], cell=r["cell"], family=fam)
                 # One set of runs, two readings of it.  A drift here would mean
                 # the frozen record and the shipped view no longer describe the
@@ -815,49 +1014,68 @@ def t_selection_axis(sel, agg, regu, combo):
                 # otherwise hide behind two plausible-looking columns.
                 assert abs(float(r["test_adaptation"])
                            - float(row["adaptation"])) < 5e-5, (stage, r["cell"])
-                mark = "$^{\\dagger}$" if r["crowned"] == "yes" else ""
+                assert abs(float(r["test_score"])
+                           - float(row["score"])) < 5e-5, (stage, r["cell"])
+                mark = SELECTION_MARK.get(r["role"], "")
                 body.append(" & ".join([
-                    "\\quad " + label(r["cell"]) + mark,
-                    num(r, "val_adaptation"), count(r, "val_rank"),
-                    num(row, "adaptation"), count(r, "test_rank"),
-                    num(row, "preservation"),
-                    num(row, "score", 2, 100)]) + " \\\\")
+                    "\\quad " + label(r["cell"])
+                    + ("$^{%s}$" % mark if mark else ""),
+                    num(r, "val_adaptation"), num(r, "val_preservation"),
+                    num(r, "val_score", 2, 100), count(r, "val_score_rank"),
+                    num(row, "adaptation"), num(row, "preservation"),
+                    num(row, "score", 2, 100), count(r, "test_score_rank"),
+                ]) + " \\\\")
     check_schedules([{"family": r["schedule"]} for r in sel])
 
-    note = ("Basis, column by column: \\emph{Adaptation} and \\emph{Rank} under "
-            "\\textbf{validation} are the fold-mean cohort accuracy each "
-            "selection record was cut on and the arm's place in that record's "
-            "own ordering; the four columns under \\textbf{test} are the row the "
-            "reporting table prints for the same arm, and \\emph{Rank} there is "
-            "its place in the same record's test ordering of the same runs. A "
-            "rank is over every arm that schedule's record ranked, which the "
-            "block header states. "
+    note = ("Basis, column by column: the four columns under "
+            "\\textbf{validation} are the fold-mean cohort accuracy, the "
+            "fold-mean source accuracy and the selection score of "
+            "Eq.~\\eqref{eq:score} that each selection record was cut on, and "
+            "the arm's place in that score's ordering --- which is the "
+            "ordering that did the choosing. The four columns under "
+            "\\textbf{test} are the row the reporting table prints for the "
+            "same arm, and \\emph{Rank} there is that arm's place in the same "
+            "population ordered by the test score. A rank is over every arm "
+            "that schedule's record ranked, which the block header states; "
+            "the block prints the top \\nSelectionDepth{} of them, and any "
+            "arm carried forward from below that depth. "
             "The two orderings are not the same ordering: on the parallel "
             "schedule the rule the cross was built from is the one validation "
             "put first, and it is not the one that leads "
-            "Table~\\ref{tab:agg_winners}. The penalty shortlist carries an arm "
-            "ranked below the third because a composite competes for a slot of "
-            "its own, which is why a validation rank in a three-row block need "
-            "not read $1,2,3$. $\\dagger$ marks the pair the cross crowned, on "
-            "validation, and therefore the arm every later stage carried.")
+            "Table~\\ref{tab:agg_winners}. "
+            "$\\ddagger$ marks an arm the stage carried forward. A shortlist "
+            "is the first three arms of the validation-score ordering that "
+            "belong to three \\emph{different} methods --- a family's three "
+            "slots are three ideas, not three settings of one, and the "
+            "composite penalty competes for a slot of its own --- which is "
+            "why a shortlist need not read $1,2,3$: on the cyclic penalties "
+            "it reads $1,2,5$, the arms at 3 and 4 being further settings of "
+            "a composite whose slot was already taken. "
+            "$\\dagger$ marks the pair the cross crowned, on validation, and "
+            "therefore the arm every later stage carried; the cross cut no "
+            "shortlist, it crowned once, and that arm leads the validation "
+            "score ordering of all eighteen pairs.")
 
     return block_env(
         "tab:selection_axis",
-        "What the selecting saw, and what the tables report. Every arm each "
-        "stage carried forward, with the \\textbf{validation} ordering that "
-        "chose it beside the \\textbf{test} row that reports it. Five-fold "
-        "means throughout; the two axes are two evaluations of one set of runs "
-        "and must not be quoted against each other.",
-        "lrrrrrr",
-        "Arm & \\multicolumn{2}{c}{Validation} & "
-        "\\multicolumn{4}{c}{Test} \\\\\n"
-        "\\cmidrule(lr){2-3}\\cmidrule(lr){4-7}\n"
-        " & Adaptation & Rank & Adaptation & Rank & Preservation & Score (pts) \\\\",
-        body, size="\\scriptsize", colsep="4pt", note=note,
-        comment="source: data/selection_axis.csv, all rows, grouped by col stage\n"
-                "then by col schedule, ordered by col val_rank inside each block;\n"
-                "the four test columns are joined by (cell, family) onto\n"
-                "data/agg-winners.csv, data/reg-winners.csv and data/combos.csv")
+        "What the selecting saw, and what the tables report. Each selecting "
+        "stage's ranked arms at the top of the \\textbf{validation} ordering "
+        "that chose them, beside the \\textbf{test} row that reports them. "
+        "Five-fold means throughout; the two axes are two evaluations of one "
+        "set of runs and must not be quoted against each other.",
+        "lrrrrrrrr",
+        "Arm & \\multicolumn{4}{c}{Validation (the axis that selected)} & "
+        "\\multicolumn{4}{c}{Test (the axis the tables report)} \\\\\n"
+        "\\cmidrule(lr){2-5}\\cmidrule(lr){6-9}\n"
+        " & Adapt. & Pres. & Score (pts) & Rank & "
+        "Adapt. & Pres. & Score (pts) & Rank \\\\",
+        body, size="\\scriptsize", colsep="3pt", note=note,
+        comment="source: data/selection_axis.csv, all rows, grouped by col\n"
+                "stage then by col schedule, ordered by col val_score_rank\n"
+                "inside each block and cut at the first five plus any row\n"
+                "with a col role; the four test columns are joined by\n"
+                "(cell, family) onto data/agg-winners.csv,\n"
+                "data/reg-winners.csv and data/combos.csv")
 
 
 # --------------------------------------------------------------------------
@@ -986,6 +1204,42 @@ def t_signals(sigs, pst):
     by = {r["signal"]: r for r in sigs}
     assert len(by) == len(sigs) == len(SIGNAL_ORDER), sorted(by)
 
+    # The three references, all from the one row of plateau_stages.csv that
+    # runs over every arm, so the horizon under the patience rule and the
+    # horizon under a signal are the same 83 arms and the same mean.  Read
+    # first because the fixed horizon is what every delta in the last column
+    # is a delta from.
+    ref = pick(pst, stage="all")
+    fixed = num(ref, "fixed_mean", 2, 100)
+
+    def against_fixed(score, stored, who):
+        """The last column: the difference of the two numbers on the page.
+
+        THE ONE COLUMN IN THIS FILE THAT IS NOT ROUNDED ONCE, AND IT IS
+        DELIBERATE.  Everywhere else a difference is taken at full precision
+        and rounded once, because a macro and a table have to agree; the
+        contract at the top of this file says so and numbers.tex keeps the
+        other half of it.  This column is different because both of its
+        operands are printed in the same row of the same table: the score at
+        the stopped round, and the fixed-horizon score three rows below it.
+        Rounded once, three of the eight signal rows came out a hundredth away
+        from the subtraction a reader does on the page -- 1.46 less 7.74
+        printed as -6.27, 7.99 less 7.74 as +0.26, 8.12 less 7.74 as +0.39 --
+        and a table whose own arithmetic does not close is a table a reader
+        stops trusting at the first row they check.  So the delta is the
+        difference of the printed values, the full-precision value it replaces
+        is asserted to be within one hundredth of it, and the note says which
+        it is.  No macro reads this column.
+        """
+        value = float(score) - float(fixed)
+        assert abs(value - 100.0 * float(stored)) <= 0.01 + 1e-9, (
+            "%s: the printed columns and the stored difference disagree by "
+            "more than the rounding that separates them (%.4f vs %.4f)"
+            % (who, value, 100.0 * float(stored)))
+        CHECKED[0] += 1
+        out = "%.2f" % value
+        return ("$%s$" % out) if out.startswith("-") else ("$+%s$" % out)
+
     body = []
     for key in SIGNAL_ORDER:
         r = by[key]
@@ -993,6 +1247,7 @@ def t_signals(sigs, pst):
             "%s is not defined on every stopping arm, so its rule columns are "
             "a mean over a different population than the rest of the column"
             % key)
+        score = num(r, "mean_stopped_score", 2, 100)
         body.append(" & ".join([
             SIGNAL[key] + ("$^{\\dagger}$" if key in UNSTEERABLE else ""),
             verbatim(r, "observed_on"),
@@ -1000,27 +1255,24 @@ def t_signals(sigs, pst):
             "%s\\%%" % num(r, "share_ge_0p9", 1, 100),
             verbatim(r, "best_delta"),
             count(r, "arms_fired"),
-            num(r, "mean_stopped_score", 2, 100),
-            num(r, "mean_vs_fixed", 2, 100, signed=True)]) + " \\\\")
+            score,
+            against_fixed(score, r["mean_vs_fixed"], key)]) + " \\\\")
 
-    # The three references, all from the one row of plateau_stages.csv that
-    # runs over every arm, so the horizon under the patience rule and the
-    # horizon under a signal are the same 83 arms and the same mean.
-    ref = pick(pst, stage="all")
     dash = "---"
+    rule = num(ref, "rule_mean", 2, 100)
+    oracle = num(ref, "oracle_mean", 2, 100)
     gap = float(ref["oracle_mean"]) - float(ref["fixed_mean"])
-    CHECKED[0] += 1
     body += [
         "\\midrule",
         " & ".join(["\\emph{Fixed horizon}", "nothing", dash, dash, dash,
-                    dash, num(ref, "fixed_mean", 2, 100), dash]) + " \\\\",
+                    dash, fixed, dash]) + " \\\\",
         " & ".join(["\\emph{Patience rule} ($k=\\nPlateauK{}$)",
                     "cohort accuracy", dash, dash, dash,
-                    count(ref, "fires"), num(ref, "rule_mean", 2, 100),
-                    num(ref, "gain", 2, 100, signed=True)]) + " \\\\",
+                    count(ref, "fires"), rule,
+                    against_fixed(rule, ref["gain"], "patience rule")]) + " \\\\",
         " & ".join(["\\emph{Oracle stop}", "the source population", dash,
-                    dash, dash, dash, num(ref, "oracle_mean", 2, 100),
-                    derived(gap, 2, 100, signed=True)]) + " \\\\"]
+                    dash, dash, dash, oracle,
+                    against_fixed(oracle, gap, "oracle stop")]) + " \\\\"]
 
     # Six of the eight signals are recorded on the same runs; the two the
     # clients are asked for are missing from a few, and a median over a
@@ -1034,9 +1286,12 @@ def t_signals(sigs, pst):
             "grow --- against the fall in source validation accuracy, one "
             "correlation per run; the column beside it is the share of those "
             "runs at $\\lvert\\rho\\rvert\\ge0.9$. Both are read over the "
-            "runs of the signals pass, which is the programme as it stood "
-            "before its last two stages: %s runs for six of the eight "
-            "signals, %s for %s and %s for %s. The four columns on the right "
+            "runs of the signals pass that carry a source-validation series, "
+            "which is \\nSignalCorrRuns{} of the \\nSignalRuns{} runs that "
+            "pass covered --- itself the programme as it stood before its "
+            "last two stages, and not the \\nProgrammeTasks{} tasks the whole "
+            "programme ran. Of those, %s carry all of six of the eight "
+            "signals, %s carry %s and %s carry %s. The four columns on the right "
             "are means over the \\nStoppingArms{} hundred-round arms "
             "instead --- the budget the signal scores best at on the grid "
             "shared by all eight, the arms it stops before the horizon on, "
@@ -1054,7 +1309,14 @@ def t_signals(sigs, pst):
             "Table~\\ref{tab:plateau}, which watches the cohort's own "
             "validation accuracy and needs no proxy at all, and the oracle "
             "stop, which reads the source population and is a bound on what "
-            "stopping is worth rather than a method."
+            "stopping is worth rather than a method. "
+            "$\\Delta$ vs.\\ fixed is the difference of the two numbers "
+            "\\emph{as printed} --- the row's score less the fixed-horizon "
+            "score three rows below it --- so every row of this column "
+            "closes on the page. It is the one column in this paper that is "
+            "not rounded once from the stored value; the two agree to within "
+            "a hundredth of a point on every row, and the generator asserts "
+            "it. No macro quotes this column."
             % (count(by["proxy_kl"], "n_runs"),
                count(by["retention_known"], "n_runs"),
                short("retention_known"),
@@ -1179,6 +1441,169 @@ def t_plateau(pst):
                 "(patience 20, margin 0, checkpoint_best), stage means")
 
 
+#: How the holdout tool's set names read on the page.  The tool names its sets
+#: after the run-folder stems it cut them from, and a stem is not a thing this
+#: paper prints; STAGE_LABEL already says what each stage is called.
+HOLDOUT_STAGE = {stem: name.replace("\\textbf{", "").replace("}", "")
+                 for stem, name in STAGE_LABEL}
+
+#: The protocol families of plateau_holdout_protocols.csv, the order the table
+#: states them in, whether each row is printed on its own or the family is
+#: summarised as one row with a mean and a spread, and the family's title.
+#: EVERY FAMILY IS HERE, which is the point: the table used to print six rows
+#: drawn from four of the six families, covering nineteen of the twenty-eight
+#: protocols, and a reader who counted the rows had nowhere to look for the
+#: other nine.
+HOLDOUT_FAMILIES = (
+    ("fold", "each", "Designated fold splits"),
+    ("fold-loo", "summary", "Leave one fold out"),
+    ("stage", "each", "Designated stage splits"),
+    ("stage-loo", "each", "Leave one stage out"),
+    ("random-half", "summary", "Random halves of the arms"),
+    ("in-sample", "each", "In sample: the published setting, not a holdout"),
+)
+
+
+def _sd(xs):
+    """Sample standard deviation, written out: a handful of values needs no
+    library, and importing one into a standard-library-only generator to take
+    a square root is how a dependency arrives."""
+    if len(xs) < 2:
+        return 0.0
+    mean = sum(xs) / len(xs)
+    return (sum((x - mean) ** 2 for x in xs) / (len(xs) - 1)) ** 0.5
+
+
+def _folds(digits):
+    """``"123" -> "folds 1--3"``, and a comma list when they are not a run."""
+    numbers = [int(d) for d in digits]
+    if len(numbers) == 1:
+        return "fold %d" % numbers[0]
+    if numbers == list(range(numbers[0], numbers[-1] + 1)):
+        return "folds %d--%d" % (numbers[0], numbers[-1])
+    return "folds " + ", ".join("%d" % n for n in numbers)
+
+
+def _holdout_name(text):
+    """One selection- or held-out-set description, in the paper's own words.
+
+    A REFUSAL RATHER THAN A PASS-THROUGH.  The alternative is to print whatever
+    the tool wrote, which would put a run-folder stem on the page the first
+    time a stage is added, silently.
+    """
+    if text == "same (in sample)":
+        return "---"
+    match = re.fullmatch(r"all arms, (all folds|folds? (\d+))", text)
+    if match:
+        return ("All arms, all folds" if match.group(2) is None
+                else "All arms, " + _folds(match.group(2)))
+    for stem, name in sorted(HOLDOUT_STAGE.items(), key=lambda kv: -len(kv[0])):
+        if text == "%s arms" % stem:
+            return name
+        if text in ("all non-%s arms" % stem, "all but %s" % stem):
+            lower = name[0].lower() + name[1:]
+            # STAGE_LABEL names one stage "The extreme cases"; "all but the
+            # the extreme cases" is what happens when a prefix is pasted on
+            # without looking at what it is being pasted onto.
+            return "All arms but " + (lower if lower.startswith("the ")
+                                      else "the " + lower)
+    raise AssertionError(
+        "plateau_holdout_protocols.csv names a set this table cannot put into "
+        "words: %r. Naming it here is what keeps a run-folder stem off the "
+        "page." % text)
+
+
+def t_kholdout(prot):
+    """B4 --- the patience, chosen where it is not measured.
+
+    THE COUNT HAD TO BECOME RECONCILABLE.  The tool runs twenty-eight
+    protocols and the table printed six rows; the six expanded to nineteen of
+    the twenty-eight, because two families were folded into one row each and
+    the eight leave-one-stage-out protocols were not on the page at all.  A
+    reader who took the caption at its word and counted got nineteen and had
+    nowhere to look for the rest.  Every family is now on the table, each
+    family header says how many protocols it stands for, and the assertion
+    below refuses a table whose families do not add up to the file's own row
+    count.
+    """
+    families = {}
+    for r in prot:
+        families.setdefault(r["protocol"], []).append(r)
+    unplaced = sorted(set(families) - {name for name, _, _ in HOLDOUT_FAMILIES})
+    assert not unplaced, (
+        "plateau_holdout_protocols.csv carries protocol families this table "
+        "does not place, so the count on the page cannot be reconciled with "
+        "the file: %s" % unplaced)
+
+    body, covered = [], 0
+    for name, how, title in HOLDOUT_FAMILIES:
+        here = families.get(name) or []
+        assert here, name
+        covered += len(here)
+        if body:
+            body.append("\\midrule")
+        body.append("\\multicolumn{5}{@{}l}{\\emph{%s (%d of "
+                    "\\nKholdoutProtocols{} protocols)}} \\\\"
+                    % (title, len(here)))
+        if how == "summary":
+            gains = [float(r["held_gain"]) for r in here]
+            chosen = {int(float(r["k"])) for r in here}
+            held = {int(float(r["held_arms"])) for r in here}
+            assert len(chosen) == 1 and len(held) == 1, (name, chosen, held)
+            body.append(" & ".join([
+                "\\quad each split, mean $\\pm$ sd",
+                "the other half of the same cut" if name == "random-half"
+                else "the fold that was held",
+                "%d" % held.pop(),
+                "%d on %d/%d" % (chosen.pop(), len(here), len(here)),
+                "%s $\\pm$ %s" % (derived(sum(gains) / len(gains), 2, 100,
+                                          signed=True),
+                                  derived(_sd(gains), 2, 100))]) + " \\\\")
+            continue
+        for r in here:
+            body.append(" & ".join([
+                "\\quad " + _holdout_name(r["selection_set"]),
+                _holdout_name(r["heldout_set"]),
+                count(r, "held_arms"), count(r, "k"),
+                num(r, "held_gain", 2, 100, signed=True)]) + " \\\\")
+
+    assert covered == len(prot), (covered, len(prot))
+
+    note = ("Every protocol the tool runs is on this table: "
+            "\\nKholdoutProtocols{} of them in six families, with the two "
+            "families whose splits are interchangeable summarised as one row "
+            "apiece carrying the mean and the sample standard deviation of "
+            "their held-out gains. The patience $k=\\nPlateauK{}$ is chosen "
+            "by every one of the \\nKholdoutProtocols{}, at every margin and "
+            "on every split. The designated stage split and the "
+            "leave-one-stage-out of the same stage are one cut seen from its "
+            "two sides, so the regularisation finals appear in both families "
+            "and agree. The arm population is held fixed across every split: "
+            "a fold protocol changes the traces an arm is read from, never "
+            "which arms are in the table. The smallest held-out gain any "
+            "protocol returns is \\nKholdoutMinHeldGain{} points and the "
+            "largest is \\nKholdoutMaxHeldGain{}; the two three-arm settings "
+            "return nothing because the rule never fires on them.")
+
+    return block(
+        "tab:kholdout",
+        "Held-out selection of the patience $k$. The rule's cell is chosen on "
+        "the selection set and applied unchanged to the held-out one; gains "
+        "are the mean score over the held-out arms, plateau rule minus fixed "
+        "horizon, in points on the \\textbf{validation} trace.",
+        "llrrr",
+        "Selection set & Held-out set & Arms & $k$ chosen & "
+        "Held-out gain (pts) \\\\\n"
+        " & & (held) & & \\\\",
+        body, size="\\scriptsize", colsep="4pt", note=note,
+        comment="source: data/plateau_holdout_protocols.csv, every row,\n"
+                "grouped by col protocol in the order the tool runs them;\n"
+                "the two summarised families print the mean and sample sd of\n"
+                "col held_gain over their splits, which is derived, and every\n"
+                "other row prints cols selection_set, heldout_set,\n"
+                "held_arms, k and held_gain")
+
+
 def _median(xs):
     v = sorted(xs)
     n = len(v)
@@ -1294,13 +1719,12 @@ def main():
     stopx = rows("stopping_extreme.csv")
     stopa = rows("stopping_all.csv")
     pst = rows("plateau_stages.csv")
+    prot = rows("plateau_holdout_protocols.csv")
     cohort = rows("cohort_table.csv")
     sigs = rows("signals_summary_extract.csv")
     sel = rows("selection_axis.csv")
-    fair_combo = rows("fairness_combo.csv")
-    fair10 = rows("fairness_c10d10.csv")
-    fair20 = {"c20d10": rows("fairness_c20d10.csv"),
-              "c20d20": rows("fairness_c20d20.csv")}
+    fair = {key: rows("fairness_%s.csv" % key)
+            for key, _, _ in FAIRNESS_BLOCKS}
     sizes = {k: rows("sizes_%s.csv" % k) for k, _, _ in SETTING}
 
     # What Tables 2 and 3 print is what Table 4's delta column may point at.
@@ -1314,24 +1738,25 @@ def main():
     emitted = [
         ("references.tex", t_references(refs), len(refs)),
         ("agg_winners.tex", t_agg(agg), len(agg)),
-        ("reg_winners.tex", t_reg(reg_rows), len(reg_rows)),
+        ("reg_winners.tex", t_reg(reg_rows, agg), len(reg_rows) + 2),
         ("blends.tex", t_blends(regu, blend),
          len([r for r in regu if r["cell"].startswith("hybrid")])),
         ("combos.tex", t_combos(combo, agg, regu, printed), len(combo)),
         ("scaling.tex", t_scaling(sizes, cost_s),
          sum(len(v) for v in sizes.values())),
-        ("fairness.tex", t_fairness(fair_combo, fair10, fair20,
-                                    {r["cell"] for r in agg}), 4 + len(fair10) + 2),
+        ("fairness.tex", t_fairness(fair, sizes, combo, cost_s),
+         4 + sum(len(sizes[k]) for k, _, _ in FAIRNESS_BLOCKS if k != "combo")),
         ("cost.tex", t_cost(cost_s), len(cost_s)),
         ("extreme.tex", t_extreme(extr, stopx), len(extr)),
         ("signals.tex", t_signals(sigs, pst), len(sigs)),
         ("stopping.tex", t_stopping(stopa), len(stopa)),
         ("plateau.tex", t_plateau(pst), len(pst) - 1),
+        ("kholdout.tex", t_kholdout(prot), len(prot)),
         ("cohort.tex", t_cohort(cohort), len(cohort)),
         ("selection_axis.tex", t_selection_axis(sel, agg, regu, combo), len(sel)),
     ]
     ids = identifiers(refs, agg, regu, blend, combo, extr, stopx, sigs,
-                      fair_combo, fair10, sel, *fair20.values(), *sizes.values())
+                      sel, *fair.values(), *sizes.values())
     for name, text, n in emitted:
         no_code_ids(name, text, ids)
         write(name, text)

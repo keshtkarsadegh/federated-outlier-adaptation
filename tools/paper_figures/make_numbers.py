@@ -368,6 +368,9 @@ def build():
              "c10d10": rows("sizes_c10d10.csv"),
              "c20d10": rows("sizes_c20d10.csv"),
              "c20d20": rows("sizes_c20d20.csv")}
+    fair5 = rows("fairness_five.csv")
+    prot = rows("plateau_holdout_protocols.csv")
+    prefilter = {r["cohort"]: r for r in rows("prefilter_coverage.csv")}
 
     agg_cells = {r["cell"] for r in agg}
 
@@ -457,6 +460,12 @@ def build():
         "plateau_stages.csv, row all, col fixed_mean, in points")
     put("nPlateauArms", "%d" % int(float(pall["arms"])),
         "plateau_stages.csv, row all, col arms")
+    put("nPlateauAllFires", "%d" % int(float(pall["fires"])),
+        "plateau_stages.csv, row all, col fires: the arms the patience rule"
+        " stops before the horizon")
+    put("nPlateauOracleGain", dpts(f(pall, "oracle_mean") - f(pall, "fixed_mean")),
+        "derived: plateau_stages.csv row all, col oracle_mean minus col"
+        " fixed_mean, in points; " + ROUND_ONCE)
     pext = pick(pst, stage="extreme")
     hurt = [r for r in parm if float(r["gain"]) < 0]
     put("nPlateauHurtArms", {0: "no", 1: "one", 2: "two"}.get(len(hurt), str(len(hurt))),
@@ -898,14 +907,24 @@ def build():
     put("nSignalCount", word(len(sigs)),
         "signals_summary_extract.csv, number of data rows --- the signals the"
         " runner records on every arm")
+    # THREE POPULATIONS, THREE NAMES, AND THEY ARE NOT THE SAME POPULATION.
+    # nSignalRuns is every run the signals pass walked - the programme as it
+    # stood before its last two stages.  nSignalCorrRuns is the subset of those
+    # that carry a source-validation series, and so the only runs a rank
+    # correlation against the fall in source accuracy can be computed on; it is
+    # the number the signals table's note prints.  nProgrammeTasks is a count
+    # of a different thing entirely: run FOLDERS over every stage of the whole
+    # programme, screens included, which is neither a subset nor a superset of
+    # a run count because a folder that computes both schedules stores two
+    # results (nProgrammePayloads counts those).  All three used to be printed
+    # as "runs".
     put("nSignalRuns", group(float(sigx["study_runs"])),
-        "signals_extras_extract.csv, key study_runs --- the run count the"
-        " signals module reported for the study (of which %s carry a"
-        " source-validation correlation)" % sigx["signal_runs_with_source_val"])
+        "signals_extras_extract.csv, key study_runs --- every run the signals"
+        " pass covered (the programme before its last two stages)")
     put("nSignalCorrRuns", group(float(sigx["signal_runs_with_source_val"])),
         "signals_extras_extract.csv, key signal_runs_with_source_val --- the"
-        " runs of that pass which carry a source-validation correlation, and"
-        " so the population every rho in the table is a median over")
+        " runs of that pass which carry a source-validation series, and so the"
+        " population every rho in the table is a median over")
     for macro, signal in (("KL", "kl_global_to_current"),
                           ("ProxyKL", "proxy_kl"),
                           ("LTwo", "dist_l2_to_global"),
@@ -920,6 +939,26 @@ def build():
         put("nSignal%sShare" % macro,
             "%.1f\\%%" % (100.0 * f(row, "share_ge_0p9")),
             "signals_summary_extract.csv, row %s, col share_ge_0p9" % signal)
+        # EVERY CELL OF THE SIGNALS TABLE, AS A MACRO. Section 7 reads the
+        # table across, not down, and the four columns on its right are the
+        # ones an argument is made from - which budget the signal scored best
+        # at, how many arms it stopped, what that cost and what it bought.
+        # A number the prose has to retype from a table is a number that stops
+        # agreeing with the table on the next data refresh.
+        put("nSignal%sDelta" % macro, "%g" % f(row, "best_delta"),
+            "signals_summary_extract.csv, row %s, col best_delta: the budget"
+            " on the shared grid at which that signal scores best" % signal)
+        put("nSignal%sFires" % macro, "%d" % int(f(row, "arms_fired")),
+            "signals_summary_extract.csv, row %s, col arms_fired: the arms of"
+            " nStoppingArms on which the rule stops before the horizon" % signal)
+        put("nSignal%sScore" % macro, dpts(f(row, "mean_stopped_score")),
+            "signals_summary_extract.csv, row %s, col mean_stopped_score, in"
+            " points" % signal)
+        put("nSignal%sVsFixed" % macro, signed(f(row, "mean_vs_fixed")),
+            "signals_summary_extract.csv, row %s, col mean_vs_fixed, in"
+            " points. The table prints the difference of its two PRINTED"
+            " columns instead, so the two can differ by a hundredth; this is"
+            " the stored difference" % signal)
 
     # ---- Section 5, the protocol ----------------------------------------
     put("nBadPoolSize", group(float(cohort[0]["of"])),
@@ -952,7 +991,9 @@ def build():
     # docs/FAIRNESS_AND_COST.md prints the same two totals under the same
     # table and tests/test_recipe.py holds the prose to this sum.
     put("nProgrammeTasks", group(sum(f(r, "tasks") for r in cost_s)),
-        "cost_stages.csv, col tasks summed over every stage")
+        "cost_stages.csv, col tasks summed over every stage --- run FOLDERS"
+        " over the whole programme, screens included; not a run count and not"
+        " comparable with nSignalRuns")
     put("nProgrammeGpuHours", "%.1f" % sum(f(r, "hours") for r in cost_s),
         "cost_stages.csv, col hours summed over every stage, in GPU-hours; "
         + ROUND_ONCE)
@@ -968,6 +1009,125 @@ def build():
     dec = flagged[0]
     put("nDecoupleGZero", acc(f(dec, "g0_acc")),
         "decouple_example.csv, row %s (chosen), col g0_acc" % dec["writer"])
+
+    # ---- the two shipped-model worst-client figures, told apart ----------
+    # THEY ARE THE SAME WRITERS, THE SAME ROWS AND THE SAME MODEL, and they
+    # differ by the order the minimum and the mean are taken in.
+    # nGZeroClientMin is the smallest of the ten clients' own five-fold means:
+    # one writer, its whole record.  The three below are the five-fold mean of
+    # the worst-served client OF EACH FOLD, which is the reference the fairness
+    # table's delta-worst column is a delta from - and the worst-served client
+    # is not the same writer on every fold, so the mean of the minima sits
+    # below the minimum of the means.  Quoting either against the other as if
+    # they were one quantity is what these three names exist to stop.
+    for macro, view in (("nGZeroWorstFoldMeanFive", fair5),
+                        ("nGZeroWorstFoldMeanTen", fair),
+                        ("nGZeroWorstFoldMeanTwenty", fair20["c20d10"])):
+        values = {r["g0_min"] for r in view}
+        assert len(values) == 1, (macro, sorted(values))
+        put(macro, acc(float(values.pop())),
+            "fairness view of that cohort size, col g0_min (identical on every"
+            " row): the five-fold mean of the worst-served client of each fold,"
+            " under the shipped model, on the test rows")
+
+    # ---- what a replicate of one configuration costs ---------------------
+    # The two control rows of tab:agg_winners are one configuration run twice
+    # out of consecutive blocks of one task file: same horizon, same folds,
+    # same participation, same run seeds, differing in the client-sampling seed
+    # block and in a stop flag that never fired.  So the gap between them is
+    # the run-to-run spread of a hundred-round arm, which is the scale every
+    # margin in the paper is read against.  nReplicateGap is NOT that: the two
+    # rows it differences come from two different stages, task files, seed
+    # blocks and trainer entry points, and only agree on what they nominally
+    # configure.
+    for macro, fam in (("nControlSeedSpread", "cyclic"),
+                       ("nControlSeedSpreadPar", "parallel")):
+        plain = pick(agg, cell="control_fedavg", family=fam)
+        armed = pick(agg, cell="control_fedavg_earlystop", family=fam)
+        put(macro, dpts(f(plain, "score") - f(armed, "score")),
+            "agg-winners.csv, row control_fedavg/%s col score minus row"
+            " control_fedavg_earlystop/%s col score, in points: one"
+            " configuration run twice under two client-sampling seed blocks;"
+            " %s" % (fam, fam, ROUND_ONCE))
+
+    # ---- how deep tab:selection_axis prints ------------------------------
+    from make_paper_tables import SELECTION_DEPTH  # noqa: E402
+    put("nSelectionDepth", word(SELECTION_DEPTH),
+        "make_paper_tables.SELECTION_DEPTH: how many arms of each block"
+        " tab:selection_axis prints, in words")
+
+    # ---- the blend that clears its distillation parent on every fold -----
+    clearing = [f(r, "mean") for r in blend if r["all_positive"] == "1"]
+    put("nBlendClearMax", pts(max(clearing)),
+        "blends.csv, rows with all_positive=1, max col mean, in points."
+        " nBlendVsKdMax is a different quantity: the max over ALL six"
+        " distillation-parent rows, clearing on every fold or not")
+
+    # ---- the held-out selection of the patience --------------------------
+    # One macro per quantity the appendix table states, so the count on the
+    # page and the count in the file cannot come apart by retyping.
+    put("nKholdoutProtocols", word(len(prot)),
+        "plateau_holdout_protocols.csv, number of data rows: every"
+        " selection/holdout protocol the tool runs, in words")
+    put("nKholdoutMinHeldGain", dpts(min(f(r, "held_gain") for r in prot)),
+        "plateau_holdout_protocols.csv, col held_gain, minimum over every"
+        " protocol, in points")
+    put("nKholdoutMaxHeldGain", dpts(max(f(r, "held_gain") for r in prot)),
+        "plateau_holdout_protocols.csv, col held_gain, maximum over every"
+        " protocol, in points")
+    for macro, held in (("nKholdoutRegfullHeldGain", "regfull arms"),
+                        ("nKholdoutComboHeldGain", "combo arms")):
+        hit = [r for r in prot if r["heldout_set"] == held
+               and r["protocol"] == "stage-loo"]
+        assert len(hit) == 1, (macro, len(hit))
+        put(macro, dpts(f(hit[0], "held_gain")),
+            "plateau_holdout_protocols.csv, the stage-loo row whose col"
+            " heldout_set is %r, col held_gain, in points. This is the"
+            " HELD-OUT gain; plateau_stages.csv's col gain for the same stage"
+            " is the in-sample one and is a different number" % held)
+
+    # ---- the pre-filter, and the room it ran with ------------------------
+    # Coverage is 1.0 and cannot be anything else: the cohorts are cut out of
+    # the pool, so a writer the pre-filter dropped is a writer the shipped
+    # model was never asked to score.  The depth macros are the number the
+    # records CAN answer - how narrow a pre-filter would have kept the same
+    # cohort - and they are what a reader should be given.
+    any_row = prefilter["ten"]
+    put("nPrefilterPoolSize", group(f(any_row, "prefilter_pool")),
+        "prefilter_coverage.csv, col prefilter_pool: writers the coarse"
+        " detector kept, of col ranked_writers")
+    put("nPrefilterRankedWriters", group(f(any_row, "ranked_writers")),
+        "prefilter_coverage.csv, col ranked_writers: writers the coarse"
+        " detector scored and ranked")
+    put("nPrefilterSeparated", group(f(any_row, "ranked_above_ties")),
+        "prefilter_coverage.csv, col ranked_above_ties: writers the detector"
+        " scored strictly below its top value, and so actually separated; the"
+        " rest of the pool is inside one tie and is ordered by writer id")
+    put("nPrefilterTiedWriters", group(f(any_row, "writers_at_top_score")),
+        "prefilter_coverage.csv, col writers_at_top_score: writers the coarse"
+        " detector scored at its top value, all tied")
+    for macro, key in (("Five", "five"), ("Ten", "ten"), ("Twenty", "twenty")):
+        row = prefilter[key]
+        put("nPrefilterCoverage%s" % macro,
+            "%.0f\\,\\%%" % (100 * f(row, "coverage")),
+            "prefilter_coverage.csv, row %s, col coverage, as a percentage:"
+            " the share of that cohort the pre-filter kept. It is 100%% by"
+            " construction - the cohort is cut out of the pool" % key)
+        put("nPrefilterDepth%s" % macro,
+            "%.1f\\,\\%%" % (100 * f(row, "depth_fraction")),
+            "prefilter_coverage.csv, row %s, col depth_fraction, as a"
+            " percentage: the deepest place a member of that cohort takes in"
+            " the detector's own ranking, so the narrowest pre-filter that"
+            " would still have kept the whole cohort" % key)
+
+    # ---- the three run populations, told apart ---------------------------
+    put("nRegFinalsArms", "%d" % len(regu),
+        "reg-winners.csv, number of data rows: the arms the regularisation"
+        " finals reported, both schedules and the two blend finals together")
+    put("nProgrammePayloads", group(sum(f(r, "payloads") for r in cost_s)),
+        "cost_stages.csv, col payloads summed over every stage: stored result"
+        " files, which exceed the tasks because a task that computes both"
+        " schedules writes two")
 
     folds = [c for c in cohort[0] if re.fullmatch(r"f\d+_val", c)]
     per_fold = [sum(float(r[c]) for r in cohort) for c in folds]

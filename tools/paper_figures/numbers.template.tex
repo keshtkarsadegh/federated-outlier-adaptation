@@ -334,4 +334,78 @@
   % decouple_example.csv, row f3984_32 (chosen), col g0_acc
 \newcommand{\nRounds}{100}
   % cost_stages.csv, row 'regularisation finals', col rounds
+
+%% ---------------------------------------------------------------------------
+%% Added 2026-09-21 with the appendix rebuild.  Four groups:
+%%
+%%   nSignal*Delta/Fires/Score/VsFixed  every remaining cell of the signals
+%%       table, so Section 7 can quote a budget, a fire count, a stopped score
+%%       or a delta without retyping one off the page.
+%%   nPrefilter*  the coarse pre-filter: how wide it was, how much of it the
+%%       detector actually separated, and how deep into its ranking each
+%%       cohort's writers sit.  Coverage is 100%% by construction and says so.
+%%   nKholdout*, nPlateauAllFires, nPlateauOracleGain  the held-out stopping
+%%       table's own counts and extremes.
+%%   the rest  quantities two sentences of the paper used to quote as one:
+%%       the two shipped-model worst-client figures, the replicate spread of a
+%%       single configuration, and the payload count beside the task count.
+%% ---------------------------------------------------------------------------
+\newcommand{\nSignalKLDelta}{\TBD{unfilled}}
+\newcommand{\nSignalKLFires}{\TBD{unfilled}}
+\newcommand{\nSignalKLScore}{\TBD{unfilled}}
+\newcommand{\nSignalKLVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalProxyKLDelta}{\TBD{unfilled}}
+\newcommand{\nSignalProxyKLFires}{\TBD{unfilled}}
+\newcommand{\nSignalProxyKLScore}{\TBD{unfilled}}
+\newcommand{\nSignalProxyKLVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalLTwoDelta}{\TBD{unfilled}}
+\newcommand{\nSignalLTwoFires}{\TBD{unfilled}}
+\newcommand{\nSignalLTwoScore}{\TBD{unfilled}}
+\newcommand{\nSignalLTwoVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalAgreementDelta}{\TBD{unfilled}}
+\newcommand{\nSignalAgreementFires}{\TBD{unfilled}}
+\newcommand{\nSignalAgreementScore}{\TBD{unfilled}}
+\newcommand{\nSignalAgreementVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalFisherDelta}{\TBD{unfilled}}
+\newcommand{\nSignalFisherFires}{\TBD{unfilled}}
+\newcommand{\nSignalFisherScore}{\TBD{unfilled}}
+\newcommand{\nSignalFisherVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalFisherNormDelta}{\TBD{unfilled}}
+\newcommand{\nSignalFisherNormFires}{\TBD{unfilled}}
+\newcommand{\nSignalFisherNormScore}{\TBD{unfilled}}
+\newcommand{\nSignalFisherNormVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalProxyAccDelta}{\TBD{unfilled}}
+\newcommand{\nSignalProxyAccFires}{\TBD{unfilled}}
+\newcommand{\nSignalProxyAccScore}{\TBD{unfilled}}
+\newcommand{\nSignalProxyAccVsFixed}{\TBD{unfilled}}
+\newcommand{\nSignalRetentionDelta}{\TBD{unfilled}}
+\newcommand{\nSignalRetentionFires}{\TBD{unfilled}}
+\newcommand{\nSignalRetentionScore}{\TBD{unfilled}}
+\newcommand{\nSignalRetentionVsFixed}{\TBD{unfilled}}
+\newcommand{\nPlateauAllFires}{\TBD{unfilled}}
+\newcommand{\nPlateauOracleGain}{\TBD{unfilled}}
+\newcommand{\nKholdoutProtocols}{\TBD{unfilled}}
+\newcommand{\nKholdoutMinHeldGain}{\TBD{unfilled}}
+\newcommand{\nKholdoutMaxHeldGain}{\TBD{unfilled}}
+\newcommand{\nKholdoutRegfullHeldGain}{\TBD{unfilled}}
+\newcommand{\nKholdoutComboHeldGain}{\TBD{unfilled}}
+\newcommand{\nPrefilterPoolSize}{\TBD{unfilled}}
+\newcommand{\nPrefilterRankedWriters}{\TBD{unfilled}}
+\newcommand{\nPrefilterSeparated}{\TBD{unfilled}}
+\newcommand{\nPrefilterTiedWriters}{\TBD{unfilled}}
+\newcommand{\nPrefilterCoverageFive}{\TBD{unfilled}}
+\newcommand{\nPrefilterCoverageTen}{\TBD{unfilled}}
+\newcommand{\nPrefilterCoverageTwenty}{\TBD{unfilled}}
+\newcommand{\nPrefilterDepthFive}{\TBD{unfilled}}
+\newcommand{\nPrefilterDepthTen}{\TBD{unfilled}}
+\newcommand{\nPrefilterDepthTwenty}{\TBD{unfilled}}
+\newcommand{\nGZeroWorstFoldMeanFive}{\TBD{unfilled}}
+\newcommand{\nGZeroWorstFoldMeanTen}{\TBD{unfilled}}
+\newcommand{\nGZeroWorstFoldMeanTwenty}{\TBD{unfilled}}
+\newcommand{\nControlSeedSpread}{\TBD{unfilled}}
+\newcommand{\nControlSeedSpreadPar}{\TBD{unfilled}}
+\newcommand{\nSelectionDepth}{\TBD{unfilled}}
+\newcommand{\nBlendClearMax}{\TBD{unfilled}}
+\newcommand{\nRegFinalsArms}{\TBD{unfilled}}
+\newcommand{\nProgrammePayloads}{\TBD{unfilled}}
 % END GENERATED
