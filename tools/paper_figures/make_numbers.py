@@ -913,12 +913,28 @@ def build():
         c = [r for r in sizes[k] if r["cell"] == "control"]
         return max(c, key=lambda r: f(r, "spent")) if c else None
 
+    # THE TWO CONTROLS CAN PRINT ONE VALUE AND THE COMMENT HAS TO SAY SO.  At
+    # ten clients the cyclic control spends 2.8234 points and the parallel one
+    # 2.8181: the cyclic row is the worse of the two, the macro is its value,
+    # and both round to 2.82.  A reader who checks the macro by subtracting
+    # the PRINTED preservations of tab:scaling instead gets 2.82 and 2.83 and
+    # concludes that the value is the parallel row and the comment on it
+    # wrong.  Both spends now go into the comment at the precision that tells
+    # them apart, which is the precision the choice was made at.
     for macro, k in (("nControlSpentTen", "c10d10"), ("nControlSpentFive", "five")):
         c = worst_control(k)
+        other = [r for r in sizes[k] if r["cell"] == "control" and r is not c]
+        assert len(other) == 1, (k, len(other))
         put(macro, pts(100 * f(c, "spent")),
             "sizes_%s.csv, row control, col spent (= P0 - preservation):"
-            " the worse (larger) of the parallel and cyclic schedules,"
-            " here %s, in points; %s" % (k, c["family"], ROUND_ONCE))
+            " the worse (larger) of the parallel and cyclic schedules, here"
+            " %s at %s points against %s at %s, so the macro is the %s row"
+            " -- the two can round to one printed value, and subtracting the"
+            " PRINTED preservations of tab:scaling separates them instead and"
+            " points at the wrong one; %s"
+            % (k, c["family"], pts(100 * f(c, "spent"), 4),
+               other[0]["family"], pts(100 * f(other[0], "spent"), 4),
+               c["family"], ROUND_ONCE))
 
     # margin over the control; the twenty-client settings carry no control row
     margins = []

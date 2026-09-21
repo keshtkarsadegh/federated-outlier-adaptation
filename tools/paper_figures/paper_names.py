@@ -11,7 +11,7 @@ its setting in the method's own symbol, e.g.
 
     fedadam_lr0p001_tau1em06  ->  FedAdam ($\\eta{=}10^{-3},\\tau{=}10^{-6}$)
 
-Three renderings are offered, and each has one job:
+Four renderings are offered, and each has one job:
 
 ``label(cell)``
     The full literature name with its setting.  Used wherever a row names one
@@ -27,6 +27,12 @@ Three renderings are offered, and each has one job:
     method --- the per-weight sensitivity grids.  Falls back to ``short`` for
     a cell that has no free parameter.
 
+``short_mix(cell)``
+    ``short`` with the composite's mix put back on.  The one exception to
+    "drop the parameters": the mix is the only dial the construction stage
+    turned, so two composite rows of one table differ by nothing else, and a
+    row that drops it names three arms at once.
+
 Parameters are read out of the identifier by rule, never tabulated by hand:
 ``lam0p003`` is $3\\times10^{-3}$ and ``tau1em06`` is $10^{-6}$ because of how
 the runner spells numbers, so a new cell from the same grid translates without
@@ -40,7 +46,8 @@ from __future__ import annotations
 
 import re
 
-__all__ = ["label", "short", "params", "has_params", "settings_note", "run_label",
+__all__ = ["label", "short", "short_mix", "params", "has_params",
+           "settings_note", "run_label",
            "COMPOSITE", "REFERENCE", "SIGNAL", "SIGNAL_SHORT", "ARM",
            "ARM_SHORT", "EXTREME", "SCHEDULE", "family_label",
            "UntranslatedIdentifier"]
@@ -352,7 +359,9 @@ def label(cell):
         return "%s (%s)" % (name, inside) if inside else name
     pair = _split_combo(cell)
     if pair:
-        return "%s + %s" % (short(pair[0]), short(pair[1]))
+        # The halves go in short -- and the composite keeps its mix, because
+        # dropping it is what left one name standing for three arms.
+        return short_mix(cell)
     raise UntranslatedIdentifier(cell)
 
 
@@ -369,6 +378,32 @@ def short(cell):
     if pair:
         return "%s + %s" % (short(pair[0]), short(pair[1]))
     raise UntranslatedIdentifier(cell)
+
+
+#: The mix inside a rendered setting, which is where a composite's identity
+#: lives: lambda and T are inherited from the halves the construction stage
+#: took, and the mix is the only thing that stage chose.
+_MIX = re.compile(r"m\{=\}[0-9.]+")
+
+
+def short_mix(cell):
+    """The short name, plus the mix for a cell that has one.
+
+    A COMBINATION ROW HAS TO SAY WHICH COMPOSITE IT CROSSES.  Two names share
+    such a row, so both are printed short and the settings are stated once
+    underneath --- which works for every method whose name already tells the
+    reader what it is, and fails on the composite: the study built two of them
+    and swept three mixes of each, so "KD+EWC composite, cyclic-tuned" is the
+    name of three different arms.  The parentage is in the short name already;
+    the mix is what the row was still missing, and a footnote is not where a
+    reader should have to go to find out which arm a row reports.
+    """
+    pair = _split_combo(cell)
+    if pair:
+        return "%s + %s" % (short_mix(pair[0]), short_mix(pair[1]))
+    hit = _match(cell)
+    mix = _MIX.search(hit[2]) if hit and hit[2] else None
+    return "%s, $%s$" % (short(cell), mix.group(0)) if mix else short(cell)
 
 
 def params(cell):

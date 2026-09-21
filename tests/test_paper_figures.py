@@ -411,6 +411,86 @@ def test_the_three_mixed_penalties_are_told_apart_by_name(tmp_path, monkeypatch)
         assert paper_names.label(cell) in reg, cell
 
 
+#: A printed name that stands for a mixed penalty.  Matched case-insensitively
+#: because the tables set the word both ways.
+MIXED_NAME = re.compile(r"composite|blend", re.IGNORECASE)
+
+#: How a printed mix reads.  Not "$m{=}": a full setting sets one formula for
+#: all three coefficients, so the mix arrives as the tail of
+#: "$\lambda{=}0.0101,T{=}2,m{=}0.5$" as often as it arrives on its own.
+MIX = "m{=}"
+
+
+def _row_cells(text):
+    """Every column entry of every data row of one emitted table.
+
+    The header sits between the top rule and the first midrule and the note
+    after the bottom rule, so reading between the first midrule and the bottom
+    rule sees the data rows and nothing else. The block bands and the family
+    headings are multicolumn lines and are dropped: a heading names a family
+    of arms, which has no one mix to carry, and a caption that defines the
+    composite is prose about the idea rather than a claim about a row.
+    """
+    body = text.split("\\midrule", 1)[-1].split("\\bottomrule")[0]
+    for line in body.splitlines():
+        line = line.strip()
+        if not line.endswith("\\\\") or "\\multicolumn" in line:
+            continue
+        for cell in line[:-2].split("&"):
+            yield cell.replace("\\quad", "").strip()
+
+
+def test_every_composite_a_table_names_carries_its_mix(tmp_path, monkeypatch):
+    """
+    "KD+EWC composite, cyclic-tuned" is the name of three arms, not one.
+
+    The construction stage built one composite per schedule and swept three
+    mixes of each, and the mix is the only dial it turned - the lambda and the
+    T are inherited from the halves. So a row that prints the parentage and
+    stops has named a family and been read as an arm: tab:combos crosses the
+    cyclic-tuned composite at m = 0.5 and tab:reg_winners leads with the same
+    parentage at m = 0.75, and nothing on the combination row said which.
+
+    The rule is therefore on the emitted LaTeX and on every table at once: a
+    data cell that names a mixed penalty either carries its mix or is a
+    carried arm's short name that the table's own note expands, with the
+    parentage and the mix in the sentence that expands it. Anything else is a
+    row the reader cannot resolve without leaving the page.
+    """
+    out = _generated_tables(tmp_path, monkeypatch)
+    named = 0
+    for path in sorted(out.glob("*.tex")):
+        text = path.read_text()
+        note = text.split("\\bottomrule")[-1]
+        for cell in _row_cells(text):
+            if not MIXED_NAME.search(cell):
+                continue
+            named += 1
+            if MIX in cell:
+                continue
+            windows = [note[i:i + 400] for i in range(len(note))
+                       if note.startswith(cell, i)]
+            assert windows, (
+                f"{path.name} prints {cell!r}, which names a mixed penalty "
+                f"without its mix, and its note never expands the name")
+            assert any(MIX in w and "-tuned" in w for w in windows), (
+                f"{path.name} prints {cell!r} without its mix, and the note "
+                f"expands it without saying which composite it is and at "
+                f"what mix")
+    assert named >= 20, ("the tables have stopped naming composites, or the "
+                         "pattern has stopped matching: %d" % named)
+
+    # The two tables the composite rows are argued from say it on the row
+    # itself: both cross a composite three times, and both print rows that
+    # differ in nothing but which composite they crossed.
+    for name in ("combos.tex", "selection_axis_cross.tex"):
+        cells = [c for c in _row_cells((out / name).read_text())
+                 if MIXED_NAME.search(c)]
+        assert len(cells) == 6, (name, cells)
+        for cell in cells:
+            assert MIX in cell, (name, cell)
+
+
 def test_the_signals_table_prices_all_eight_signals_from_the_shipped_view(tmp_path, monkeypatch):
     """
     The signals subsection is written off `tables/signals.tex` and off nothing
@@ -844,7 +924,8 @@ def test_the_notes_that_name_a_baseline_name_it_by_macro():
                   "nGZeroCohortAccTwenty"):
         assert "\\%s{}" % macro in scaling, macro
 
-    plateau = tables.t_plateau(tables.rows("plateau_stages.csv"))
+    plateau = tables.t_plateau(tables.rows("plateau_stages.csv"),
+                               tables.rows("plateau_holdout_protocols.csv"))
     for macro in ("nGZeroCohortAcc", "nGZeroCohortAccExtreme"):
         assert "\\%s{}" % macro in plateau, macro
     # A printed accuracy beside the macro would be the retyped copy.
@@ -875,7 +956,8 @@ def test_every_plateau_stage_row_names_the_baseline_its_level_is_read_against():
     assert set(stages) == set(tables.STAGE_BASELINE), sorted(
         set(stages) ^ set(tables.STAGE_BASELINE))
 
-    plateau = tables.t_plateau(tables.rows("plateau_stages.csv"))
+    plateau = tables.t_plateau(tables.rows("plateau_stages.csv"),
+                               tables.rows("plateau_holdout_protocols.csv"))
     for stage in stages:
         macro = tables.STAGE_BASELINE[stage]
         assert macro == macro_of[report_tables.cohort_of(stage + "_")], stage

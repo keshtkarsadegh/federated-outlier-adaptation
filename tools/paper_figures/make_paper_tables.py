@@ -60,7 +60,8 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 from paper_names import (ARM, COMPOSITE, EXTREME, REFERENCE, SCHEDULE,  # noqa: E402
-                         SIGNAL, label, params, settings_note, short)
+                         SIGNAL, label, params, settings_note, short,
+                         short_mix)
 
 
 def _data_dirs():
@@ -816,7 +817,11 @@ def t_combos(combo, agg, regu, printed):
             d = 100.0 * (float(r["score"]) - float(comp["score"]))
             CHECKED[0] += 1
             pen_better.append(comp["cell"] == pen)
-            name = "\\quad " + short(rule) + " & " + short(pen)
+            # The penalty half carries its mix.  The settings note below
+            # gives every coefficient once, but two rows of this table cross
+            # two different composites and the note is not where a reader
+            # should have to go to tell one row from another.
+            name = "\\quad " + short(rule) + " & " + short_mix(pen)
             if r["cell"] == CROWNED[0]:
                 name += "$^{\\star}$"
             body.append(" & ".join([
@@ -1323,9 +1328,16 @@ def selection_body(sel, reported, stages):
                 assert abs(float(r["test_score"])
                            - float(row["score"])) < 5e-5, (stage, r["cell"])
                 mark = selection_marks(r, fam)
+                name = "\\quad " + label(r["cell"])
+                if mark:
+                    # A composite row ends in its own maths, and the mark
+                    # opens maths again: butted together they spell "$$" in
+                    # the source.  A thin space is the join, and it is the
+                    # space the mark would want after a number anyway.
+                    name += ("\\," if name.endswith("$") else "")
+                    name += "$^{%s}$" % mark
                 body.append(" & ".join([
-                    "\\quad " + label(r["cell"])
-                    + ("$^{%s}$" % mark if mark else ""),
+                    name,
                     num(r, "val_adaptation"), num(r, "val_preservation"),
                     num(r, "val_score", 2, 100), count(r, "val_score_rank"),
                     num(row, "adaptation"), num(row, "preservation"),
@@ -1472,6 +1484,10 @@ def t_selection_axis_cross(sel, combo):
         "the cyclic sibling is no longer the strongest cyclic pair on validation"
     assert pick(cross, cell=CROWNED[0],
                 schedule=CROWNED[1])["role"] == "crowned"
+    # The note spells the balanced arm's composite, so the frozen record has
+    # to be the arm the sentence describes -- the same pin tab:scaling and
+    # tab:fairness put on the same sentence.
+    assert BALANCED[0] == "eta_0p95_hybrid_seq_mix0p5", BALANCED
 
     note = SELECTION_BASIS + (
         "Every one of the nine crossings of each schedule is printed rather "
@@ -1487,7 +1503,8 @@ def t_selection_axis_cross(sel, combo):
         "carried each of the other two is stated here and is checkable "
         "against the block above it: the crowned pair was carried because "
         "the cross crowned it; the \\emph{balanced} arm, the server step at "
-        "$\\eta_s{=}0.95$ crossed with the cyclic-tuned composite, was "
+        "$\\eta_s{=}0.95$ crossed with the cyclic-tuned composite at "
+        "$m{=}0.5$, was "
         "carried as the crossing that gave up the least preservation of the "
         "nine on the parallel schedule, which is also why the score ordering "
         "puts it ninth; and the \\emph{cyclic sibling} was carried as the "
@@ -1852,8 +1869,18 @@ def t_cohort(cohort):
              "cut on $\\thg$ and not on the detector.")
 
 
-def t_plateau(pst):
-    """T6 --- the plateau rule, stage by stage: what stopping recovers."""
+def t_plateau(pst, prot):
+    """T6 --- the plateau rule, stage by stage: what stopping recovers.
+
+    THE GAIN COLUMN IS A FIT, AND THE NOTE NOW SAYS SO.  The rule's cell is a
+    patience and a margin, and the published cell is the one the arms of this
+    table chose; read a stage on its own and it is that stage's own arms doing
+    the choosing.  So the column prices the rule where it was fitted, which is
+    not what a column headed "gain" is taken to mean, and is exactly what the
+    holdout table exists to correct.  The two numbers the note quotes are read
+    out of the two views rather than written down, and the assertion below
+    holds the in-sample one to the row this table prints.
+    """
     by = {r["stage"]: r for r in pst}
     body = []
     for stage, label in STAGE_LABEL:
@@ -1874,6 +1901,20 @@ def t_plateau(pst):
                          derived(float(r["rule_mean"]), 2, 100),
                          derived(float(r["gain"]), 2, 100, signed=True)])
              + " \\\\"]
+
+    # The holdout tool selects on one set of arms and reports on another; the
+    # protocol that selects on the regularisation finals themselves returns,
+    # by construction, this table's own gain for that stage -- which is what
+    # makes "in-sample" a statement about this column rather than a hedge.
+    # Read and checked, so the sentence cannot outlive the agreement.
+    fitted = pick(prot, protocol="stage", selection_set="regfull arms")
+    assert abs(float(fitted["sel_gain"]) - float(by["regfull"]["gain"])) < 5e-9, (
+        "tab:plateau's regularisation gain is no longer the in-sample fit "
+        "plateau_holdout_protocols.csv reports for the same arms")
+    insample = num(by["regfull"], "gain", 2, 100, signed=True)
+    held = num(pick(prot, protocol="stage-loo", heldout_set="regfull arms"),
+               "held_gain", 2, 100, signed=True)
+
     note = ("Mean score in points over each stage's arms, on the per-round "
             "\\textbf{validation} trace, the only basis on which a stopping "
             "round may be chosen. The two level columns are means over "
@@ -1892,7 +1933,16 @@ def t_plateau(pst):
             "without improvement; it costs anything on exactly "
             "\\nPlateauHurtArms{} arm of \\nPlateauArms{} "
             "($-\\nPlateauWorstLoss{}$ points), and an arm on which it never "
-            "fires runs the full budget unchanged.")
+            "fires runs the full budget unchanged. "
+            "The gain column is an \\emph{in-sample} fit: the rule's cell "
+            "$(\\kappa,\\varepsilon)$ --- the patience and the margin an "
+            "improvement has to clear --- is chosen on the stage's own arms, "
+            "so each row prices the rule where it was fitted. "
+            "Table~\\ref{tab:kholdout} holds that choice out, and the "
+            "regularisation finals are where holding it out costs most: they "
+            "read " + insample + " points here and " + held + " there, with "
+            "the cell chosen on the other arms and applied to these "
+            "unchanged.")
     for macro in sorted(set(STAGE_BASELINE.values())):
         assert "\\%s{}" % macro in note, macro
     return block(
@@ -1903,8 +1953,13 @@ def t_plateau(pst):
         "Stage & Arms & Fixed budget & With the rule & Gain \\\\\n"
         " & & (pts) & (pts) & (pts) \\\\",
         body, colsep="5pt", note=note,
-        comment="source: data/plateau_stages.csv, primary setting rows\n"
-                "(patience 20, margin 0, checkpoint_best), stage means")
+        comment="sources: data/plateau_stages.csv, primary setting rows\n"
+                "(patience 20, margin 0, checkpoint_best), stage means;\n"
+                "data/plateau_holdout_protocols.csv for the two figures the\n"
+                "note quotes --- the stage row selecting on the regularisation\n"
+                "finals, col sel_gain, asserted equal to this table's own gain\n"
+                "for that stage and printed from it, and the stage-loo row\n"
+                "holding the same arms out, col held_gain")
 
 
 #: How the holdout tool's set names read on the page.  The tool names its sets
@@ -2218,7 +2273,7 @@ def main():
         ("extreme.tex", t_extreme(extr, stopx), len(extr)),
         ("signals.tex", t_signals(sigs, pst), len(sigs)),
         ("stopping.tex", t_stopping(stopa), len(stopa)),
-        ("plateau.tex", t_plateau(pst), len(pst) - 1),
+        ("plateau.tex", t_plateau(pst, prot), len(pst) - 1),
         ("kholdout.tex", t_kholdout(prot), len(prot)),
         ("cohort.tex", t_cohort(cohort), len(cohort)),
         ("selection_axis.tex", t_selection_axis(sel, agg, regu, combo),
