@@ -65,11 +65,11 @@ def main():
     figure.legend(handles=fs.handles([
         ("distillation parent", fs.VERMILION, "-"),
         ("elastic-weight parent", fs.BLUE, "-"),
-        ("the blend, $m{=}0.5$ (selected)", fs.GREEN, "-"),
+        ("the blend, $m{=}0.5$", fs.GREEN, "-"),
     ]), loc="lower center", ncol=3, columnspacing=1.6,
         bbox_to_anchor=(0.5, 0.0))
     fs.save(figure, "fig_blends", rect=(0, 0.075, 1, 1))
-    fs.caption("fig_blends", """
+    fs.caption("fig_blends", r"""
         The distillation-plus-elastic-weight mixtures against the two parents
         each was built from, one row of panels per schedule so the two
         constructions are never drawn over each other: accuracy on the source
@@ -77,9 +77,12 @@ def main():
         adaptation), fold-mean over the five folds on the validation rows,
         from the shipped model at round 0.  In each row the parents are the red and blue
         curves --- distillation, which adapts and does not preserve, and the
-        elastic-weight term, the reverse --- and the green curve is the
-        selected blend ($m{=}0.5$; the other two ratios behave alike and are
-        in the released records).  The reader should see the green curve
+        elastic-weight term, the reverse --- and the green curve is that
+        schedule's own construction at $m{=}0.5$; the composite each
+        schedule's validation ordering selected is the $m{=}0.5$ cell built
+        from the other schedule's components
+        (Table~\ref{tab:selection_axis}), and the other two ratios behave
+        alike and are in the released records.  The reader should see the green curve
         sitting outside the interval its parents span: at or above the blue
         parent on the left and far above it on the right, on the cyclic row
         overtaking even the distillation parent.  Validation basis, so the endpoints are not the
