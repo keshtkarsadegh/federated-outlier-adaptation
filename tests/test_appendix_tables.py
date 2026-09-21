@@ -209,6 +209,10 @@ def test_the_leading_composite_is_never_called_the_selected_one(
             "tables read:") in printed
     assert "test-leading composite (mix 0.75," in printed
     assert "selected composite" not in printed
+    # Both the provenance comment and the note used to carry the word: the
+    # comment named the leading row "the selected composite" and the note
+    # tagged it "(selected)".  Neither may come back, in any line of the file.
+    assert "(selected)" not in printed
     assert not hasattr(tables, "BLEND_SELECTED")
 
 

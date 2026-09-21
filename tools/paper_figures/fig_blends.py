@@ -76,8 +76,8 @@ def main():
         schedule: accuracy on the source population (left, preservation) and
         on the outlier cohort (right, adaptation), fold-mean over the five
         folds on the validation rows, from the shipped model at round 0.
-        In each row the parents are the red and blue curves, distillation and
-        the elastic-weight term, and the green curve is that schedule's own
+        In each row the parents are the orange and blue curves, distillation
+        and the elastic-weight term, and the green curve is that schedule's own
         construction at $m{=}0.5$; the composite each schedule's validation
         ordering selected is the $m{=}0.5$ cell built from the other
         schedule's components (Table~\ref{tab:selection_axis}), and the other
