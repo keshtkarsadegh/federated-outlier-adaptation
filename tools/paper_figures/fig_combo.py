@@ -69,13 +69,7 @@ def main():
         over the five folds on the validation rows.  All four arms run the
         parallel schedule and start from the shipped model at round 0; the
         server rule is the anchor at $h=2R$ and the penalty is FedNTD at
-        $\beta=0.01$, $\tau=0.5$.  The reader should see that the two
-        components do not contribute symmetrically: the penalty alone already
-        carries almost all of the preservation the combination holds on the
-        left, where the server rule alone recovers only a small part of the
-        control's loss, while on the right the combination sits above both
-        components --- so the server rule is buying adaptation on top of a
-        penalty that is doing the preserving.
+        $\beta=0.01$, $\tau=0.5$.
         Validation basis, so the endpoints are not the test-set figures the
         tables report.
         """)

@@ -5,8 +5,9 @@ Four panels: preservation on the left, adaptation on the right.  Every panel
 carries the two references everything is measured against --- the plain
 federated-averaging control as a black dashed curve, drawn on top so it is
 never hidden, and the shipped model's own accuracy as the dotted horizontal
-line every arm starts from.  The three selected rules are split across the two
-rows so that no two of them overlap in the same panel.
+line every arm starts from.  The three selected rules are split across the two rows so that no
+panel has to carry all three: the anchor and the server step share the top
+row, and the weighting rule has the bottom row to itself.
 
     python fig_aggs.py           # regenerates fig_aggs.pdf from ../data
 
@@ -70,15 +71,15 @@ def main():
         loc="lower center", ncol=2, columnspacing=1.6,
         bbox_to_anchor=(0.5, 0.0))
     fs.save(figure, "fig_aggs", rect=(0, 0.105, 1, 1))
-    fs.caption("fig_aggs", """
+    fs.caption("fig_aggs", r"""
         The three selected server rules on the parallel schedule with no
         client-side penalty, over the full hundred-round budget on the
         ten-client cohort, fold-mean over the five folds on the validation
         rows.  Every panel repeats the federated-averaging control (black,
-        dashed) and the shipped model's accuracy (dotted); the rules are
-        split across the rows so their curves do not overlap.  A rule helps
-        only where it rises above the control: the anchor (blue) is the only
-        one that does, on preservation.  Validation basis, so the endpoints
+        dashed) and the shipped model's accuracy (dotted); the three rules
+        are split across the two rows, the server anchor and the server step
+        at $\eta_s{=}0.95$ on the top row and uniform weighting alone on the
+        bottom.  Validation basis, so the endpoints
         are not the test-set figures the tables report.
         """)
 

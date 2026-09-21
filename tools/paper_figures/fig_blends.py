@@ -3,9 +3,10 @@
 
 One row of panels per schedule, so the parents and their own mixtures are
 never drawn over the other schedule's: within each row the two parents carry
-the interval and the three mixtures should be seen sitting outside it, at or
-above the elastic-weight parent on the left and far above the distillation
-parent, which is the figure's claim.
+the interval, and the blend leaves that interval only on preservation, where
+it holds at or above the elastic-weight parent.  On adaptation it stays inside
+it, below the distillation parent for all but a handful of rounds --- which is
+why the caption reports the construction and not a win.
 
     python fig_blends.py           # regenerates fig_blends.pdf from ../data
 
@@ -70,23 +71,22 @@ def main():
         bbox_to_anchor=(0.5, 0.0))
     fs.save(figure, "fig_blends", rect=(0, 0.075, 1, 1))
     fs.caption("fig_blends", r"""
-        The distillation-plus-elastic-weight mixtures against the two parents
-        each was built from, one row of panels per schedule so the two
-        constructions are never drawn over each other: accuracy on the source
-        population (left, preservation) and on the outlier cohort (right,
-        adaptation), fold-mean over the five folds on the validation rows,
-        from the shipped model at round 0.  In each row the parents are the red and blue
-        curves --- distillation, which adapts and does not preserve, and the
-        elastic-weight term, the reverse --- and the green curve is that
-        schedule's own construction at $m{=}0.5$; the composite each
-        schedule's validation ordering selected is the $m{=}0.5$ cell built
-        from the other schedule's components
-        (Table~\ref{tab:selection_axis}), and the other two ratios behave
-        alike and are in the released records.  The reader should see the green curve
-        sitting outside the interval its parents span: at or above the blue
-        parent on the left and far above it on the right, on the cyclic row
-        overtaking even the distillation parent.  Validation basis, so the endpoints are not the
-        test-set figures the tables report.
+        The distillation-plus-elastic-weight construction of each schedule
+        against the two parents it was built from, one row of panels per
+        schedule: accuracy on the source population (left, preservation) and
+        on the outlier cohort (right, adaptation), fold-mean over the five
+        folds on the validation rows, from the shipped model at round 0.
+        In each row the parents are the red and blue curves, distillation and
+        the elastic-weight term, and the green curve is that schedule's own
+        construction at $m{=}0.5$; the composite each schedule's validation
+        ordering selected is the $m{=}0.5$ cell built from the other
+        schedule's components (Table~\ref{tab:selection_axis}), and the other
+        two ratios are in the released records.  On the left the blend holds
+        the elastic-weight parent's preservation; on the right it tracks below
+        the distillation parent on both rows, crossing just above it in the
+        closing rounds of the cyclic row, and, on the parallel row, below both
+        parents by the end of the budget.  Validation basis, so the endpoints
+        are not the test-set figures the tables report.
         """)
 
 

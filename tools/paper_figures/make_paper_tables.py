@@ -868,10 +868,11 @@ def t_scaling(sizes, cost_s):
             "server step at $\\eta_s{=}0.95$ with the cyclic-tuned KD+EWC "
             "composite at $m{=}0.5$, which is a \\emph{different server rule} "
             "from \\emph{" + ARM["control"] + "}, plain FedAvg at "
-            "$\\eta_s{=}1$ --- the two rows are two rules, not one rule with "
+            "$\\eta_s{=}1$ and printed once per schedule --- the carried row "
+            "and the parallel control row are two rules, not one rule with "
             "and without a penalty; and \\emph{" + ARM["sequential"]
             + "} is " + label(CYCLIC_ARM[0])
-            + ". The twenty-client settings omit the control.")
+            + ". The twenty-client settings omit the controls.")
 
     return block(
         "tab:scaling",

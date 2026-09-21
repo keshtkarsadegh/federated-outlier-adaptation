@@ -51,7 +51,7 @@ def main():
                   loc="lower center", ncol=2, columnspacing=1.6,
                   bbox_to_anchor=(0.5, 0.0))
     fs.save(figure, "fig_regs", rect=(0, 0.16, 1, 1))
-    fs.caption("fig_regs", """
+    fs.caption("fig_regs", r"""
         One arm per regularisation family, at the strength that family's own
         search selected, against the no-penalty control, over the full
         hundred-round budget on the study's ten-client cohort: accuracy on the
@@ -59,17 +59,11 @@ def main():
         (right, adaptation), fold-mean over the five folds on the validation
         rows.  All seven arms run the same cyclic schedule and start from the
         shipped model at round 0, so the curves differ only in the penalty.
-        The reader should see the separation the previous figure did not have:
-        every penalty holds the source population far above the unprotected
-        control, which alone keeps falling steeply to the end of the budget,
-        and the better ones do so without buying that preservation with
-        adaptation --- FedNTD and logit matching end above the control on both
-        panels at once, while the elastic-weight penalties, which preserve
-        most, are the two that visibly trail on the right.  Validation basis, so the endpoints are not the
-        test-set figures the tables report.  Only the four curves the text argues from are drawn
+        Only the four curves the text argues from are drawn
         --- the falling control, logit matching, FedNTD, and one
         elastic-weight arm --- the remaining families are read from the
-        table.
+        table.  Validation basis, so the endpoints are not the
+        test-set figures the tables report.
         """)
 
 
