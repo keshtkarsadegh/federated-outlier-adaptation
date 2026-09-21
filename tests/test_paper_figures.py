@@ -725,3 +725,64 @@ def test_the_notes_that_name_a_baseline_name_it_by_macro():
     # A printed accuracy beside the macro would be the retyped copy.
     for text in (scaling, plateau):
         assert "0.8225" not in text and "0.7590" not in text
+
+
+def test_every_plateau_stage_row_names_the_baseline_its_level_is_read_against():
+    """
+    tab:plateau stacks four cohorts and its note used to name two of them.
+
+    A reader who takes the rows the note leaves out for the baseline it does
+    name reads the five-client and twenty-client levels against a population
+    those arms never saw -- silently, because the levels are points either
+    way.  So the partition is checked from both ends: every stage the table
+    prints has a baseline, that baseline is the one report_tables assigns the
+    stage's own run folders, and the note names all four of them.
+    """
+    import make_paper_tables as tables
+    import report_tables
+
+    macro_of = {"c10": "nGZeroCohortAcc", "c5": "nGZeroCohortAccFive",
+                "c20": "nGZeroCohortAccTwenty",
+                "extreme": "nGZeroCohortAccExtreme"}
+    stages = [stage for stage, _ in tables.STAGE_LABEL]
+    printed = {row["stage"] for row in tables.rows("plateau_stages.csv")}
+    assert set(stages) <= printed, sorted(set(stages) - printed)
+    assert set(stages) == set(tables.STAGE_BASELINE), sorted(
+        set(stages) ^ set(tables.STAGE_BASELINE))
+
+    plateau = tables.t_plateau(tables.rows("plateau_stages.csv"))
+    for stage in stages:
+        macro = tables.STAGE_BASELINE[stage]
+        assert macro == macro_of[report_tables.cohort_of(stage + "_")], stage
+        assert "\\%s{}" % macro in plateau, stage
+    assert set(tables.STAGE_BASELINE.values()) == set(macro_of.values())
+
+
+def test_the_extreme_scores_close_from_the_accuracy_pairs_beside_them():
+    """
+    Section 7 quotes each extreme arrangement's score in points beside the two
+    accuracies it is made of, and a reader closes the one against the other:
+    ``(adaptation - A0) - (P0 - preservation)``, with the extremes' own
+    shipped-model accuracy as A0.  A pair read off a neighbouring round, or
+    off the test table rather than the per-round trace the score came from,
+    still looks like a pair -- it just does not close.  Four printed digits
+    per accuracy put the recomputation within a hundredth of a point, which is
+    the tolerance here and the reason the pairs are quoted to four.
+    """
+    import make_numbers
+
+    registry = make_numbers.build()
+    a0 = float(registry["nGZeroCohortAccExtreme"][0])
+    source = float(registry["nGZeroSrcAcc"][0])
+    quoted = (("dual", "nDualOracleScore", "nDualOracleAdapt", "nDualOraclePres"),
+              ("double", "nDoubleOracleScore", "nDoubleOracleAdapt",
+               "nDoubleOraclePres"),
+              ("dual", "nDualFinalScore", "nDualFinalAdapt", "nDualFinalPres"),
+              ("double", "nDoubleFinalScore", "nDoubleFinalAdapt",
+               "nDoubleFinalPres"))
+    for arm, score, adapt, pres in quoted:
+        closed = 100 * ((float(registry[adapt][0]) - a0)
+                        - (source - float(registry[pres][0])))
+        assert round(abs(closed - float(registry[score][0])), 6) <= 0.01, score
+        for macro in (score, adapt, pres):
+            assert ", row %s" % arm in registry[macro][1], (macro, arm)

@@ -1798,6 +1798,25 @@ STAGE_LABEL = [
 ]
 
 
+#: Which shipped-model accuracy each stage row of tab:plateau is read against.
+#: The table stacks stages that ran on four different cohorts, and a note that
+#: names two of them leaves a reader to assume the other rows share one of the
+#: two.  The partition is the one report_tables.SETTING_COHORT makes from the
+#: run-folder stems --- the search stages and the carry setting on the
+#: ten-writer cohort, then five clients, twenty and the extremes --- written
+#: out here so the note can be checked against the rows it describes.
+STAGE_BASELINE = {
+    "aggfull": "nGZeroCohortAcc",
+    "regfull": "nGZeroCohortAcc",
+    "combo": "nGZeroCohortAcc",
+    "c10d10": "nGZeroCohortAcc",
+    "five": "nGZeroCohortAccFive",
+    "c20d10": "nGZeroCohortAccTwenty",
+    "c20d20": "nGZeroCohortAccTwenty",
+    "extreme": "nGZeroCohortAccExtreme",
+}
+
+
 def t_cohort(cohort):
     """A1 --- the ten selected writers, audited against both rankings.
 
@@ -1856,9 +1875,11 @@ def t_plateau(pst):
     note = ("Mean score in points over each stage's arms, on the per-round "
             "\\textbf{validation} trace, the only basis on which a stopping "
             "round may be chosen. The two level columns are means over "
-            "stages whose settings are scored against different "
+            "stages whose settings are scored against four different "
             "shipped-model baselines --- \\nGZeroCohortAcc{} on the "
-            "ten-writer cohort the search ran on, "
+            "ten-writer cohort the search ran on and carried its winners "
+            "onto, \\nGZeroCohortAccFive{} on the five-client stage, "
+            "\\nGZeroCohortAccTwenty{} on both twenty-client stages and "
             "\\nGZeroCohortAccExtreme{} on the two extreme arrangements --- "
             "so a level is not comparable down the column; the gain column "
             "is a within-run difference, one arm stopped against the same "
@@ -1870,6 +1891,8 @@ def t_plateau(pst):
             "\\nPlateauHurtArms{} arm of \\nPlateauArms{} "
             "($-\\nPlateauWorstLoss{}$ points), and an arm on which it never "
             "fires runs the full budget unchanged.")
+    for macro in sorted(set(STAGE_BASELINE.values())):
+        assert "\\%s{}" % macro in note, macro
     return block(
         "tab:plateau",
         "The plateau rule, stage by stage: the fixed hundred-round budget "

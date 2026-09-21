@@ -467,12 +467,35 @@ def build():
         "extreme_stop_rounds.csv, row dual, col oracle_cohort")
     put("nDualOraclePres", acc(f(dual, "oracle_src")),
         "extreme_stop_rounds.csv, row dual, col oracle_src")
+    put("nDoubleOracleAdapt", acc(f(doub, "oracle_cohort")),
+        "extreme_stop_rounds.csv, row double, col oracle_cohort")
+    put("nDoubleOraclePres", acc(f(doub, "oracle_src")),
+        "extreme_stop_rounds.csv, row double, col oracle_src")
     put("nDoubleSatRound", "%d" % int(f(doub, "oracle_round")),
         "extreme_stop_rounds.csv, row double, col oracle_round")
     put("nDualFinalScore", pts(100 * f(dual, "final_score")),
         "extreme_stop_rounds.csv, row dual, col final_score (round-100 trace), in points")
     put("nDoubleFinalScore", pts(100 * f(doub, "final_score")),
         "extreme_stop_rounds.csv, row double, col final_score (round-100 trace), in points")
+
+    # The accuracy pair each of the four extreme scores above is made of, so a
+    # reader can close the score arithmetic on the page rather than take the
+    # scores on trust.  The oracle pair is in extreme_stop_rounds.csv beside
+    # its score; the round-100 pair is NOT - that view carries final_score and
+    # not the two columns behind it - and stopping_extreme.csv carries both,
+    # for the same arms on the same per-round validation trace.  That the two
+    # views agree on final_score to the bit is asserted rather than assumed,
+    # because a pair read off a different horizon would still look like one.
+    for arm, tag in (("dual", "Dual"), ("double", "Double")):
+        trace = pick(stopx, cell=arm)
+        assert abs(f(trace, "final_score")
+                   - f(pick(esr, arm=arm), "final_score")) < 1e-9, arm
+        put("n%sFinalAdapt" % tag, acc(f(trace, "final_adaptation")),
+            "stopping_extreme.csv, row %s, col final_adaptation"
+            " (round-100 trace)" % arm)
+        put("n%sFinalPres" % tag, acc(f(trace, "final_preservation")),
+            "stopping_extreme.csv, row %s, col final_preservation"
+            " (round-100 trace)" % arm)
     put("nLTwoRuleScore", pts(100 * float(next(r for r in sigs
                                                if r["signal"] == "dist_l2_to_global")["mean_stopped_score"])),
         "signals_summary_extract.csv, row dist_l2_to_global, col mean_stopped_score, in points")
