@@ -14,12 +14,16 @@ through by hand. A shared seed is only a collision when the two lines produce
 different runs.
 """
 
+import re
 import sys
 from pathlib import Path
 
 import pytest
 
-TOOLS = Path(__file__).resolve().parents[1] / "tools"
+REPO = Path(__file__).resolve().parents[1]
+TOOLS = REPO / "tools"
+JOBS = REPO / "study" / "artifacts" / "Digits_study01" / "jobs"
+REPRODUCE = REPO / "docs" / "REPRODUCE.md"
 sys.path.insert(0, str(TOOLS))
 
 import check_seeds as cs  # noqa: E402
@@ -27,6 +31,9 @@ import check_seeds as cs  # noqa: E402
 
 LINE = ("foa final --results-dir X --parent {parent} --fold 1 "
         "--rounds 25 --sampler-seed {seed} --seed 1")
+
+PRIVATE = ("foa isolated-train --results-dir X --clients-file c.json "
+           "--only-client {client} --fold 1 --init global --seed {seed}")
 
 
 def _file(tmp_path: Path, name: str, pairs) -> Path:
@@ -126,3 +133,75 @@ def test_disjoint_files_pass(tmp_path, monkeypatch, capsys):
     b = _file(tmp_path, "b.txt", [(710001, "run_b1")])
     monkeypatch.setattr(sys, "argv", ["check_seeds.py", str(a), str(b)])
     assert cs.main() == 0
+
+
+# --------------------------------------------------------------------------- #
+# the base a reference stage was emitted with
+# --------------------------------------------------------------------------- #
+def test_a_reference_file_on_its_own_base_draws_no_complaint(tmp_path):
+    path = tmp_path / "d01_c5_references.txt"
+    path.write_text("\n".join(
+        PRIVATE.format(client=c, seed=750000 + i * 200 + 1)
+        for i, c in enumerate(("w1", "w2"))) + "\n")
+    assert cs.out_of_base(path) == []
+
+
+def test_a_base_typed_differently_is_reported(tmp_path):
+    """
+    The failure the bases exist to catch. A five-client file emitted on the
+    ten-client base still emits, still runs, and draws the clients the shipped
+    records were NOT drawn with - nothing downstream would say so.
+    """
+    path = tmp_path / "d01_c5_references.txt"
+    path.write_text(PRIVATE.format(client="w1", seed=740001) + "\n")
+    problems = cs.out_of_base(path)
+    assert len(problems) == 1
+    assert "740001 is outside the 750000 base" in problems[0]
+
+
+def test_a_final_line_is_read_on_its_sampler_seed_not_its_fold(tmp_path):
+    """`final` seeds the run with the fold, which is 1 to 5 and never a base."""
+    path = tmp_path / "s03_refs_c10.txt"
+    path.write_text(LINE.format(parent="d01_c10_m9_control_global_fold1",
+                                seed=740001) + "\n")
+    assert cs.out_of_base(path) == []
+
+
+def test_a_file_that_is_not_a_reference_stage_is_left_alone(tmp_path):
+    path = tmp_path / "s09_agg_screen2.txt"
+    path.write_text(LINE.format(parent="run_a", seed=2011) + "\n")
+    assert cs.out_of_base(path) == []
+
+
+def test_a_base_outside_its_range_fails_the_run(tmp_path, monkeypatch, capsys):
+    path = tmp_path / "d01_c20_references.txt"
+    path.write_text(PRIVATE.format(client="w1", seed=750001) + "\n")
+    monkeypatch.setattr(sys, "argv", ["check_seeds.py", str(path)])
+    assert cs.main() == 1
+    assert "outside the 720000 base" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("name", sorted(cs.REFERENCE_BASES))
+def test_every_shipped_reference_file_is_on_its_own_base(name):
+    """The bases are claims about files that ship, so they are read off them."""
+    path = JOBS / name
+    assert path.is_file(), f"{name} is named as a reference stage and does not ship"
+    assert cs.out_of_base(path) == []
+
+
+def test_the_reproduce_section_prints_the_bases_the_tool_holds():
+    """
+    Section 5 listed 40000 and 50000 for two stages that were emitted on
+    740000 and 750000 - a reader who typed what the table printed would have
+    got a file that looks right and draws different clients.
+    """
+    text = REPRODUCE.read_text()
+    section = text[text.index("The reference stages sit in bases of their own"):
+                   text.index("`c10d10` was given 13000")]
+    # The printed table, not the prose around it - which now explains the two
+    # block-sized numbers it used to print, and would match a looser search.
+    table = "\n".join(l for l in section.splitlines() if l.startswith("   7"))
+    assert set(re.findall(r"\b\d{6}\b", table)) == {
+        str(base) for base in cs.REFERENCE_BASES.values()}
+    for name in cs.REFERENCE_BASES:
+        assert name in section, name

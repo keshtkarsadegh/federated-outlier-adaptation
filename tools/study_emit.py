@@ -1332,7 +1332,11 @@ def _top_lists(root: Path) -> tuple:
 #: In use elsewhere: 2000 agg screen, 4000 agg full, 8000 reg full,
 #: 9000 hybrid (both families),
 #: 10000-11395 REG SCREEN (two blocks), 12000 five, 14000 dropout20,
-#: 15000/16000 c20, 18000 extreme, 40000 references. 30000-38995 is free.
+#: 15000/16000 c20, 18000 extreme. 30000-38995 is free. The reference stages
+#: are not blocks here at all: each is given a whole seed base on the command
+#: line - 720000, 730000, 740000 and 750000 - and 730000 lands inside this
+#: stage's own range, which costs nothing only because the extreme reference
+#: is five forward passes and draws no seed.
 COMBO_SEED_BASE = 30000
 COMBO_SEED_SLOTS = 900
 
@@ -1640,8 +1644,10 @@ SIZE_STAGES = {
     # its finals, 8000 for the regularisation finals, 9000 for the hybrids,
     # 10000-11000 for the 140-cell regularisation screen (which spans two
     # blocks), 12000, 14000, 15000, 16000 for the size stages, 18000 for the
-    # extremes, 20000/40000/50000 for the three reference stages, and 30000
-    # upward for the combination cross.
+    # extremes, and 30000 upward for the combination cross. The reference
+    # stages were checked as whole bases rather than as blocks - 720000,
+    # 730000, 740000 and 750000 - because a whole base is what their generator
+    # is handed on the command line.
     "c10d10": {
         "tag": "c10d10", "clients": 10, "cohort": "study", "book": None,
         "dropout": 0.1, "seed_block": 13000, "record": "p21_c10_d10.json",

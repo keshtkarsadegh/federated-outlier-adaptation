@@ -26,7 +26,20 @@ no output says so. Passing every task file at once cross-checks the spans:
 
     python tools/check_seeds.py <task file> [<task file> ...]
 
-Exits non-zero if any training task is unseeded, or if two files share a seed.
+IS EACH REFERENCE STAGE ON ITS OWN BASE?
+----------------------------------------
+The third way the same class of failure can arrive. Every other stage derives
+its seeds from a block written down in the emitter, so a stage cannot be run on
+the wrong one by accident. The reference stages take ``--seed-base`` on the
+command line instead, because one generator serves every federation size - and a
+base typed differently emits a file that looks right, runs, and draws a
+different set of clients than the shipped records were drawn with. Nothing
+downstream says so. So the bases the shipped files were emitted with are held
+here, beside the files, and a reference file whose seeds leave its own range is
+a failure rather than a note.
+
+Exits non-zero if any training task is unseeded, if two files share a seed, or
+if a reference stage's seeds sit outside its base.
 """
 
 from __future__ import annotations
@@ -52,6 +65,31 @@ READS_ONLY = {
 
 #: These draw, so they need a seed even though they never train.
 DRAWS = {"draw-old-data", "draw-cohort", "fold-book"}
+
+#: The seed base each reference stage was emitted with, keyed on the file that
+#: carries it. These are read out of the shipped files rather than chosen here,
+#: and `docs/REPRODUCE.md` section 5 lists the same four. The extreme point is
+#: on the list with nothing to check: `--only do-nothing` emits five forward
+#: passes, which seed nothing, and leaving it off would read as an oversight.
+REFERENCE_BASES = {
+    "d01_c20_references.txt": 720000,
+    "d01_extreme_references.txt": 730000,
+    "s03_refs_c10.txt": 740000,
+    "d01_c5_references.txt": 750000,
+}
+
+#: A stage's slot is the 10000 between its base and the next one - wide enough
+#: for the widest stage (twenty client positions at 200 apart is 3800) and
+#: narrow enough that the four bases do not overlap. One flat span from a base
+#: would not separate them: 720000 plus anything that reaches the pooled arm
+#: swallows the other three bases whole, and a five-client file emitted on the
+#: twenty-client base would read as correct.
+REFERENCE_SLOT = 10000
+
+#: The pooled arm sits this far above the base, deliberately clear of every
+#: client's seed, so it gets a second slot of the same width rather than a span
+#: stretched to cover the gap between them.
+POOLED_OFFSET = 90000
 
 
 def flag(words: list[str], name: str) -> str | None:
@@ -97,6 +135,46 @@ def check(path: Path) -> list[str]:
         if dupes and cmd not in ("final", "fold-book"):
             print(f"  note: {cmd} reuses {dupes} seed(s) across {len(entries)} lines")
 
+    return problems
+
+
+def out_of_base(path: Path) -> list[str]:
+    """
+    Seeds of a reference file that do not sit in that stage's own base.
+
+    Read per command, because the two arms of a reference stage carry their
+    drawn seed under different flags: `isolated-train` puts it on ``--seed``,
+    while `final` seeds the run with the fold and separates its arms with
+    ``--sampler-seed``. Reading ``--seed`` off a `final` line would flag every
+    one of them, since a fold is 1 to 5 and no base is.
+    """
+    base = REFERENCE_BASES.get(path.name)
+    if base is None:
+        return []
+
+    problems: list[str] = []
+    for n, line in enumerate(path.read_text().splitlines(), 1):
+        words = line.strip().split()
+        if not words or words[0] != "foa":
+            continue
+        name = {"isolated-train": "--seed", "final": "--sampler-seed"}.get(words[1])
+        if name is None:
+            continue
+        value = flag(words, name)
+        if value is None:
+            continue            # the unseeded case is check()'s to report
+        try:
+            seed = int(value)
+        except ValueError:
+            continue
+        pooled = base + POOLED_OFFSET
+        if not (base <= seed < base + REFERENCE_SLOT
+                or pooled <= seed < pooled + REFERENCE_SLOT):
+            problems.append(
+                f"{path.name}:{n}  {name} {seed} is outside the {base} base "
+                f"this stage was emitted with, and outside its pooled arm "
+                f"at {pooled}"
+            )
     return problems
 
 
@@ -161,12 +239,14 @@ def main() -> int:
     for arg in sys.argv[1:]:
         path = Path(arg)
         n = sum(1 for l in path.read_text().splitlines() if l.strip().startswith("foa "))
-        problems = check(path)
+        problems = check(path) + out_of_base(path)
         seeds = sampler_seeds(path)
         spans[path.name] = seeds
         status = "OK " if not problems else "GAP"
         span = f"{min(seeds)}-{max(seeds)}" if seeds else "no sampler seeds"
-        print(f"  {status} {path.name:<28} {n:4d} tasks   {span}")
+        base = REFERENCE_BASES.get(path.name)
+        tail = f"   base {base}" if base is not None else ""
+        print(f"  {status} {path.name:<28} {n:4d} tasks   {span}{tail}")
         all_problems += problems
 
     shared = collisions(spans)
@@ -182,7 +262,7 @@ def main() -> int:
             print(f"{len(shared)} pair(s) of task files drawing the same seeds.")
         return 1
     print("\nevery task that trains or draws carries a seed, "
-          "and no two files share one.")
+          "no two files share one, and every reference stage is on its own base.")
     return 0
 
 

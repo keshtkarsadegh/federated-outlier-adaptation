@@ -116,8 +116,8 @@ problems = []
 #: d01_* rather than s*, so name order would place them before the stages that
 #: build their inputs; the order is stated here instead of inferred.
 CARRY = ("d01_c5_references.txt", "d01_c20_references.txt", "d01_five.txt",
-         "d01_c20.txt", "d01_extreme.txt", "d01_c10d10.txt",
-         "d01_size_evals_rerun.txt")
+         "d01_c20.txt", "d01_extreme.txt", "d01_extreme_references.txt",
+         "d01_c10d10.txt", "d01_size_evals_rerun.txt")
 
 stages = sorted(JOBS.glob("s*.txt"))
 stages += [JOBS / name for name in CARRY if (JOBS / name).is_file()]

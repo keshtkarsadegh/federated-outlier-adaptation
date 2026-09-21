@@ -343,9 +343,13 @@ python tools/make_size_references.py --study-dir "$FOA_STUDY_DIR" \
 
 The seed base is the argument that must not be guessed. A reference stage seeds
 per client position and per init rather than per cell, so its seeds occupy a
-range of their own - 40000, 750000 and 720000 - and a base typed differently
-would produce a file that looks right and draws different clients. The bases are
-listed with every other seed block in [§5](#seeds).
+range of its own - 740000, 750000 and 720000, in the order of the three commands
+above - and a base typed differently would produce a file that looks right and
+draws different clients. Those three are not a convention to be re-derived: they
+are the bases the shipped files were emitted with, read back out of
+`jobs/s03_refs_c10.txt`, `jobs/d01_c5_references.txt` and
+`jobs/d01_c20_references.txt`. They are listed with every other seed block in
+[§5](#seeds).
 
 A fourth invocation of the same generator serves a federation point that is
 **not** a size. The extreme stage federates two writers of the ten-client cohort
@@ -420,8 +424,32 @@ The reference stages sit in bases of their own rather than in 1000-wide blocks,
 because a reference stage seeds per client position and per init rather than per
 cell and needs the room:
 
-   40000  ten-client references      720000  twenty-client references
-   50000  five-client references (base 750000)
+    seed = seed_base + position * 200 + (0 from g-0, 100 from scratch) + fold
+
+for the private arm; the same shape with the participation rate's index in place
+of the position for the federated control; and `seed_base + 90000` for the pooled
+arm, which is what keeps the pooled seeds clear of every client's.
+
+   720000  twenty-client references    730000  extreme, do-nothing only
+   740000  ten-client references       750000  five-client references
+
+These four are whole seeds, not offsets added to the study's own base of 700000
+the way every block above is. That is how this table came to print 40000 and
+50000 for two of them: added to 700000 those are the right stages, but printed
+among bases they read as seeds no file carries, next to a 720000 that was
+already whole.
+
+Each base is therefore read off the file its stage emitted rather than out of
+this table. `jobs/d01_c20_references.txt` carries 720001-723905 and
+810001-810105, `jobs/s03_refs_c10.txt` carries 740001-741905 and 830001-830105,
+and `jobs/d01_c5_references.txt` carries 750001-750905 and 840001-840105 - the
+second span in each pair is that stage's pooled arm at base + 90000.
+`jobs/d01_extreme_references.txt` draws nothing at all: the extreme point takes
+`--only do-nothing` ([§6](#the-score-basis-of-each-setting)), which emits five
+forward passes, and a forward pass has no seed. That is the only reason 730000
+is safe to hand out, because it is also where the combination cross draws.
+`check_seeds.py` holds the same four bases and fails if a shipped reference file
+leaves its own range.
 
 `c10d10` was given 13000 - the gap between `five` at 12000 and `drop20` at
 14000 - after checking it against every span above and the combination base at

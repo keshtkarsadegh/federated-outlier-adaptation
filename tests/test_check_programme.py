@@ -107,6 +107,6 @@ def test_the_real_jobs_directory_walks_every_live_stage():
     source = CHECKER.read_text()
     carry = source[source.index("CARRY = ("):source.index(")", source.index("CARRY = ("))]
     for name in ("d01_c5_references.txt", "d01_c20_references.txt", "d01_five.txt",
-                 "d01_c20.txt", "d01_extreme.txt", "d01_c10d10.txt",
-                 "d01_size_evals_rerun.txt"):
+                 "d01_c20.txt", "d01_extreme.txt", "d01_extreme_references.txt",
+                 "d01_c10d10.txt", "d01_size_evals_rerun.txt"):
         assert name in carry, name
