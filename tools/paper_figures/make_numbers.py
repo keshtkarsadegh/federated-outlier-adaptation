@@ -402,6 +402,31 @@ def build():
     put("nGZeroSrcPct", "%.1f\\,\\%%" % (100 * P0), SRC_P0 + ", as a percentage")
     put("nGZeroCohortPct", "%.1f\\,\\%%" % (100 * A0), SRC_A0 + ", as a percentage")
     put("nGZeroCohortAcc", acc(A0), SRC_A0)
+
+    # ---- the same model, on the three other cohorts ---------------------
+    # A0 IS NOT ONE NUMBER.  Every setting is scored against the shipped
+    # model's accuracy on its OWN cohort, so the blocks of tab:scaling and
+    # the extreme arrangements each carry a baseline of their own; a score
+    # read against the ten-writer figure would be the distance between two
+    # populations reported as something an arm did.  Each is recovered the
+    # way A0 is - a view's adaptation less its gained - from a view whose
+    # rows were scored on that cohort's book, and asserted constant over
+    # those rows, so a view that mixed two books cannot pass through here
+    # as one baseline.  The twenty-writer cohort is one cohort at two
+    # dropout rates and both its views are read, for the same reason.
+    def cohort_a0(macro, views):
+        seen = [f(r, "adaptation") - f(r, "gained")
+                for _, table in views for r in table]
+        assert seen and max(seen) - min(seen) < 1e-9, (macro, seen)
+        put(macro, acc(seen[0]),
+            "%s, every row: adaptation - gained"
+            % ", ".join(name for name, _ in views))
+
+    cohort_a0("nGZeroCohortAccFive", [("sizes_five.csv", sizes["five"])])
+    cohort_a0("nGZeroCohortAccTwenty",
+              [("sizes_c20d10.csv", sizes["c20d10"]),
+               ("sizes_c20d20.csv", sizes["c20d20"])])
+    cohort_a0("nGZeroCohortAccExtreme", [("extremes.csv", extr)])
     put("nStartingGap", dpts(P0 - A0, 1), "derived: P0 - A0 (%s; %s)" % (SRC_P0, SRC_A0))
 
     wsa = rows("weight_sensitivity_agg.csv")

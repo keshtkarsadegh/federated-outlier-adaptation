@@ -658,3 +658,70 @@ def test_every_macro_the_template_carries_is_mapped_and_every_signal_quotable():
              if n.startswith("nSignal") and n.endswith("Share")]
     assert len(rho) == 8, sorted(rho)
     assert len(share) == 8, sorted(share)
+
+
+def test_both_selection_axis_rank_columns_are_over_one_population():
+    """
+    The block header states a denominator and both Rank columns use it.
+
+    ``export_selection_axis`` ranks one population twice, once per axis, so
+    the test rank is over the arms the record ranked and NOT over the rows
+    the reporting table prints -- which on the penalties is a larger set,
+    because the screened composite joined the finals after the screen had
+    ranked these.  A reader checking a test rank against the finals table
+    lands a place out for every arm below it, so both counts are stated on
+    the page and both are pinned here.
+    """
+    import make_paper_tables as tables
+
+    with (PAPER / "selection_axis.csv").open(newline="") as fh:
+        view = list(csv.DictReader(fh))
+    with (PAPER / "reg-winners.csv").open(newline="") as fh:
+        regu = list(csv.DictReader(fh))
+
+    for stage in {r["stage"] for r in view}:
+        for family, _ in tables.SCHEDULE_BLOCKS:
+            block = [r for r in view if r["stage"] == stage
+                     and r["schedule"] == family]
+            ranked = {int(r["ranked"]) for r in block}
+            assert ranked == {len(block)}, (stage, family, ranked)
+            for column in ("val_score_rank", "test_score_rank"):
+                places = sorted(int(r[column]) for r in block)
+                assert places == list(range(1, len(block) + 1)), (stage,
+                                                                  family,
+                                                                  column)
+
+    singles, mixes, finals = tables.penalty_population(regu)
+    penalties = [r for r in view if r["stage"] == "regularisation"]
+    assert {int(r["ranked"]) for r in penalties} == {singles + mixes}
+    assert finals == singles + mixes + 1, (singles, mixes, finals)
+    # The screened composite is the one final outside the ranking, and the
+    # counts the two notes state are these: 13 ranked, 14 finals, 28 in all.
+    screened = [r["cell"] for r in regu if r["cell"].startswith("blend_")]
+    assert len(screened) == len(tables.SCHEDULE_BLOCKS), screened
+    assert not [r for r in penalties if r["cell"].startswith("blend_")]
+    assert len(regu) == len(tables.SCHEDULE_BLOCKS) * finals, len(regu)
+
+
+def test_the_notes_that_name_a_baseline_name_it_by_macro():
+    """
+    Three table notes state which cohort's shipped model a block is scored
+    against, and a retyped 0.8225 beside a regenerated view is exactly the
+    drift numbers.tex exists to stop.  So the notes carry the macro and the
+    macro carries the provenance; this is what says they still do.
+    """
+    import make_paper_tables as tables
+
+    sizes = {key: tables.rows("sizes_%s.csv" % key)
+             for key in ("c10d10", "five", "c20d10", "c20d20")}
+    scaling = tables.t_scaling(sizes, tables.rows("cost_stages.csv"))
+    for macro in ("nGZeroCohortAcc", "nGZeroCohortAccFive",
+                  "nGZeroCohortAccTwenty"):
+        assert "\\%s{}" % macro in scaling, macro
+
+    plateau = tables.t_plateau(tables.rows("plateau_stages.csv"))
+    for macro in ("nGZeroCohortAcc", "nGZeroCohortAccExtreme"):
+        assert "\\%s{}" % macro in plateau, macro
+    # A printed accuracy beside the macro would be the retyped copy.
+    for text in (scaling, plateau):
+        assert "0.8225" not in text and "0.7590" not in text

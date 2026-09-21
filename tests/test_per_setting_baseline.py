@@ -184,3 +184,50 @@ def test_a_root_without_the_cohorts_book_is_refused(tmp_path: Path):
     assert report_tables.baselines(root) == pytest.approx((0.8, 0.99))
     with pytest.raises(SystemExit):
         report_tables.baselines(root, "c20")
+
+
+# --------------------------------------- the macros the manuscript quotes
+#: The macro each cohort's shipped-model accuracy is quoted by, and the book
+#: it has to agree with. Written out rather than derived from the macro names
+#: so that a macro pointed at the wrong cohort fails here.
+COHORT_MACRO = (("nGZeroCohortAcc", "c10"),
+                ("nGZeroCohortAccFive", "c5"),
+                ("nGZeroCohortAccTwenty", "c20"),
+                ("nGZeroCohortAccExtreme", "extreme"))
+
+
+def test_every_cohort_baseline_the_paper_quotes_is_its_own_book():
+    """
+    Four table notes now name a baseline, and a note that named the wrong one
+    would say the arm beside it is scored against a population it never saw.
+
+    The macros are built from the CSV views - adaptation less gained, the way
+    A0 is recovered everywhere - and checked here against the evaluation books
+    those views were scored on, which is the only place the two chains meet.
+    """
+    sys.path.insert(0, str(REPO / "tools" / "paper_figures"))
+    import make_numbers
+
+    registry = make_numbers.build()
+    for macro, cohort in COHORT_MACRO:
+        value, source = registry[macro]
+        assert value == "%.4f" % a0_of(cohort), (macro, cohort, value)
+        assert "adaptation - gained" in source, (macro, source)
+    values = {macro: registry[macro][0] for macro, _ in COHORT_MACRO}
+    assert len(set(values.values())) == 4, values
+
+
+def test_the_twenty_client_macro_is_one_baseline_over_both_dropout_rates():
+    """
+    Two dropout rates, one cohort, one book. The macro reads both views and
+    asserts they agree; if the views ever carried two baselines the assertion
+    would fire inside the generator, so what is checked here is the other
+    half - that both views really are named in the provenance comment, and so
+    that a reader following it lands on both.
+    """
+    sys.path.insert(0, str(REPO / "tools" / "paper_figures"))
+    import make_numbers
+
+    _, source = make_numbers.build()["nGZeroCohortAccTwenty"]
+    for view in ("sizes_c20d10.csv", "sizes_c20d20.csv"):
+        assert view in source, source

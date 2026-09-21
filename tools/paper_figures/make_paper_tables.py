@@ -287,6 +287,20 @@ def verbatim(row, col):
     return raw
 
 
+#: Small counts in words, for the notes that state a population in prose.
+#: The notes spell these out and the table cells print digits, which is the
+#: usual split; a count here is always one a generator derived, never typed.
+NUMBER_WORD = ("zero", "one", "two", "three", "four", "five", "six", "seven",
+               "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+               "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
+               "nineteen", "twenty")
+
+
+def spell(n):
+    """A small count in words; larger ones fall back to digits."""
+    return NUMBER_WORD[n] if 0 <= n < len(NUMBER_WORD) else "%d" % n
+
+
 def count(row, col):
     """An integer CSV cell."""
     raw = row[col]
@@ -479,6 +493,37 @@ def t_agg(agg):
 # the construction sweep in full has its own table below
 # --------------------------------------------------------------------------
 
+def penalty_population(regu):
+    """How many penalty cells the screen ranked, and how many finals there are.
+
+    THE TWO COUNTS ARE NOT THE SAME COUNT, and two tables state one each.
+    The screen ranked one cell per single penalty plus every setting of the
+    composite the construction stage built -- that is the population
+    ``selection_axis.csv`` carries and the population both of its rank
+    columns are over.  The screened composite, which swept all three
+    coefficients at once instead of the mix alone, was run afterwards and
+    joined the finals without a place in that ordering.  So the finals are
+    one larger than the ranking, per schedule, and an arm that scores below
+    the screened composite stands one place higher in the ranking than it
+    does in the finals table.
+
+    Returned as (singles, mixes, finals) and derived from the view, because
+    the sentence that states them sits beside the table that prints them.
+    """
+    per_family = {}
+    for family, _ in SCHEDULE_BLOCKS:
+        mine = [r["cell"] for r in regu if r["family"] == family]
+        screened = [c for c in mine if c.startswith("blend_")]
+        mixes = [c for c in mine if c.startswith("hybrid")]
+        assert len(screened) == 1, (family, screened)
+        per_family[family] = (len(mine) - len(mixes) - len(screened),
+                              len(mixes), len(mine))
+    assert len(set(per_family.values())) == 1, per_family
+    singles, mixes, finals = per_family["parallel"]
+    assert singles + mixes + 1 == finals, per_family
+    return singles, mixes, finals
+
+
 def reg_printed(regu, combo, agg_cells):
     """The rows tab:reg_winners carries, each with the roles that earn it one.
 
@@ -538,6 +583,7 @@ def t_reg(reg_rows, agg, regu):
     that the two blocks are read the same way, and marked.  The assertion at
     the end is what stops a block losing it again.
     """
+    singles, mixes, finals = penalty_population(regu)
     body = []
     controls = []
     for fam, title in SCHEDULE_BLOCKS:
@@ -632,9 +678,17 @@ def t_reg(reg_rows, agg, regu):
             "inside the \\nControlSeedSpread{}-point spread of one "
             "configuration run twice, so the head of each block is a tie and "
             "not an ordering. The ordering is over the rows printed and not "
-            "over every arm of the block: each schedule ranked thirteen "
-            "penalty cells, and the composite rows here are the ones other "
-            "tables read rather than every mix --- the cyclic composite at "
+            "over every arm of the block: each schedule ranked "
+            + spell(singles + mixes) + " penalty cells --- "
+            + spell(singles) + " single penalties and " + spell(mixes)
+            + " settings of the constructed composite --- and the "
+            "\\emph{screened} row is a " + spell(finals) + "th final that "
+            "ordering never held: it was run after the screen, so the two "
+            "rank columns of Table~\\ref{tab:selection_axis} are over "
+            + spell(singles + mixes) + " arms where this block's finals "
+            "number " + spell(finals) + ". The composite rows here are the "
+            "ones other tables read rather than every mix --- the cyclic "
+            "composite at "
             "$\\lambda{=}" + COMPOSITE["cyclic"][0] + ", T{=}"
             + COMPOSITE["cyclic"][1] + ", m{=}0.5$ scores $"
             + num(unprinted, "score", 2, 100) + "$ and would stand third in "
@@ -879,7 +933,13 @@ def t_scaling(sizes, cost_s):
             "and the parallel control row are two rules, not one rule with "
             "and without a penalty; and \\emph{" + ARM["sequential"]
             + "} is " + label(CYCLIC_ARM[0])
-            + ". The twenty-client settings omit the controls.")
+            + ". The twenty-client settings omit the controls. Each block "
+            "is scored against the shipped model's own accuracy on that "
+            "block's cohort and not against one shared figure --- "
+            "\\nGZeroCohortAcc{} at ten clients, \\nGZeroCohortAccFive{} at "
+            "five and \\nGZeroCohortAccTwenty{} at twenty under either "
+            "dropout rate --- so every score printed here can be recomputed "
+            "from the two accuracies beside it.")
 
     return block(
         "tab:scaling",
@@ -1187,8 +1247,10 @@ SELECTION_BASIS = (
     "not a re-derivation of it. The four columns under "
     "\\textbf{test} are the row the reporting table prints for the "
     "same arm, and \\emph{Rank} there is that arm's place in the same "
-    "population ordered by the test score. A rank is over every arm "
-    "that schedule's record ranked, which the block header states. "
+    "population ordered by the test score. The two \\emph{Rank} columns "
+    "share one denominator --- every arm that schedule's record ranked, "
+    "which the block header states --- and it is neither the rows this "
+    "table prints nor the rows the reporting table prints. "
     "The two orderings are not the same ordering. ")
 
 SELECTION_HEAD = ("Arm & \\multicolumn{4}{c}{Validation (the axis that selected)} & "
@@ -1228,16 +1290,27 @@ def selection_body(sel, reported, stages):
         for fam, fam_title in SCHEDULE_BLOCKS:
             block, within, extra = selection_block(stage_rows, stage, fam)
             shown = within + extra
+            # BOTH RANK COLUMNS HAVE ONE DENOMINATOR AND THE HEADER SAYS
+            # WHICH.  export_selection_axis ranks the record's population
+            # twice, once on each axis, so the test rank is over the arms
+            # that schedule's record ranked and not over the rows the
+            # reporting table prints -- which is a larger set on the
+            # penalties, where the screened composite joined the finals
+            # after the screen had ranked these.  A reader checking a test
+            # rank against Table 3 lands a place out without being told.
+            ranked = count(block[0], "ranked")
             if len(within) == len(block):
                 head = ("%s: all %s ranked arms, by validation score"
-                        % (fam_title, count(block[0], "ranked")))
+                        % (fam_title, ranked))
             else:
-                head = ("%s: the top %s of %s arms by validation score"
-                        % (fam_title, len(within), count(block[0], "ranked")))
+                head = ("%s: the top %s of %s ranked arms by validation score"
+                        % (fam_title, len(within), ranked))
                 if extra:
                     head += (", plus %s printed from below that depth"
                              % ("one arm" if len(extra) == 1
                                 else "%d arms" % len(extra)))
+            head += ("; both rank columns are over those %s ranked arms"
+                     % ranked)
             body.append("\\multicolumn{9}{@{}l}{\\emph{%s}} \\\\" % head)
             for r in shown:
                 row = pick(reported[which], cell=r["cell"], family=fam)
@@ -1309,7 +1382,33 @@ def t_selection_axis(sel, agg, regu, combo):
                    and r["stage"] == "regularisation")
         assert not row["role"], (family, row["role"])
 
+    # WHICH POPULATION THE PENALTY RANKS ARE OVER, STATED RATHER THAN LEFT
+    # TO BE INFERRED.  export_selection_axis ranks one population twice, so
+    # the test rank is over the cells the screen ranked -- and the screened
+    # composite is not one of them: it swept all three coefficients at once,
+    # ran after the screen and joined the finals with no place in either
+    # ordering.  A reader who checks a test rank here against
+    # tab:reg_winners therefore lands one place out for every arm below the
+    # screened composite, and both counts are read off the two views so that
+    # the sentence saying so cannot go stale.
+    ranked = {int(r["ranked"]) for r in sel if r["stage"] == "regularisation"}
+    assert len(ranked) == 1, ranked
+    ranked = ranked.pop()
+    singles, mixes, finals = penalty_population(regu)
+    assert ranked == singles + mixes, (ranked, singles, mixes)
+
     note = SELECTION_BASIS + (
+        "On the penalty blocks that denominator is "
+        + spell(ranked) + " --- " + spell(singles) + " single penalties and "
+        + spell(mixes) + " settings of the constructed composite --- on both "
+        "axes. The \\emph{screened} composite of "
+        "Table~\\ref{tab:reg_winners} is outside it: that arm swept all "
+        "three coefficients at once and ran after the screen, so it holds "
+        "no place in either ordering and the finals number "
+        + spell(finals) + " per schedule where these ranks are over "
+        + spell(ranked) + ". A test rank here is therefore one place above "
+        "the same arm's place among the finals whenever that arm scores "
+        "below the screened composite. "
         "On the parallel schedule the rule the cross was built from is the "
         "one validation put first, and it is not the one that leads "
         "Table~\\ref{tab:agg_winners}. "
@@ -1756,7 +1855,15 @@ def t_plateau(pst):
              + " \\\\"]
     note = ("Mean score in points over each stage's arms, on the per-round "
             "\\textbf{validation} trace, the only basis on which a stopping "
-            "round may be chosen. The rule keeps the checkpoint of the best "
+            "round may be chosen. The two level columns are means over "
+            "stages whose settings are scored against different "
+            "shipped-model baselines --- \\nGZeroCohortAcc{} on the "
+            "ten-writer cohort the search ran on, "
+            "\\nGZeroCohortAccExtreme{} on the two extreme arrangements --- "
+            "so a level is not comparable down the column; the gain column "
+            "is a within-run difference, one arm stopped against the same "
+            "arm run out, and it is. "
+            "The rule keeps the checkpoint of the best "
             "cohort round and stops training after "
             "$\\kappa=\\nPlateauK{}$ rounds "
             "without improvement; it costs anything on exactly "
