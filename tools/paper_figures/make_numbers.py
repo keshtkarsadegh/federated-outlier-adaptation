@@ -945,6 +945,28 @@ def build():
         "fairness_c10d10.csv, col lift_worst, maximum over the %d arm rows,"
         " in points" % len(fair))
 
+    # THE SAME RANGE OVER THE CARRIED ARMS ALONE.  The two macros above run
+    # over every row of the ten-client block because the sentence they serve
+    # is about every arm the block prints, controls included.  A sentence
+    # about what the carrying bought cannot include them: plain FedAvg is the
+    # thing a carried arm is measured against, it is the row that lifts its
+    # worst client least, and folding it in makes the range read wider at the
+    # bottom than any carried arm went.  'control' is the one cell of the
+    # block that is not a carried arm - the same rule the carry settings are
+    # read by above - so the three left are the three of tab:scaling.
+    fair_carried = [r for r in fair if r["cell"] != "control"]
+    assert len(fair_carried) == 3, sorted(r["cell"] for r in fair_carried)
+    CARRIED_SRC = ("fairness_c10d10.csv, col lift_worst, %s over the %d"
+                   " non-control rows of the ten-client carry block"
+                   " (cells %s), in points")
+    cells = ", ".join(sorted(r["cell"] for r in fair_carried))
+    put("nFairWorstMinGainCarried",
+        dpts(min(f(r, "lift_worst") for r in fair_carried)),
+        CARRIED_SRC % ("minimum", len(fair_carried), cells))
+    put("nFairWorstMaxGainCarried",
+        dpts(max(f(r, "lift_worst") for r in fair_carried)),
+        CARRIED_SRC % ("maximum", len(fair_carried), cells))
+
     for macro, k in (("nBalancedWorstTwentyTwo", "c20d10"),
                      ("nBalancedWorstTwentyFour", "c20d20")):
         r = pick(fair20[k], cell="balanced", family="parallel")

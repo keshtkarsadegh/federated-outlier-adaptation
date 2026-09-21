@@ -629,6 +629,131 @@ def test_the_screened_composite_gaps_are_against_the_rows_the_table_prints():
     assert taken[0] in registry["nBlendScreenVsSelectedCyc"][1]
 
 
+#: Which reporting view each selecting stage's test columns are joined onto,
+#: and the column names that view calls them by.  `t_selection_axis` prints the
+#: REPORTED row rather than the view's own reading of the same runs, so this is
+#: the join the table actually makes.
+SELECTION_REPORTS = {"aggregation": "agg-winners.csv",
+                     "regularisation": "reg-winners.csv",
+                     "combination": "combos.csv"}
+
+#: The one pair of DISTINCT arms whose three test numbers round to the same
+#: figures the tables print, named here so a coincidence cannot be mistaken for
+#: a join and a join cannot hide inside the rounding.  The parallel reading of
+#: the cyclic-tuned composite at m = 0.25 comes from
+#: d01_regfull_hybrid_seq_mix0p25_fold{1..5}/concurrent_delta and the screened
+#: composite on the cyclic schedule from
+#: d01_regfull_sequential_blend_lam0p1_T0p25_mix0p5_fold{1..5}/sequential_weights:
+#: two stems, ten folders, no folder and no per-fold value in common.  Their
+#: agreement stops at the fourth digit, which is what the test asserts; runs
+#: read under the wrong arm's name would agree at every digit instead.
+ROUNDED_TWINS = frozenset({(("blend_lam0p1_T0p25_mix0p5", "cyclic"),
+                            ("hybrid_seq_mix0p25", "parallel"))})
+
+
+def test_every_selection_axis_arm_joins_one_run_set_and_no_arm_appears_twice():
+    """
+    The selection-axis view joins on (cell, family), and a join on a key two
+    arms can share reports one arm's runs under the other's name --- silently,
+    because both columns still look like accuracies.  Two things are checked
+    here.  Every key of the view is unique and lands on exactly one reporting
+    row whose numbers are the view's own to the precision the view stores them
+    at, over one set of five folds.  And no two DISTINCT arms of the shipped
+    views carry all three test numbers: exactly is a failure, and to the four
+    figures the tables print it is allowed only for the one pair the records
+    really do put that close, which is named above.
+    """
+    import make_paper_tables as tables
+
+    def read(name):
+        with (PAPER / name).open(newline="") as handle:
+            return list(csv.DictReader(handle))
+
+    view = read("selection_axis.csv")
+    keys = [(r["stage"], r["cell"], r["schedule"]) for r in view]
+    assert len(set(keys)) == len(keys), "a (stage, cell, schedule) twice"
+
+    stages = {stage for stage, _, _ in tables.SELECTION_STAGES}
+    assert set(SELECTION_REPORTS) == stages, sorted(stages)
+
+    for row in view:
+        reported = [r for r in read(SELECTION_REPORTS[row["stage"]])
+                    if r["cell"] == row["cell"]
+                    and r["family"] == row["schedule"]]
+        assert len(reported) == 1, (row["stage"], row["cell"], row["schedule"],
+                                    len(reported))
+        got = reported[0]
+        assert got["folds"] == "5", (row["cell"], got["folds"])
+        for mine, theirs in (("test_adaptation", "adaptation"),
+                             ("test_preservation", "preservation"),
+                             ("test_score", "score")):
+            assert abs(float(row[mine]) - float(got[theirs])) < 5e-7, (
+                row["stage"], row["cell"], row["schedule"], mine)
+
+    arms = [("selection_axis/" + r["stage"], r["cell"], r["schedule"],
+             float(r["test_adaptation"]), float(r["test_preservation"]),
+             float(r["test_score"])) for r in view]
+    for name in sorted(set(SELECTION_REPORTS.values())):
+        arms += [(name, r["cell"], r["family"], float(r["adaptation"]),
+                  float(r["preservation"]), float(r["score"]))
+                 for r in read(name)]
+
+    def collisions(round_it):
+        seen = {}
+        for source, cell, family, a, p, s in arms:
+            key = (("%.4f" % a, "%.4f" % p, "%.2f" % (100 * s)) if round_it
+                   else (a, p, s))
+            seen.setdefault(key, set()).add((cell, family))
+        return {tuple(sorted(v)) for v in seen.values() if len(v) > 1}
+
+    assert not collisions(False), (
+        "two arms with identical test numbers: %s" % sorted(collisions(False)))
+    assert collisions(True) == ROUNDED_TWINS, sorted(collisions(True))
+
+    for pair in ROUNDED_TWINS:
+        numbers = [next((a, p, s) for _, cell, family, a, p, s in arms
+                        if (cell, family) == one) for one in pair]
+        assert numbers[0] != numbers[1], pair
+
+
+def test_the_carried_fairness_range_leaves_the_controls_out():
+    """
+    Two macros price what the carrying bought the worst-served client, and the
+    two beside them price the same block with its controls in.  The pair is
+    easy to swap and the swap is invisible --- both are a range of the same
+    column of the same five rows --- so the arms are named here rather than
+    only the values: plain FedAvg lifts its worst client least of the five, so
+    a carried range that had picked it up would read low at the bottom and
+    right at the top.
+    """
+    import make_numbers
+
+    registry = make_numbers.build()
+    with (PAPER / "fairness_c10d10.csv").open(newline="") as handle:
+        fair = list(csv.DictReader(handle))
+
+    carried = [r for r in fair if r["cell"] != "control"]
+    assert sorted(r["cell"] for r in carried) == ["balanced", "sequential",
+                                                  "winner"]
+    assert sorted(r["cell"] for r in fair if r["cell"] == "control") == \
+        ["control", "control"]
+
+    lifts = [float(r["lift_worst"]) for r in carried]
+    assert registry["nFairWorstMinGainCarried"][0] == "%.2f" % (100 * min(lifts))
+    assert registry["nFairWorstMaxGainCarried"][0] == "%.2f" % (100 * max(lifts))
+    assert registry["nFairWorstMinGainCarried"][0] == "11.48"
+    assert registry["nFairWorstMaxGainCarried"][0] == "12.17"
+
+    # the controls are outside it, and the wider pair is not
+    over_all = [float(r["lift_worst"]) for r in fair]
+    assert min(over_all) < min(lifts), "a control lifts more than a carried arm"
+    assert registry["nFairWorstMinGain"][0] == "%.2f" % (100 * min(over_all))
+    assert registry["nFairWorstMaxGain"][0] == "%.2f" % (100 * max(over_all))
+    for name in ("nFairWorstMinGainCarried", "nFairWorstMaxGainCarried"):
+        assert "non-control" in registry[name][1], name
+        assert "fairness_c10d10.csv" in registry[name][1], name
+
+
 def test_every_macro_the_template_carries_is_mapped_and_every_signal_quotable():
     """
     numbers.tex is rewritten in place from the macro NAMES the file already
