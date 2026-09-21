@@ -21,6 +21,15 @@ both read from disk rather than written down. **`w = 1`**, as the aggregation
 grid was run and selected under. A single weight across both families is what
 makes the two tables readable against each other.
 
+That `A0` is the **ten-writer search cohort's**, which is the cohort every cell on
+this page was screened and reported on. A setting outside it - five clients,
+twenty, the extreme pair - federates other writers and so has another do-nothing,
+and is read against its own cohort's evaluation book instead;
+`report_tables.COHORT_BOOKS` maps each setting to the book it must use, and
+refuses a setting it has no book for rather than falling back to this number.
+`P0` is the same 0.9986 everywhere, because the source population is the same
+population everywhere.
+
 ---
 
 ## Where the old numbers come from
@@ -434,7 +443,7 @@ One formula, both grids, both schedules, `w = 1`.
 than assumed, and read off disk at selection time by `shipped_baselines()` in
 `tools/study_emit.py`:
 
-    A_0 = 0.8225   g-0 on the cohort's test rows          <- g0_perfold_evaluations.json
+    A_0 = 0.8225   g-0 on the TEN-WRITER cohort's rows     <- g0_perfold_evaluations.json
     P_0 = 0.9986   g-0 on the source population's rows    <- g0_evaluations.json
 
 So the two terms are **differences from doing nothing**, not raw accuracies:
@@ -715,10 +724,13 @@ From `tables/p13_reg_method_winners.json`, selected on validation at 25 rounds:
 
     python tools/report_tables.py --root "$FOA_STUDY_DIR" --what reg-winners
 
-Twenty-six rows: the fourteen per-method winners, each under the schedule it was
-selected for, and the six blend cells, which are untagged and so are read under
-both. Basis TEST; selection ran on validation. `gained` is adaptation above the
-shipped model's 0.8225 on the cohort, `spent` is preservation below its 0.9986
+Twenty-eight rows: the fourteen per-method winners, each under the schedule it
+was selected for; the six `hybrid` composite cells, which are untagged and so are
+read under both schedules, for twelve rows; and the two winners of the blend's own
+screen ([below](#2026-09-09-the-blends-own-grid)), re-run at the full horizon under
+the same `d01_regfull_` prefix and so collected by the same reader as the rest.
+Basis TEST; selection ran on validation. `gained` is adaptation above the shipped
+model's 0.8225 on the ten-writer cohort, `spent` is preservation below its 0.9986
 on the source population, and `score` is the difference.
 
 | cell | sched | adapt | +- | preserve | gained | spent | score |
@@ -731,9 +743,11 @@ on the source population, and `score` is the difference.
 | `logit_l2_lam0.001` | parallel | 0.9356 | 0.0133 | 0.9877 | 11.30p | 1.08p | **10.22** |
 | `ntd_b0.01_t2` | cyclic | 0.9329 | 0.0202 | 0.9904 | 11.04p | 0.82p | 10.22 |
 | `hybrid_mix0.75` | cyclic | 0.9281 | 0.0131 | 0.9923 | 10.56p | 0.63p | 9.93 |
+| `blend_lam0.1_T0.5_mix0.25` | parallel | 0.9243 | 0.0209 | 0.9932 | 10.18p | 0.54p | 9.65 |
 | `hybrid_mix0.75` | parallel | 0.9244 | 0.0215 | 0.9929 | 10.19p | 0.56p | 9.62 |
 | `hybrid_seq_mix0.25` | cyclic | 0.9271 | 0.0187 | 0.9901 | 10.46p | 0.84p | 9.62 |
 | `hybrid_seq_mix0.25` | parallel | 0.9243 | 0.0149 | 0.9913 | 10.18p | 0.73p | 9.45 |
+| `blend_lam0.1_T0.25_mix0.5` | cyclic | 0.9243 | 0.0135 | 0.9913 | 10.18p | 0.73p | 9.45 |
 | `hybrid_mix0.5` | parallel | 0.9225 | 0.0201 | 0.9927 | 10.00p | 0.59p | 9.41 |
 | `fisher_lam0.1` | cyclic | 0.9235 | 0.0187 | 0.9916 | 10.10p | 0.69p | 9.40 |
 | `hybrid_mix0.25` | cyclic | 0.9216 | 0.0180 | 0.9920 | 9.91p | 0.66p | 9.25 |
@@ -750,14 +764,18 @@ on the source population, and `score` is the difference.
 | `kd_T0.25_a0.9` | parallel | 0.9235 | 0.0173 | 0.9775 | 10.09p | 2.11p | 7.98 |
 | `param_l2_mu0` *(control)* | cyclic | 0.9169 | 0.0160 | 0.9695 | 9.44p | 2.91p | 6.53 |
 
-Every row is 8/8 significant. Three things to read off it:
+Every row is 8/8 significant. The cyclic blend row prints within a hundredth of
+`hybrid_seq_mix0.25` parallel in every column but the fold spread: two different
+arms that round to the same line, not a duplicated row. Three things to read off
+it:
 
 **`logit_l2` is the best measured penalty on both schedules** - `lam0.003`
-cyclic and `lam0.001` parallel, first among the fourteen in each family. It was
+cyclic and `lam0.001` parallel, first among the fourteen per-method winners in
+each family. It was
 the stable method on the discarded search too, at a value three decades below
 where the earlier study looked.
 
-**The no-penalty control is last of the twenty-six.** `param_l2_mu0` is an exact
+**The no-penalty control is last of the twenty-eight.** `param_l2_mu0` is an exact
 no-op, and at the reporting horizon it spends **2.91 points** of preservation
 where `logit_l2` on the same schedule spends **0.82**. The screen's verdict -
 that penalties read as pure cost - does not survive the horizon at which the
@@ -840,11 +858,12 @@ not a claim that the blend is better than Fisher regularisation as selected.
 
 ### What the blends are actually good at is preservation
 
-The **nine highest preservation figures in the table are all blends** (0.9929
-down to 0.9920) before any other cell appears. `hybrid_mix0.75` on the parallel
-schedule spends 0.56 points, the least of anything measured; `hybrid_seq_mix0.75`
-tops the table outright at 10.69 while spending 0.61, against `logit_l2`'s 0.82
-and 1.08. The blends buy their score by not forgetting, where `logit_l2` and
+The **eleven highest preservation figures in the table are all kd+fisher cells** -
+the blend screen's parallel winner at 0.9932, then ten of the twelve `hybrid`
+rows - before any other method appears. `blend_lam0.1_T0.5_mix0.25` spends 0.54
+points, the least of anything measured, and `hybrid_mix0.75` on the parallel
+schedule is next at 0.56; `hybrid_seq_mix0.75` tops the table outright at 10.69
+while spending 0.61, against `logit_l2`'s 0.82 and 1.08. The blends buy their score by not forgetting, where `logit_l2` and
 `ntd` buy theirs by adapting harder.
 
 ## The shortlists, after the rerun

@@ -74,15 +74,45 @@ Five clients is the *worst five* of the same ranking the ten-client cohort was c
 from, and twenty is that cohort extended by the next ten writers down it. A row
 in one table therefore cannot be subtracted from a row in another to get "the cost
 of scale": the cohorts get easier as they grow, which is visible in the adaptation
-column and is a property of the ranking rather than of the method. What the tables
+column, is visible again in the four `A0` values of section 3, and is a property
+of the ranking rather than of the method.
+
+Each setting is now scored against its own do-nothing - that is what those four
+`A0` values are - and that closed a real defect rather than a presentational one.
+A setting outside the search cohort used to be credited with the gain it would
+have made on the ten writers instead of the gain it made on the writers it
+actually federates, which flatters a harder cohort and punishes an easier one.
+What the fix does not buy is a quantity comparable across the tables. Two
+settings scored against two different do-nothings are two measurements that share
+a formula, so subtracting one score from another still measures the distance
+between two populations of writers rather than the cost of scale. What the tables
 *do* support is reading the arms against each other within a setting, and reading
-the shape of that ordering across settings.
+the shape of that ordering across settings; every number is now honest about its
+own federation, which is what that reading needs and not a substitute for it.
 
 ## 3. The settings
 
 Score is the study's rule, `(adaptation - A0) - (P0 - preservation)`, on the test
-halves. `A0` and `P0` are the shipped model's own accuracies, read from the
-study's evaluation files rather than written down.
+halves. Both are the shipped model's own accuracies, read out of the study's
+evaluation files rather than written down - but they are not read the same number
+of times. `P0 = 0.9986` is one number in every table below, because there is one
+source population and one model that served it. `A0` is one number per setting,
+because the four federations below are four different populations of writers, and
+what doing nothing gets on one of them is not what doing nothing gets on another:
+
+| setting | cohort | evaluation book | `A0` |
+|---|---|---|---|
+| ten clients, one dropped | the study cohort, worst ten | `g0_perfold_evaluations.json` | 0.8225 |
+| five clients, one dropped | worst five | `g0_c5_evaluations.json` | 0.8032 |
+| twenty clients, either rate | worst twenty | `g0_c20_evaluations.json` | 0.8441 |
+| the two extreme arrangements | the worst two | `g0_extreme_evaluations.json` | 0.7590 |
+
+The ten-client value is the one the whole search ran under, and it has not moved.
+The other three were the ten-client value until this was fixed, which is to say
+three of the four settings were scored against a do-nothing measured on writers
+they never federate. `report_tables.COHORT_BOOKS` holds the mapping and
+`cohort_of()` applies it to the run-folder stem, so a stem naming no cohort this
+study evaluated g-0 on is refused rather than defaulted to the ten.
 
 **Ten clients, one dropped - nine of ten, the study's own setting**
 
@@ -98,34 +128,35 @@ study's evaluation files rather than written down.
 
 | arm | sched | adapt | +- | preserve | gained | spent | score |
 |---|---|---|---|---|---|---|---|
-| sequential | cyclic | 0.9366 | 0.0191 | 0.9866 | 11.41p | 1.20p | **10.21p** |
-| balanced | parallel | 0.9327 | 0.0222 | 0.9889 | 11.02p | 0.97p | 10.05p |
-| winner | parallel | 0.9324 | 0.0208 | 0.9812 | 10.99p | 1.74p | 9.25p |
-| control | cyclic | 0.9309 | 0.0287 | 0.9371 | 10.83p | 6.14p | 4.69p |
-| control | parallel | 0.9253 | 0.0382 | 0.9368 | 10.28p | 6.18p | 4.11p |
+| sequential | cyclic | 0.9366 | 0.0191 | 0.9866 | 13.34p | 1.20p | **12.14p** |
+| balanced | parallel | 0.9327 | 0.0222 | 0.9889 | 12.95p | 0.97p | 11.98p |
+| winner | parallel | 0.9324 | 0.0208 | 0.9812 | 12.92p | 1.74p | 11.18p |
+| control | cyclic | 0.9309 | 0.0287 | 0.9371 | 12.77p | 6.14p | 6.63p |
+| control | parallel | 0.9253 | 0.0382 | 0.9368 | 12.21p | 6.18p | 6.04p |
 
 **Twenty clients, two dropped - eighteen of twenty**
 
 | arm | sched | adapt | +- | preserve | gained | spent | score |
 |---|---|---|---|---|---|---|---|
-| sequential | cyclic | 0.9095 | 0.0046 | 0.9939 | 8.70p | 0.46p | **8.24p** |
-| winner | parallel | 0.9071 | 0.0050 | 0.9931 | 8.46p | 0.54p | 7.92p |
-| balanced | parallel | 0.8944 | 0.0104 | 0.9958 | 7.19p | 0.28p | 6.91p |
+| sequential | cyclic | 0.9095 | 0.0046 | 0.9939 | 6.55p | 0.46p | **6.08p** |
+| winner | parallel | 0.9071 | 0.0050 | 0.9931 | 6.31p | 0.54p | 5.77p |
+| balanced | parallel | 0.8944 | 0.0104 | 0.9958 | 5.03p | 0.28p | 4.76p |
 
 **Twenty clients, four dropped - sixteen of twenty**
 
 | arm | sched | adapt | +- | preserve | gained | spent | score |
 |---|---|---|---|---|---|---|---|
-| sequential | cyclic | 0.9100 | 0.0042 | 0.9944 | 8.75p | 0.41p | **8.34p** |
-| winner | parallel | 0.9001 | 0.0048 | 0.9935 | 7.76p | 0.51p | 7.25p |
-| balanced | parallel | 0.8884 | 0.0099 | 0.9961 | 6.58p | 0.25p | 6.34p |
+| sequential | cyclic | 0.9100 | 0.0042 | 0.9944 | 6.60p | 0.41p | **6.18p** |
+| winner | parallel | 0.9001 | 0.0048 | 0.9935 | 5.61p | 0.51p | 5.10p |
+| balanced | parallel | 0.8884 | 0.0099 | 0.9961 | 4.43p | 0.25p | 4.18p |
 
 ## 4. What the four settings say
 
 ### The sequential arm tops every one of them
 
 `seq_fedavg` with `ntd_b0.01_t2` is first at nine of ten, at four of five, at
-eighteen of twenty and at sixteen of twenty - 10.15p, 10.21p, 8.24p and 8.34p.
+eighteen of twenty and at sixteen of twenty - 10.15p, 12.14p, 6.08p and 6.18p,
+each against its own cohort's do-nothing.
 It was crowned on one setting and it holds on four, which is the strongest claim
 in this document: the ordering the cross produced is not an artefact of the
 federation it was produced on.
@@ -140,9 +171,13 @@ gains a point and a half less.
 
 The unmodified baseline spends **6.14p (cyclic) and 6.18p (parallel)** of the
 source model at five clients, against **2.82p on both schedules** at ten - more
-than twice the forgetting for a gain that is only half a point larger. That is
-the clearest single result in the size sweep, because it is measured against the
-same control at another participation rather than against a different method.
+than twice the forgetting for an adaptation that is barely higher, 0.9309 against
+0.9160 on cyclic and 0.9253 against 0.9196 on parallel. The spend column is the
+one to read across the two settings, because both spends are measured against the
+one source population; the gained column is not, because the two settings
+subtract different `A0` values. That is the clearest single result in the size
+sweep, because it is measured against the same control at another participation
+rather than against a different method.
 
 The reading: with four updates to average per round instead of nine, plain
 averaging has much less of the source model's behaviour left in the average to
@@ -155,7 +190,7 @@ where the federation is smallest.
 ### Twenty at two dropped and twenty at four dropped are the same result
 
 Doubling the dropout at twenty clients moves the sequential arm by +0.10p
-(8.24p to 8.34p), the winner by -0.67p and the balanced arm by -0.57p. Against
+(6.08p to 6.18p), the winner by -0.67p and the balanced arm by -0.57p. Against
 fold spreads of 0.004-0.010 in adaptation these are small, and the ordering is
 identical: sequential, winner, balanced, at both rates.
 
@@ -173,14 +208,20 @@ is a coin flip on whether the round happens.
 
 | case | what it is | adapt | preserve | gained | spent | score |
 |---|---|---|---|---|---|---|
-| `double` | two clients: the worst two | 0.9685 | 0.9363 | 14.60p | 6.23p | **8.37p** |
-| `dual` | one client holding both writers' rows merged | 0.9612 | 0.8558 | 13.86p | 14.28p | -0.41p |
+| `double` | two clients: the worst two | 0.9685 | 0.9363 | 20.95p | 6.23p | **14.72p** |
+| `dual` | one client holding both writers' rows merged | 0.9612 | 0.8558 | 20.22p | 14.28p | 5.94p |
+
+Both subtract `A0 = 0.7590`, the shipped model's accuracy on these two writers'
+own test rows and on nothing else. The worst two of the cohort are a great deal
+harder than the ten, so reading the pair against the ten-writer 0.8225 charged it
+for a difficulty that belongs to the cohort rather than to the arrangement.
 
 `double` and `dual` hold **precisely the same rows**. They differ only in whether
-the aggregation ever sees them as two updates or as one. That gap - 8.37p against
--0.41p, with the data held exactly constant - is what client boundaries are worth,
-and it is a question no ten-client stage can ask, because there the boundaries and
-the data always move together.
+the aggregation ever sees them as two updates or as one. That gap - 14.72p
+against 5.94p, with the data held exactly constant - is what client boundaries
+are worth, and it is 8.78 points whichever `A0` is subtracted, because the same
+one is subtracted from both. It is a question no ten-client stage can ask,
+because there the boundaries and the data always move together.
 
 ### The mechanism: there is no averaging left
 
@@ -193,8 +234,14 @@ effect at all. `dual` is therefore not "federated learning at n = 1"; it is the
 ablation that shows how much of the preservation was coming from the averaging
 rather than from the penalty.
 
-`double` is the one of the pair with a second update, and it is the only one
-that ends above the shipped model's own trade.
+`double` is the one of the pair with a second update, and it ends 8.78 points of
+score ahead of `dual` for it. Both nonetheless end **above** the shipped model's
+own trade, `dual` at 5.94p, and that is the sentence the per-cohort baseline
+changed: read against the ten writers' do-nothing `dual` came out at -0.41p and
+appeared to have been worse than not adapting at all, which was an artefact of
+scoring it against writers it does not federate. What `dual` loses is not the
+adaptation - that is within a point of `double`'s - it is the preservation:
+14.28 points of source accuracy against `double`'s 6.23.
 
 ### Adaptation saturates in tens of rounds; the horizon spends the rest
 
@@ -204,13 +251,13 @@ validation columns and taking the round that maximises it:
 
 | case | oracle stop | score there | score at round 100 | the horizon cost | adaptation it bought |
 |---|---|---|---|---|---|
-| `dual` | round 8 | 16.60p | -0.59p | 17.19p | -1.96p |
-| `double` | round 36 | 15.68p | 9.72p | 5.96p | -1.30p |
+| `dual` | round 8 | 22.95p | 5.76p | 17.19p | -1.96p |
+| `double` | round 36 | 22.03p | 16.08p | 5.96p | -1.30p |
 
 Both cases reach essentially their best adaptation within the first tens of
 rounds and then spend between six and seventeen points of score buying
 **negative** adaptation. The two peaks are within a point of each other
-(15.68p and 16.60p): the arrangements barely differ in what they can reach, they
+(22.03p and 22.95p): the arrangements barely differ in what they can reach, they
 differ in how fast the horizon takes it away afterwards, and the ordering of the
 two by how long they last - 8 and 36 - is the ordering by how much averaging
 they have.

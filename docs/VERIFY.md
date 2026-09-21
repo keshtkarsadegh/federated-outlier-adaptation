@@ -161,8 +161,9 @@ foa evaluate-book --results-dir "$FOA_STUDY_DIR" --resolution 28 --classes digit
 Compare against the shipped
 `study/artifacts/Digits_study01/g0_evaluations.json`, key `old_data_fold1`.
 
-**Verify the do-nothing row** (g-0 on the cohort's test rows — the row every
-adaptation number is read against):
+**Verify the do-nothing row** (g-0 on the ten-writer cohort's test rows — the row
+the **ten-client** numbers are read against; the other settings have books of
+their own, below):
 
 ```bash
 foa evaluate-book --results-dir "$FOA_STUDY_DIR" --resolution 28 --classes digits \
@@ -176,11 +177,41 @@ Compare against
 `study/artifacts/Digits_study01/g0_perfold_evaluations.json`, key `cohort_fold1`. That file also carries the per-writer column, so you can check
 an individual writer, not only the pool.
 
-The same pattern verifies the 20-client baseline against
-`study/artifacts/Digits_study01/g0_c20_evaluations.json`
-(`c20_cohort_fold1`..`c20_cohort_fold5`), with
-`fold_books/cohort20.foldbook.npz` and `outliers/cohort_worst20.json` in place
-of the ten-client pair above.
+**There are four of these books, and a setting is read against its own.** `A0` is
+the shipped model's accuracy on the writers a setting federates, so it moves when
+the writers do; `P0` is its accuracy on the source population, which is one
+population and so one number — 0.9986, from `g0_evaluations.json` — everywhere.
+
+| book | cohort | keys | fold-mean accuracy | the `A0` of |
+|---|---|---|---|---|
+| `g0_perfold_evaluations.json` | worst ten | `cohort_fold1`..`cohort_fold5` | 0.8225 | every search stage, and the ten-client carry setting |
+| `g0_c5_evaluations.json` | worst five | `c5_cohort_fold1`..`c5_cohort_fold5` | 0.8032 | five clients, one dropped |
+| `g0_c20_evaluations.json` | worst twenty | `c20_cohort_fold1`..`c20_cohort_fold5` | 0.8441 | twenty clients, at both dropout rates |
+| `g0_extreme_evaluations.json` | the worst two | `extreme_cohort_fold1`..`extreme_cohort_fold5` | 0.7590 | both extreme arrangements |
+
+Each verifies by the command above with its own fold book and clients file. The
+20-client one swaps in `fold_books/cohort20.foldbook.npz` and
+`outliers/cohort_worst20.json`; the 5-client one `fold_books/cohort5.foldbook.npz`
+and `outliers/cohort_worst5.json`.
+
+The extreme book is the one that does not look like the others, because its two
+writers are two of the ten and so are cut from the **ten-client** fold book —
+only the clients file narrows it:
+
+```bash
+foa evaluate-book --results-dir "$FOA_STUDY_DIR" --resolution 28 --classes digits \
+    --model-path  "$FOA_STUDY_DIR/g0_model" \
+    --fold-book   "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz" --fold 1 --part test \
+    --clients-file "$FOA_STUDY_DIR/outliers/extreme_double.json" \
+    --batch-size 256 --tag extreme_cohort_fold1 --out /tmp/check.json
+```
+
+Compare against
+`study/artifacts/Digits_study01/g0_extreme_evaluations.json`, key
+`extreme_cohort_fold1`; the five folds mean **0.7590**, which is the number both
+extreme arrangements' scores subtract. Those five lines were emitted by
+`tools/make_size_references.py --only do-nothing` into
+`jobs/d01_extreme_references.txt` — `docs/REPRODUCE.md` §6 has the invocation.
 
 **This level needs a `g0_model` and the study does not ship one.** The weights
 are outputs of the programme, not records of it: they cannot be diffed, they
@@ -218,7 +249,7 @@ file and its task count, and §9 the GPU-hours quoted here.
 
 ## What a reviewer can verify without a GPU
 
-- Every test in the suite (1,961).
+- Every test in the suite (2,033).
 - Every task file parses and passes the runner's guard.
 - Every derived artefact matches its checksum.
 - The cohort chain: worst-5 ⊂ worst-10 ⊂ worst-20, all cut from one ranking.

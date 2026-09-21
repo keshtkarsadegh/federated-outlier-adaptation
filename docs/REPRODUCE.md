@@ -347,6 +347,13 @@ range of their own - 40000, 750000 and 720000 - and a base typed differently
 would produce a file that looks right and draws different clients. The bases are
 listed with every other seed block in [§5](#seeds).
 
+A fourth invocation of the same generator serves a federation point that is
+**not** a size. The extreme stage federates two writers of the ten-client cohort
+and is scored against what doing nothing gets on ITS rows rather than on the ten,
+so it needs the first rung and only the first rung; `--only do-nothing` emits it,
+and [§6](#the-score-basis-of-each-setting) gives the command with the file it
+writes.
+
 The participation rate the GRID stages emit at is **not** a flag - see
 [§5](#5-seeds-and-the-rate-a-grid-is-searched-at). It was one, and the two grids ended up searched at different
 rates because it was typed on one command line and not on the other.
@@ -490,7 +497,7 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | regularisation winners, full horizon | `report_tables.py --what reg-winners` |
 | combination scores | `report_tables.py --what combos` |
 | the carried arms at each federation setting | `report_tables.py --what sizes` |
-| the three extreme arrangements | `report_tables.py --what extremes` |
+| the two extreme arrangements | `report_tables.py --what extremes` |
 | who the gain reached: the per-client spread of every headline stage | `fairness_cost.py --root $FOA_STUDY_DIR --what fairness` |
 | what the programme cost: seconds, rounds and bytes | `fairness_cost.py --root $FOA_STUDY_DIR --what cost` |
 | when the extreme cases should have stopped | `extreme_stopping.py --root $FOA_STUDY_DIR` |
@@ -527,6 +534,14 @@ key of twelve on this filesystem, and sometimes leaves the file invalid JSON.
 | every table the manuscript sets | `paper_figures/make_paper_tables.py` - [below](#and-which-command-produces-the-numbers-and-the-tables) |
 | what this study actually ran, read off disk | `study_record.py --root $FOA_STUDY_DIR > docs/STUDY_RECORD.md` |
 | does a task file still regenerate byte for byte? | [§4](#4-regenerating-a-stages-task-file) - every live generator |
+
+**Two extreme arrangements, and the table says two because a reader counts rather
+than globs.** The stage once ran a third - the cohort's worst writer alone - and
+its run folders are still on the disk that produced this study, because a run that
+happened cannot be un-run. `report_tables.in_study()` checks each extreme folder's
+case against `training.extreme_cells.CASES`, which is where the stage is defined,
+so the retired arrangement stays out of every table, every stage total and every
+all-arms mean instead of walking silently back into them.
 
 `selection_axis.csv` and `recipe.csv` are **core** for the same reason the two
 schedule views are. The first is the other half of a sentence the manuscript
@@ -566,7 +581,7 @@ SAME ORDERING.** Each selection record's `rankings` block is written by
 `study_emit.ranked_by_trade`, which orders by the selection score - gained less
 spent, at `w = 1`. `val_rank` and `test_rank` are the first; `val_score_rank`
 and `test_score_rank` are the second, and they are the ones `tab:selection_axis`
-prints, because they are the ones that selected. The view carries EVERY arm each
+and `tab:selection_axis_cross` print, because they are the ones that selected. The view carries EVERY arm each
 record ranked rather than only the three that went forward, because a shortlist
 whose score ranks read 1, 2 and 5 cannot be reconciled against a table of three
 rows: the arms the rule stepped over have to be on the page. The rule is one
@@ -673,9 +688,12 @@ would select on test while claiming validation.
 
     score = (adaptation - A0) - w * (P0 - preservation),    w = 1
 
-`A0` and `P0` are the shipped model's own two accuracies, read from
-`g0_perfold_evaluations.json` and `g0_evaluations.json` at selection time, never
-written down. Both terms are therefore differences from doing nothing.
+`A0` and `P0` are the shipped model's own two accuracies, read off disk at
+selection time and never written down, so both terms are differences from doing
+nothing. The search ran on the ten-writer cohort, so its `A0` comes from
+`g0_perfold_evaluations.json`; the settings the crowned arms were carried into
+each have their own, [below](#the-score-basis-of-each-setting). `P0` is
+`g0_evaluations.json` everywhere.
 
 **AND THE SHORTLISTS WERE CUT ON THAT SCORE, NOT ON ADAPTATION.** The `rankings`
 block each selection record stores is ordered by adaptation alone; the cut was
@@ -694,6 +712,51 @@ therefore the difference of the two PRINTED values; the generator asserts the
 two conventions agree to within a hundredth, the table's own note says which it
 is, and no macro reads it. `nSignal*VsFixed` carry the stored difference for
 prose that needs it.
+
+### The score basis of each setting
+
+`P0` is one number in every table this study prints - 0.9986, the shipped model's
+accuracy on the source population, from `g0_evaluations.json` - because there is
+one source population and one model that served it. `A0` is not one number,
+because the settings the crowned arms were carried into federate different
+writers, and what doing nothing gets on one cohort is not what it gets on another:
+
+| setting (run-folder stem) | cohort | evaluation book | `A0` |
+|---|---|---|---|
+| every search stage, and `c10d10` | worst ten | `g0_perfold_evaluations.json` | 0.8225 |
+| `five` | worst five | `g0_c5_evaluations.json` | 0.8032 |
+| `c20d10`, `c20d20` | worst twenty | `g0_c20_evaluations.json` | 0.8441 |
+| `extreme_double`, `extreme_dual` | the worst two | `g0_extreme_evaluations.json` | 0.7590 |
+
+`report_tables.COHORT_BOOKS` is the mapping, `report_tables.cohort_of()` applies
+it to the run-folder stem - on the longest registered prefix, so `c20d20_` is
+never read as `c20d10_` - and `baselines_for()` is what the reporting tools call;
+`stopping_table.stage_baselines()` carries the same rule for the stages it
+reports. A root that is **missing** the book a setting needs is refused, by name,
+rather than defaulted to another cohort's number: a setting scored against another
+cohort's shipped-model accuracy has no score at all, and a silent fallback would
+produce one that looks like a result.
+
+The first three books are the do-nothing rung of their size's reference stage
+([§4](#the-reference-stages-which-do-take-arguments)). The fourth is not a size
+and has no other rung to ask for - the extreme pair is a controlled comparison of
+two arrangements of the same rows, so an isolated, a centralized or a plain-FL arm
+would answer nothing there - and `--only do-nothing` emits that one rung alone:
+
+```bash
+python tools/make_size_references.py --study-dir "$FOA_STUDY_DIR" \
+    --cohort extreme_double.json --book cohort10 --only do-nothing \
+    --tag extreme --seed-base 730000
+```
+
+Five `foa evaluate-book` lines into
+`$FOA_STUDY_DIR/jobs/d01_extreme_references.txt`, one per fold: forward passes of
+g-0 over the two writers' test rows, no training, writing
+`g0_extreme_evaluations.json` - which ships, at
+`study/artifacts/Digits_study01/g0_extreme_evaluations.json`. The book is
+`cohort10` because these two writers are two of those ten and hold those folds;
+only the clients file narrows it. `--seed-base` is required by the generator and
+draws nothing here, because a forward pass has nothing to seed.
 
 ### And which command produces which figure
 
@@ -752,7 +815,7 @@ evaluations only.
 
 One step further along the same shape. `numbers.tex` - the file every
 quantitative sentence of the manuscript reads its value from - and the
-fifteen `tables/*.tex` it sets are written from the views too, by two generators that sit
+sixteen `tables/*.tex` it sets are written from the views too, by two generators that sit
 beside the figure scripts and compute nothing:
 
 ```bash
@@ -760,6 +823,18 @@ cp /path/to/manuscript/numbers.tex /tmp/paper/     # rewritten in place: see bel
 FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_numbers.py
 FOA_PAPER_OUT=/tmp/paper python tools/paper_figures/make_paper_tables.py
 ```
+
+**Sixteen, because the selection axis is two tables, and it was one.**
+`tab:selection_axis` prints each selecting stage's own ranking under both
+schedules; adding the combination stage's nine crossings per schedule to the same
+float put it 47pt over a page, and at an `\arraystretch` tight enough to close
+that gap the rows touch. So the selecting stages stay in
+`tables/selection_axis.tex` and the cross they were built into moved to
+`tables/selection_axis_cross.tex` (`tab:selection_axis_cross`), which prints all
+nine crossings per schedule rather than only the rows a mark is owed to. The
+split also frees the dagger, which the single table had been asked to give two
+meanings: it marks the pair the cross crowned in the cross table and the
+test-leading composite in the other, and neither table ever prints both.
 
 `numbers.tex` is written into `$FOA_PAPER_OUT` and the tables into
 `$FOA_PAPER_OUT/tables/`. `--check` on either writes nothing and exits non-zero
