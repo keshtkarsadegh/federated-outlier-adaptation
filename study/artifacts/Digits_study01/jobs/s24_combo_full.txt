@@ -2,17 +2,18 @@
 # without it and nothing the paper reports reads what it produces.
 #
 # The jointly-tuned pair's best cell PER SCHEDULE from the 216-cell
-# screen, re-run at the full 100-round horizon: 2 schedules x 5 folds.
+# screen s23_combo_screen.txt, re-run at the full 100-round horizon: 2 schedules x 5 folds.
 #
 #   concurrent  ctune_ewc0p05_kd0p05_T0p25_mix0p75_eta0p9
 #   sequential  ctune_ewc0p05_kd0p05_T0p25_mix0p75
 #
 # THESE ARE NOT THE COMBINATIONS ALREADY ON DISK. s20 crossed two
-# shortlists at one setting each - a rule at the coefficients it won on
-# alone beside a penalty at the coefficients it won on alone. These
-# carry the coefficients a joint screen measured. They are new arms,
-# not a re-run of the old ones, and they keep their own folders and
-# seeds; s20's eighteen combinations are untouched.
+# shortlists at one setting each - a rule at the coefficients it
+# won on alone beside a penalty at the coefficients it won on
+# alone. These carry the coefficients a joint screen measured.
+# They are new arms, not a re-run of the old ones, and they keep
+# their own folders and seeds; s20's eighteen combinations are
+# untouched.
 #
 # THE SCHEDULE IS IN THE PARENT, as it is in P14's and P22's. The cell
 # ids already carry it - only the parallel rule has a coefficient to
