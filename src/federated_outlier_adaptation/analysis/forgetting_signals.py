@@ -26,6 +26,13 @@ questions that decide whether a signal is usable in place of the source split:
     signal stays within ``delta``, and the gap to the configuration an oracle
     would pick under a true-forgetting budget.
 
+**Which runs?**
+    Whatever the scanned root holds, unless a population manifest names them.
+    The correlations and the selection pool across runs, so adding a stage to a
+    study moves every median this module reports - which makes a pass taken
+    before that stage unreproducible afterwards.  ``--population`` pins the
+    pass to a named set of runs; see :class:`Population`.
+
 Everything is read from stored JSON; nothing is retrained.  Outputs land in
 ``<root>/signals/``:
 
@@ -73,6 +80,74 @@ DEFAULT_WINDOW = 5
 
 #: Default forgetting budget of the oracle selection, matching ``foa select``.
 DEFAULT_EPS = 0.005
+
+
+# ---------------------------------------------------------------- population
+#: The manifest a study ships beside its records to say which runs one signals
+#: pass was taken over.  Looked up by this name when ``--population`` is handed
+#: a directory rather than a file.
+POPULATION_FILE = "signals_population.txt"
+
+
+@dataclass(frozen=True)
+class Population:
+    """
+    The runs one pass is computed over, named rather than globbed.
+
+    WHY A PASS HAS TO NAME ITS RUNS.  Every other reader in this repository is
+    pointed at a *stage* - a folder prefix, a selection record, a task file -
+    and is therefore blind to whatever else the root happens to hold.  This
+    module pools over the whole tree, so its correlations are a property of the
+    disk it ran against rather than of the study: a stage added afterwards
+    re-weights every median and every share the manuscript prints, silently and
+    without a line of code changing.  Naming the runs is what turns the pass
+    back into a measurement that can be repeated.
+    """
+
+    names: frozenset
+    path: Optional[Path] = None
+
+    def __contains__(self, name: object) -> bool:
+        return name in self.names
+
+    def __len__(self) -> int:
+        return len(self.names)
+
+    @property
+    def folders(self) -> frozenset:
+        """The top-level run folders the named runs live under."""
+        return frozenset(name.split("/", 1)[0] for name in self.names)
+
+
+def load_population(path) -> Population:
+    """
+    Read a population manifest: one run name per line, ``#`` starts a comment.
+
+    A run's name is its path under the study root - the run folder, the
+    fold/seed directory, the scenario and the arm - which is exactly the
+    identity ``signal_correlations.csv`` carries in its ``run`` column.  So a
+    manifest can be read back off a pass that has already been taken, and a
+    pass can be checked against the manifest it claims to be.
+    """
+    path = Path(path)
+    if path.is_dir():
+        path = path / POPULATION_FILE
+    names = set()
+    with open(path) as handle:
+        for line in handle:
+            line = line.split("#", 1)[0].strip()
+            if line:
+                names.add(line)
+    if not names:
+        raise ValueError(
+            f"{path} names no run. A population of nothing is not a population."
+        )
+    return Population(frozenset(names), path)
+
+
+def missing_runs(runs: Sequence["RunTrajectory"], population: Population) -> list:
+    """Names the manifest asks for that the scanned tree did not hold."""
+    return sorted(population.names - {run.name for run in runs})
 
 
 # --------------------------------------------------------------- correlations
@@ -291,18 +366,44 @@ def _trajectory_from_block(name: str, source: str, block: dict) -> Optional[RunT
     )
 
 
-def collect_trajectories(root) -> list[RunTrajectory]:
+def _record_files(root: Path, population: Optional[Population], pattern: str):
+    """
+    Every stored record matching ``pattern``, in one order whatever is scanned.
+
+    A restricted pass walks the folders its population names rather than the
+    whole tree, which is what keeps it cheap on a root holding four times its
+    runs.  Taking those folders in sorted order and sorting inside each
+    reproduces the order a whole-tree walk gives, so no table depends on which
+    of the two walks produced it.
+    """
+    if population is None:
+        yield from sorted(root.rglob(pattern))
+        return
+    for folder in sorted(population.folders):
+        directory = root / folder
+        if directory.is_dir():
+            yield from sorted(directory.rglob(pattern))
+
+
+def collect_trajectories(
+    root, population: Optional[Population] = None
+) -> list[RunTrajectory]:
     """
     Read every run under ``root`` that carries the signal series.
 
     Both stored shapes are understood: ``summary_*.json`` written by the final
     and extreme runs, and ``config_points_*.json`` written by the sweeps, whose
     ``config`` blocks hold the same series under ``population``.
+
+    Args:
+        root: Results directory to scan, recursively.
+        population: When given, the only runs read.  :class:`Population` says
+            why a pass that pools over whatever is present is not repeatable.
     """
     root = Path(root)
     runs: list[RunTrajectory] = []
 
-    for path in sorted(root.rglob("summary_*.json")):
+    for path in _record_files(root, population, "summary_*.json"):
         try:
             with open(path) as handle:
                 data = json.load(handle)
@@ -311,6 +412,9 @@ def collect_trajectories(root) -> list[RunTrajectory]:
         if not isinstance(data, dict):
             continue
         for name, block in data.items():
+            run_name = _run_name(path, root, name)
+            if population is not None and run_name not in population:
+                continue
             if isinstance(block, dict) and "accuracies" not in block:
                 # A summary entry carries every series except the round
                 # accuracies themselves, which live in the per-job file next to
@@ -319,11 +423,11 @@ def collect_trajectories(root) -> list[RunTrajectory]:
                 accuracies = _job_accuracies(path, name)
                 if accuracies is not None:
                     block = {**block, "accuracies": accuracies}
-            run = _trajectory_from_block(_run_name(path, root, name), str(path), block)
+            run = _trajectory_from_block(run_name, str(path), block)
             if run is not None:
                 runs.append(run)
 
-    for path in sorted(root.rglob("config_points_*.json")):
+    for path in _record_files(root, population, "config_points_*.json"):
         try:
             with open(path) as handle:
                 data = json.load(handle)
@@ -336,11 +440,14 @@ def collect_trajectories(root) -> list[RunTrajectory]:
         for name, block in configs.items():
             if not isinstance(block, dict):
                 continue
+            run_name = _run_name(path, root, name)
+            if population is not None and run_name not in population:
+                continue
             merged = dict(block.get("population") or {})
             merged["config"] = block
             if name in accuracies:
                 merged.setdefault("accuracies", accuracies[name])
-            run = _trajectory_from_block(_run_name(path, root, name), str(path), merged)
+            run = _trajectory_from_block(run_name, str(path), merged)
             if run is not None:
                 runs.append(run)
 
@@ -766,6 +873,7 @@ def analyse(
     eps: float = DEFAULT_EPS,
     window: int = DEFAULT_WINDOW,
     plots: bool = True,
+    population=None,
 ) -> dict[str, Any]:
     """
     Run the whole analysis over a results tree and write the tables.
@@ -777,16 +885,40 @@ def analyse(
         eps: Forgetting budget of the oracle selection.
         window: Final rounds averaged for the selection.
         plots: Whether to write the Pareto-style plots.
+        population: A :class:`Population`, or the path of a manifest, or the
+            directory one is shipped in.  Without it the pass pools over every
+            run the root holds, which is a different measurement every time a
+            stage lands - see :class:`Population`.
 
     Returns:
         dict: ``{"root", "num_runs", "correlations", "stopping", "selection",
         "plots"}``.
+
+    Raises:
+        FileNotFoundError: When a named population is not wholly on disk.  A
+            pass over part of a population is a different pass, so it is
+            refused rather than quietly taken.
     """
     root = Path(root)
     destination = Path(out_dir) if out_dir else root / "signals"
     destination.mkdir(parents=True, exist_ok=True)
 
-    runs = collect_trajectories(root)
+    if population is not None and not isinstance(population, Population):
+        population = load_population(population)
+
+    runs = collect_trajectories(root, population)
+    if population is not None:
+        absent = missing_runs(runs, population)
+        if absent:
+            raise FileNotFoundError(
+                f"{len(absent)} of the {len(population)} runs {population.path} "
+                f"names are not under {root}; the first is {absent[0]}. The "
+                "population IS the measurement, so a pass over part of it is "
+                "refused rather than quietly taken. Assemble the reviewer tree "
+                "as docs/REPRODUCE.md section 10 says, or drop --population to "
+                "pool over whatever this root holds and get a number of your "
+                "own rather than this study's."
+            )
     correlations = correlation_table(runs)
     stopping = stopping_table(runs, deltas=deltas)
     selection = selection_table(runs, deltas=deltas, eps=eps, window=window)
@@ -803,6 +935,8 @@ def analyse(
         "deltas": list(deltas),
         "eps": eps,
         "window": window,
+        "population": None if population is None else str(population.path),
+        "population_runs": None if population is None else len(population),
         "num_runs": len(runs),
         "num_usable_runs": sum(1 for run in runs if run.usable),
         "runs": [
@@ -833,6 +967,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--window", type=int, default=DEFAULT_WINDOW)
     parser.add_argument("--deltas", type=float, nargs="*", default=None)
     parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument(
+        "--population",
+        default=None,
+        help="Manifest naming the runs this pass is taken over (or the study "
+             "root that ships one).",
+    )
     args = parser.parse_args(argv)
 
     summary = analyse(
@@ -842,12 +982,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         eps=args.eps,
         window=args.window,
         plots=not args.no_plots,
+        population=args.population,
     )
     print(
         json.dumps(
             {
                 "root": summary["root"],
                 "out_dir": summary["out_dir"],
+                "population": summary["population"],
                 "num_runs": summary["num_runs"],
                 "num_usable_runs": summary["num_usable_runs"],
                 "correlation_rows": len(summary["correlations"]),

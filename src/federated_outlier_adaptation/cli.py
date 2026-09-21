@@ -1297,12 +1297,15 @@ def cmd_signals(args: argparse.Namespace) -> int:
         eps=args.eps,
         window=args.window,
         plots=not args.no_plots,
+        population=args.population,
     )
     print(
         json.dumps(
             {
                 "root": summary["root"],
                 "out_dir": summary["out_dir"],
+                "population": summary["population"],
+                "population_runs": summary["population_runs"],
                 "num_runs": summary["num_runs"],
                 "num_usable_runs": summary["num_usable_runs"],
                 "correlation_rows": len(summary["correlations"]),
@@ -2891,6 +2894,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Budget grid of the simulated stopping rules (default: a decade grid).",
     )
     p.add_argument("--no-plots", action="store_true", help="Skip the Pareto-style plots.")
+    p.add_argument(
+        "--population",
+        default=None,
+        help=(
+            "Manifest naming the runs this pass is taken over - or the study "
+            "root that ships one. Without it the pass pools over every run "
+            "under --root, which is a different measurement every time a stage "
+            "lands. The study's own pass is "
+            "study/artifacts/Digits_study01/signals_population.txt."
+        ),
+    )
     p.set_defaults(func=cmd_signals)
 
     # --- report ---

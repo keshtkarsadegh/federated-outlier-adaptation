@@ -13,6 +13,15 @@ published records by a command rather than by a copy.
 
     python tools/export_signals_summary.py --root "$FOA_STUDY_DIR" --out paper/data
 
+WHICH PASS IT JOINS. `foa signals` pools over every run it finds, so the pass
+this joins is only the study's pass if it was taken over the study's own run
+population - `study/artifacts/Digits_study01/signals_population.txt`, which
+`foa signals --population` reads. Taken over a tree that has since grown, the
+same command measures that tree instead and the two extracts move with it;
+`docs/REPRODUCE.md` section 6 gives the command with the manifest on it.
+`--signals` says where that pass was written, for the usual case where it was
+written outside the study root rather than back into it.
+
 WHAT THE TWO FILES ARE. `signals_summary_extract.csv` is one row per permitted
 signal: where the signal can be observed at all, its correlation with
 forgetting, and - if the signal is defined on every stopping arm - the best
@@ -91,13 +100,13 @@ COLUMNS = ("signal", "observed_on") + CORR_COLUMNS + ("defined_on_all_arms",) \
     + STOP_COLUMNS
 
 
-def correlations(root: Path) -> Tuple[Dict[str, dict], int]:
+def correlations(root: Path, signals: Path) -> Tuple[Dict[str, dict], int]:
     """Per-signal correlation with forgetting, from `signal_correlations.csv`."""
     per_run = defaultdict(list)
     pooled = {}
     pooled_pearson = {}
     runs = set()
-    path = root / "signals" / "signal_correlations.csv"
+    path = signals / "signal_correlations.csv"
     if not path.exists():
         raise SystemExit(
             f"FATAL: {path} is not on disk. The signal views are a read of what "
@@ -164,8 +173,8 @@ def verdicts(root: Path):
     return staged, a0, p0
 
 
-def summary_rows(root: Path) -> Tuple[List[dict], list, float, float, int, int]:
-    corr, n_runs = correlations(root)
+def summary_rows(root: Path, signals: Path) -> Tuple[List[dict], list, float, float, int, int]:
+    corr, n_runs = correlations(root, signals)
     staged, a0, p0 = verdicts(root)
     every = [v for _stage, vs in staged for v in vs]
     n_arms = len(every)
@@ -225,13 +234,15 @@ def summary_rows(root: Path) -> Tuple[List[dict], list, float, float, int, int]:
     return rows, staged, a0, p0, n_arms, n_runs
 
 
-def extras_rows(root: Path, staged, a0: float, p0: float,
+def extras_rows(root: Path, signals: Path, staged, a0: float, p0: float,
                 n_arms: int, n_runs: int) -> List[tuple]:
     """The scalars the section quotes in prose, as key/value pairs."""
     every = [v for _stage, vs in staged for v in vs]
-    # the run count the signals module itself reported for the study
+    # The size of the population the pass was taken over, as the pass itself
+    # counted it. It is a property of the manifest, not of the tree: see the
+    # note at the top of this file.
     study_runs = ""
-    with open(root / "signals" / "signal_selection.csv", newline="") as handle:
+    with open(signals / "signal_selection.csv", newline="") as handle:
         for row in csv.DictReader(handle):
             study_runs = int(row["num_candidates"])
             break
@@ -292,14 +303,19 @@ def main() -> int:
                     help="The study root ($FOA_STUDY_DIR).")
     ap.add_argument("--out", required=True, type=Path,
                     help="Directory the two CSV views are written into.")
+    ap.add_argument("--signals", default=None, type=Path,
+                    help="Where `foa signals` wrote its pass. Default: "
+                         "<root>/signals, which is where it lands when the "
+                         "pass is written back into the study tree.")
     args = ap.parse_args()
 
-    rows, staged, a0, p0, n_arms, n_runs = summary_rows(args.root)
+    signals = args.signals or (args.root / "signals")
+    rows, staged, a0, p0, n_arms, n_runs = summary_rows(args.root, signals)
     print(f"reference: the shipped model  adapt {a0:.4f}  preserve {p0:.4f}")
     print(f"arms: {n_arms}   runs carrying a source_val correlation: {n_runs}")
     write_summary(args.out / "signals_summary_extract.csv", rows)
     write_extras(args.out / "signals_extras_extract.csv",
-                 extras_rows(args.root, staged, a0, p0, n_arms, n_runs))
+                 extras_rows(args.root, signals, staged, a0, p0, n_arms, n_runs))
     usable = sum(1 for row in rows if row["defined_on_all_arms"] == 1)
     print(f"signals defined on every arm: {usable} of {len(rows)}")
     return 0

@@ -3,8 +3,8 @@
 This directory is the study's **metadata core**: the records that say what was
 selected, what was run, against which rows, and what came out - everything a
 reader needs to check a claim in the manuscript against something other than the
-manuscript. It is 8.8 MB and 164 files besides this one, which is small enough
-to live in git and be diffed like source.
+manuscript. It is about 9 MB, and `study/artifacts/SHA256SUMS` counts
+the files - small enough to live in git and be diffed like source.
 
 It is not the study. The study is 4,945 run folders and about 40,000 files.
 What is here is the part of it that is *evidence* rather than *bulk*, plus the
@@ -58,7 +58,9 @@ paths and were not touched; only these copies were rewritten.
 | `jobs/*.txt` | every task line that was submitted, verbatim | `check_seeds.py`, `check_programme.py`, `submit_chain.py` |
 | `jobs/*_README.md` | what each stage's file was emitted for | read by hand |
 | `figures/extreme_stopping.png` | when the extreme cases should have stopped | `extreme_stopping.py --fig` |
-| `signals/signals_pareto_*.png` | the eight forgetting signals, cost against catch | `foa signals` |
+| `signals/signals_pareto_*.png` | the eight forgetting signals, cost against catch | `foa signals --population` |
+| `signals_population.txt` | **which runs the shipped signals pass was taken over**, one per line, with its own header saying why it is frozen | `foa signals --population`, `tests/test_reviewer_tree.py` |
+| `signalcheck_*/`, `d01_extreme_single_fold*/` | the six run records of that population the release asset does not carry | `foa signals --population` |
 
 `tables/superseded/` and `jobs/superseded/` are deliberately absent: they are the
 runs a later stage replaced, they are kept in the study tree as a lab record, and
@@ -80,14 +82,25 @@ needs to rerun rather than re-read.
 **The two bulk signal files - 195 MB.** `signals/signals_summary.json` (136 MB)
 and `signals/signal_stopping.csv` (59 MB), together with the 9 MB
 `signals/signal_correlations.csv`. All three are derived: one pass over the run
-records recomputes them exactly.
+records recomputes them exactly - **provided the pass is told which runs it is
+over**.
 
-    foa signals --root "$FOA_STUDY_DIR"
+    foa signals --root "$FOA_STUDY_DIR" --out <dir> \
+        --population study/artifacts/Digits_study01/signals_population.txt
 
 writes all of them, plus `signal_selection.csv` and the six Pareto PNGs that
-*are* shipped here, into `$FOA_STUDY_DIR/signals/`. Add `--no-plots` to skip the
-figures. Nothing about them is a judgement call, which is why they are the first
-thing to drop.
+*are* shipped here, all byte for byte. Add `--no-plots` to skip the figures.
+
+Without `--population` the pass pools over every run under the root instead,
+which today is 7,005 rather than the 2,471 the shipped views were computed on,
+and every correlation moves. That is the one judgement call in this file, it is
+written down in `signals_population.txt` rather than in a tool, and
+`docs/REPRODUCE.md` section 6 explains it. Six of those 2,471 runs - the
+`signalcheck_*` smoke run and the five `d01_extreme_single_*` folds - are the
+reason two run-record folders appear in a directory that otherwise ships none:
+`report_tables.in_study` keeps them out of every table, and therefore out of the
+records asset, but a pass cannot be repeated without the runs it was taken over.
+Only their `summary_*.json` and `accuracies_*.json` are here, as for any run.
 
 **The per-run records - a release asset.** Every `accuracies_*.json` and
 `summary_0.json` under the 4,945 `d01_*` run folders, plus the 380 JSONs of the

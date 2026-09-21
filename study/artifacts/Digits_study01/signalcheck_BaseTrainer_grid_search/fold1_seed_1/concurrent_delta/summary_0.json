@@ -1,0 +1,554 @@
+{
+  "base_agg_con_delta_eta_delta_concurrent": {
+    "agg_method_name": "con_delta_eta",
+    "global_clients_all_metrics_acc": null,
+    "global_clients_metric_acc": null,
+    "plot_path": "$FOA_STUDY_DIR/signalcheck_BaseTrainer_grid_search/fold1_seed_1/concurrent_delta/base_agg_con_delta_eta_delta_concurrent/accuracies_over_rounds_concurrent_delta_con_delta_eta.png",
+    "json_path": "$FOA_STUDY_DIR/signalcheck_BaseTrainer_grid_search/fold1_seed_1/concurrent_delta/base_agg_con_delta_eta_delta_concurrent/accuracies_0.json",
+    "round_seconds": [
+      0.8092958386987448,
+      0.611909531056881,
+      0.617593483068049
+    ],
+    "client_seconds": [
+      [
+        0.14475462026894093,
+        0.08381793648004532,
+        0.07966273091733456,
+        0.0704246312379837,
+        0.1054528970271349,
+        0.09499957226216793,
+        0.07500882539898157,
+        0.07159401755779982
+      ],
+      [
+        0.07097804825752974,
+        0.06753093097358942,
+        0.06424301117658615,
+        0.06547453720122576,
+        0.052533009089529514,
+        0.06899310555309057,
+        0.07209114544093609,
+        0.08547046221792698
+      ],
+      [
+        0.05406038463115692,
+        0.06890274584293365,
+        0.07380171027034521,
+        0.06432152073830366,
+        0.06673879455775023,
+        0.08577431086450815,
+        0.07005990203469992,
+        0.08677256759256124
+      ]
+    ],
+    "comm_bytes_per_round": [
+      106455680,
+      106455680,
+      106455680
+    ],
+    "param_count": 1663370,
+    "device": "cuda (NVIDIA A100-SXM4-40GB)",
+    "seed": 1,
+    "heldout_client_accuracies": [
+      0.8173302107728337,
+      0.819672131147541,
+      0.8266978922716628
+    ],
+    "pool_val_accuracies": [
+      0.8364485981308412,
+      0.8364485981308412,
+      0.8411214953271028
+    ],
+    "pool_test_accuracies": [
+      0.7981220657276995,
+      0.8028169014084507,
+      0.812206572769953
+    ],
+    "client_accuracies": [
+      {
+        "f3642_03": 0.6875,
+        "f2023_12": 0.7619047619047619,
+        "f1331_49": 0.7727272727272727,
+        "f2564_59": 0.8095238095238095,
+        "f2230_67": 0.7391304347826086,
+        "f2145_89": 0.8095238095238095,
+        "f2307_62": 0.9047619047619048,
+        "f3211_20": 0.8888888888888888,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.6428571428571429
+      },
+      {
+        "f3642_03": 0.625,
+        "f2023_12": 0.7619047619047619,
+        "f1331_49": 0.8181818181818182,
+        "f2564_59": 0.8095238095238095,
+        "f2230_67": 0.7391304347826086,
+        "f2145_89": 0.8095238095238095,
+        "f2307_62": 0.9047619047619048,
+        "f3211_20": 0.8888888888888888,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.7142857142857143
+      },
+      {
+        "f3642_03": 0.625,
+        "f2023_12": 0.8095238095238095,
+        "f1331_49": 0.8181818181818182,
+        "f2564_59": 0.8095238095238095,
+        "f2230_67": 0.7391304347826086,
+        "f2145_89": 0.8095238095238095,
+        "f2307_62": 0.9047619047619048,
+        "f3211_20": 0.8888888888888888,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.7857142857142857
+      }
+    ],
+    "client_heldout_accuracies": [
+      {
+        "f3642_03": 0.7352941176470589,
+        "f2023_12": 0.7804878048780488,
+        "f1331_49": 0.8095238095238095,
+        "f2564_59": 0.8636363636363636,
+        "f2230_67": 0.7777777777777778,
+        "f2145_89": 0.8571428571428571,
+        "f2307_62": 0.8409090909090909,
+        "f3211_20": 0.8301886792452831,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.7857142857142857
+      },
+      {
+        "f3642_03": 0.7058823529411765,
+        "f2023_12": 0.7804878048780488,
+        "f1331_49": 0.8333333333333334,
+        "f2564_59": 0.8636363636363636,
+        "f2230_67": 0.7777777777777778,
+        "f2145_89": 0.8571428571428571,
+        "f2307_62": 0.8409090909090909,
+        "f3211_20": 0.8301886792452831,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.8214285714285714
+      },
+      {
+        "f3642_03": 0.7058823529411765,
+        "f2023_12": 0.8292682926829268,
+        "f1331_49": 0.8333333333333334,
+        "f2564_59": 0.8636363636363636,
+        "f2230_67": 0.7777777777777778,
+        "f2145_89": 0.8571428571428571,
+        "f2307_62": 0.8409090909090909,
+        "f3211_20": 0.8301886792452831,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.8571428571428571
+      }
+    ],
+    "heldout_participant_accuracies": [
+      0.8151260504201681,
+      0.8144927536231884,
+      0.8240223463687151
+    ],
+    "client_val_accuracies": [
+      {
+        "f3642_03": 0.7777777777777778,
+        "f2023_12": 0.8,
+        "f1331_49": 0.85,
+        "f2564_59": 0.9130434782608695,
+        "f2230_67": 0.8181818181818182,
+        "f2145_89": 0.9047619047619048,
+        "f2307_62": 0.782608695652174,
+        "f3211_20": 0.7692307692307693,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.9285714285714286
+      },
+      {
+        "f3642_03": 0.7777777777777778,
+        "f2023_12": 0.8,
+        "f1331_49": 0.85,
+        "f2564_59": 0.9130434782608695,
+        "f2230_67": 0.8181818181818182,
+        "f2145_89": 0.9047619047619048,
+        "f2307_62": 0.782608695652174,
+        "f3211_20": 0.7692307692307693,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.9285714285714286
+      },
+      {
+        "f3642_03": 0.7777777777777778,
+        "f2023_12": 0.85,
+        "f1331_49": 0.85,
+        "f2564_59": 0.9130434782608695,
+        "f2230_67": 0.8181818181818182,
+        "f2145_89": 0.9047619047619048,
+        "f2307_62": 0.782608695652174,
+        "f3211_20": 0.7692307692307693,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.9285714285714286
+      }
+    ],
+    "client_test_accuracies": [
+      {
+        "f3642_03": 0.6875,
+        "f2023_12": 0.7619047619047619,
+        "f1331_49": 0.7727272727272727,
+        "f2564_59": 0.8095238095238095,
+        "f2230_67": 0.7391304347826086,
+        "f2145_89": 0.8095238095238095,
+        "f2307_62": 0.9047619047619048,
+        "f3211_20": 0.8888888888888888,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.6428571428571429
+      },
+      {
+        "f3642_03": 0.625,
+        "f2023_12": 0.7619047619047619,
+        "f1331_49": 0.8181818181818182,
+        "f2564_59": 0.8095238095238095,
+        "f2230_67": 0.7391304347826086,
+        "f2145_89": 0.8095238095238095,
+        "f2307_62": 0.9047619047619048,
+        "f3211_20": 0.8888888888888888,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.7142857142857143
+      },
+      {
+        "f3642_03": 0.625,
+        "f2023_12": 0.8095238095238095,
+        "f1331_49": 0.8181818181818182,
+        "f2564_59": 0.8095238095238095,
+        "f2230_67": 0.7391304347826086,
+        "f2145_89": 0.8095238095238095,
+        "f2307_62": 0.9047619047619048,
+        "f3211_20": 0.8888888888888888,
+        "f3200_41": 0.8518518518518519,
+        "f0048_00": 0.7857142857142857
+      }
+    ],
+    "participants": [
+      [
+        "f3642_03",
+        "f2564_59",
+        "f2307_62",
+        "f2230_67",
+        "f3200_41",
+        "f3211_20",
+        "f2023_12",
+        "f1331_49"
+      ],
+      [
+        "f2564_59",
+        "f2230_67",
+        "f2023_12",
+        "f1331_49",
+        "f3642_03",
+        "f2307_62",
+        "f2145_89",
+        "f3211_20"
+      ],
+      [
+        "f3642_03",
+        "f2230_67",
+        "f2307_62",
+        "f2145_89",
+        "f1331_49",
+        "f3211_20",
+        "f2564_59",
+        "f3200_41"
+      ]
+    ],
+    "participation": 1.0,
+    "policy": "uniform",
+    "sampler_seed": 702001,
+    "pool_size": 10,
+    "source_val_accuracies": [
+      0.997535077739856,
+      0.9973454683352294,
+      0.997155858930603
+    ],
+    "source_series": {
+      "source": "old_book",
+      "old_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz",
+      "fold": 1,
+      "fold_given": true,
+      "writers": 200,
+      "test_samples": 5238,
+      "val_samples": 5274,
+      "diagnostic": true
+    },
+    "dist_l2_to_global": [
+      0.0,
+      0.11326640112443084,
+      0.19885510714604865
+    ],
+    "dist_fisher_to_global": [
+      0.0,
+      6.539560770966209e-13,
+      2.0066059309191422e-12
+    ],
+    "dist_fisher_norm_to_global": [
+      0.0,
+      1.514345676675924e-08,
+      4.646634724721289e-08
+    ],
+    "retention_known": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "agreement_with_global": [
+      0.9999999403953552,
+      0.9999999403953552,
+      0.985981285572052
+    ],
+    "kl_global_to_current": [
+      -1.1946518806756762e-13,
+      0.0015658362535759807,
+      0.004837422631680965
+    ],
+    "proxy_acc": [
+      0.9357999563217163,
+      0.9334999918937683,
+      0.9328999519348145
+    ],
+    "proxy_kl": [
+      -2.1772221612398335e-13,
+      0.0004790148523170501,
+      0.0014405925758183002
+    ],
+    "signals_info": {
+      "reference": "the model the run started from (theta_g)",
+      "heldout_samples": 214,
+      "fisher_dir": "$FOA_STUDY_DIR/global_results/fisher_g0",
+      "fisher_available": true,
+      "proxy_samples": 10000,
+      "proxy_set": {
+        "name": "mnist_test",
+        "description": "MNIST test set, inverted to the NIST polarity (black ink on white) and resized to 28x28 with the NIST transform",
+        "path": "$FOA_PROJECT_DIR/data/mnist/mnist.npz",
+        "source_sha256": "c3135addf2ec1ba464ca29b553245d68898413529a4af7242e00e9a372cbe51c",
+        "size": 10000,
+        "seed": 42,
+        "invert_polarity": true,
+        "resolution": 28,
+        "hash": "20c387854af31143f03367b05f9bb8b66dd151e29872a2f5e1fd457af8b200a2"
+      }
+    },
+    "evaluation": {
+      "eval_path": "cache",
+      "sets": {
+        "pool_clients": 213,
+        "pool_insample": 213,
+        "pool_test": 213,
+        "pool_val": 214,
+        "source_test": 5238,
+        "source_val": 5274
+      },
+      "on_device": [
+        "pool_clients",
+        "pool_insample",
+        "pool_test",
+        "pool_val",
+        "source_test",
+        "source_val"
+      ],
+      "device": "cuda",
+      "batch_size": 512
+    },
+    "server": {
+      "weighting": "proportional",
+      "server_eta": 0.1,
+      "server_lr": 0.01,
+      "server_tau": 0.001,
+      "server_beta1": 0.9,
+      "server_beta2": 0.99,
+      "server_momentum_beta": 0.9,
+      "fedavgm_lr": 1.0,
+      "trim_fraction": 0.2,
+      "anchor_lambda": 0.1
+    },
+    "source_share": {
+      "mode": "off"
+    },
+    "val_blend": {},
+    "pool": {
+      "rule": "worst_k",
+      "tag": "digits_cohort10_v2",
+      "k": 10,
+      "size": 10,
+      "eligible_clients": 1074,
+      "ineligible_clients": 0,
+      "excluded_from_cohort": [],
+      "min_accuracy": 0.75,
+      "max_accuracy": 0.85,
+      "mean_accuracy": 0.8170689939417827,
+      "path": "$FOA_STUDY_DIR/outliers/cohort_worst10.json"
+    },
+    "final_evaluation": {
+      "fold": 1,
+      "clients": {
+        "accuracy": 0.8215962441314554,
+        "samples": 213,
+        "writers": 10,
+        "per_client": {
+          "f3642_03": 0.6875,
+          "f2023_12": 0.8095238095238095,
+          "f1331_49": 0.8181818181818182,
+          "f2564_59": 0.8095238095238095,
+          "f2230_67": 0.7391304347826086,
+          "f2145_89": 0.8571428571428571,
+          "f2307_62": 0.9047619047619048,
+          "f3211_20": 0.8888888888888888,
+          "f3200_41": 0.8518518518518519,
+          "f0048_00": 0.7857142857142857
+        }
+      },
+      "old": {
+        "folds": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "accuracies": {
+          "1": 0.9956090110729287,
+          "2": 0.9984756097560976,
+          "3": 0.9982889733840304,
+          "4": 0.9994303076338777,
+          "5": 0.9979003626646307
+        },
+        "samples": {
+          "1": 5238,
+          "2": 5248,
+          "3": 5260,
+          "4": 5266,
+          "5": 5239
+        },
+        "mean": 0.997940852902313,
+        "sd": 0.0012700199948390994,
+        "n": 5,
+        "writers": 200
+      },
+      "fold_book": "$FOA_STUDY_DIR/fold_books/cohort10.foldbook.npz",
+      "old_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz"
+    },
+    "config": {
+      "trainer": "BaseTrainer",
+      "trainer_kwargs": {},
+      "hyperparameters": {
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "early_stopping": false,
+        "patience": 5
+      },
+      "scenario": "concurrent",
+      "metadata": "delta",
+      "agg_method_name": "con_delta_eta",
+      "parent_name": null,
+      "batch_size": 64,
+      "epochs": 5,
+      "max_round": 3,
+      "seed": 1,
+      "single_outlier": null,
+      "outliers_file": "$FOA_STUDY_DIR/outliers/cohort_worst10.json",
+      "outlier_writers": [
+        "f3642_03",
+        "f2023_12",
+        "f1331_49",
+        "f2564_59",
+        "f2230_67",
+        "f2145_89",
+        "f2307_62",
+        "f3211_20",
+        "f3200_41",
+        "f0048_00"
+      ],
+      "global_model_path": "$FOA_STUDY_DIR/g0_model",
+      "global_model_sha256": "a4194898a67491541604a205ced1d877e9164ec039f5176d5d2db2ba7e203904",
+      "fisher_dir": "$FOA_STUDY_DIR/global_results/fisher_g0",
+      "results_dir": "$FOA_STUDY_DIR",
+      "data_dir": "$FOA_PROJECT_DIR/data",
+      "torch_version": "2.3.1+cu121",
+      "cuda_version": "12.1",
+      "device": "cuda",
+      "gpu_name": "NVIDIA A100-SXM4-40GB",
+      "python_version": "3.12.13",
+      "git_commit": "364269d6675d1120d7ebcb5ad9c15ec463097323",
+      "hostname": "ggpu107",
+      "started_at": "2026-08-30T17:02:47+00:00",
+      "finished_at": "2026-08-30T17:02:50+00:00",
+      "wall_seconds": 3.659780283458531,
+      "participants": [
+        "f3642_03",
+        "f2023_12",
+        "f1331_49",
+        "f2564_59",
+        "f2230_67",
+        "f2145_89",
+        "f2307_62",
+        "f3211_20",
+        "f3200_41",
+        "f0048_00"
+      ],
+      "participation": 1.0,
+      "policy": "uniform",
+      "sampler_seed": 702001,
+      "track_clients": true,
+      "stop_when_global_below_clients": false,
+      "global_name": "g0",
+      "clients_per_round": 8,
+      "weighting": "proportional",
+      "server_eta": 0.1,
+      "client_order": "fixed",
+      "init": "global",
+      "provider": "nist",
+      "pool_frac": null,
+      "eval_path": "cache",
+      "insample_every": 1,
+      "old_book": "$FOA_STUDY_DIR/fold_books/old_data.foldbook.npz",
+      "old_clients_file": "$FOA_STUDY_DIR/outliers/old_data.json",
+      "old_folds": "all",
+      "source_share": "off",
+      "source_share_multiplier": 1.0,
+      "source_share_cap": null,
+      "val_blend_source": 0.0,
+      "provider_results_dir": "$FOA_STUDY_DIR",
+      "provider_data_dir": "$FOA_PROJECT_DIR/data",
+      "dataset_files": {
+        "nist28_images": {
+          "path": "$FOA_NIST28_DIR/nist28_images.npy",
+          "sha256": "52ac9ac79a6149a69505eb7fad02309eedd7bf61437d1b30342f686d55d53b0f"
+        },
+        "nist28_labels": {
+          "path": "$FOA_NIST28_DIR/nist28_labels.npy",
+          "sha256": "66ed05d90aad2d31e01c94aadfc458fcf4ad3f4407bc3845ace8792cbf868aaf"
+        },
+        "nist28_writers": {
+          "path": "$FOA_NIST28_DIR/nist28_writers.npy",
+          "sha256": "55a72acff7304b0c3c6f694e662254995092352c9fecfad15d8db2c45f04e943"
+        },
+        "nist28_index": {
+          "path": "$FOA_NIST28_DIR/nist28_index.json",
+          "sha256": "00a12c6a51d89bb7e606069afb1c37db4f1e7935975f978857978d3d94b6edb3"
+        }
+      },
+      "proxy_set": {
+        "name": "mnist_test",
+        "description": "MNIST test set, inverted to the NIST polarity (black ink on white) and resized to 28x28 with the NIST transform",
+        "path": "$FOA_PROJECT_DIR/data/mnist/mnist.npz",
+        "source_sha256": "c3135addf2ec1ba464ca29b553245d68898413529a4af7242e00e9a372cbe51c",
+        "size": 10000,
+        "seed": 42,
+        "invert_polarity": true,
+        "resolution": 28,
+        "hash": "20c387854af31143f03367b05f9bb8b66dd151e29872a2f5e1fd457af8b200a2"
+      },
+      "model_info": {
+        "model": "fedavg_cnn",
+        "model_class": "FedAvgCNN",
+        "parameters": 1663370,
+        "num_classes": 10,
+        "resolution": 28,
+        "classes": "digits"
+      }
+    }
+  }
+}

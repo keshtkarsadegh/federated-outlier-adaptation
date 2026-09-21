@@ -468,10 +468,10 @@ python tools/check_signals.py --root $FOA_STUDY_DIR --all
 # (a) correlations, (b) simulated stopping, (c) selection under a budget
 #     -> $FOA_STUDY_DIR/signals/{signal_correlations,signal_stopping,
 #        signal_selection}.csv, signals_summary.json, signals_pareto_*.png
-python -m federated_outlier_adaptation.analysis.forgetting_signals \
-       --root $FOA_STUDY_DIR
-#     the same thing through the CLI:
-foa signals --root $FOA_STUDY_DIR
+#     --population names the runs the shipped views were computed over; without
+#     it the pass pools over whatever the root holds now. docs/REPRODUCE.md S6.
+foa signals --root $FOA_STUDY_DIR --out <dir> \
+       --population study/artifacts/Digits_study01/signals_population.txt
 
 # fixed horizon vs oracle stop vs permitted signal, per arm, all eight stages
 #     -> $FOA_STUDY_DIR/tables/stopping/stopping_*.csv
