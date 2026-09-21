@@ -430,14 +430,6 @@ def build():
         "extreme_stop_rounds.csv, row dual, col oracle_src")
     put("nDoubleSatRound", "%d" % int(f(doub, "oracle_round")),
         "extreme_stop_rounds.csv, row double, col oracle_round")
-    put("nDualRuleRound", "%d" % int(f(dual, "rule_round")),
-        "extreme_stop_rounds.csv, row dual, col rule_round")
-    put("nDoubleRuleRound", "%d" % int(f(doub, "rule_round")),
-        "extreme_stop_rounds.csv, row double, col rule_round")
-    put("nDualRuleScore", pts(100 * f(dual, "rule_score")),
-        "extreme_stop_rounds.csv, row dual, col rule_score, in points")
-    put("nDoubleRuleScore", pts(100 * f(doub, "rule_score")),
-        "extreme_stop_rounds.csv, row double, col rule_score, in points")
     put("nDualFinalScore", pts(100 * f(dual, "final_score")),
         "extreme_stop_rounds.csv, row dual, col final_score (round-100 trace), in points")
     put("nDoubleFinalScore", pts(100 * f(doub, "final_score")),
@@ -463,13 +455,9 @@ def build():
         "plateau_stages.csv, row all, col oracle_mean, in points")
     put("nPlateauFixedMean", dpts(f(pall, "fixed_mean")),
         "plateau_stages.csv, row all, col fixed_mean, in points")
-    put("nPlateauFires", "%d" % int(float(pall["fires"])),
-        "plateau_stages.csv, row all, col fires")
     put("nPlateauArms", "%d" % int(float(pall["arms"])),
         "plateau_stages.csv, row all, col arms")
     pext = pick(pst, stage="extreme")
-    put("nPlateauExtremeGain", dpts(f(pext, "gain")),
-        "plateau_stages.csv, row extreme, col gain, in points")
     hurt = [r for r in parm if float(r["gain"]) < 0]
     put("nPlateauHurtArms", {0: "no", 1: "one", 2: "two"}.get(len(hurt), str(len(hurt))),
         "plateau_arms.csv, count of rows with col gain < 0")
@@ -496,10 +484,6 @@ def build():
         "isolated_clients.csv, per-client fold-mean of g0_own_test, maximum")
     put("nIsoWorstSrc", acc(min(isosrc.values())),
         "isolated_clients.csv, per-client fold-mean of iso_g0_src_test, minimum")
-
-    worst = min(fairc, key=lambda r: f(r, "shipped"))
-    put("nWorstWriterGap", dpts(P0 - f(worst, "shipped"), 1),
-        "derived: P0 - fairness_c10d10_clients.csv, row %s, col shipped" % worst["client"])
 
     r = pick(refs, cell="isolated (scratch)")
     put("nIsolatedScratchOwn", acc(f(r, "adaptation")),
@@ -528,19 +512,8 @@ def build():
     trim = max((r for r in agg if r["cell"].startswith("trimmed_")),
                key=lambda r: float(r["score"]))
     frac = TRIM_FRACTION[trim["cell"]]
-    put("nTrimBestFrac", "a trim fraction of $%s$" % ("%g" % frac),
-        "agg-winners.csv, row %s, col cell (label via TRIM_FRACTION)" % trim["cell"])
     n_part = int(round(f(pick(cost_a, arm="c10d10/control"), "clients_per_round")))
     k = int(trim["cell"].split("_t")[1])
-    put("nTrimSurvivors", word(n_part - 2 * k),
-        "derived: cost_arms.csv, row c10d10/control, col clients_per_round = %d,"
-        " minus 2 x %d trimmed (agg-winners.csv, row %s)" % (n_part, k, trim["cell"]))
-    put("nTrimBestAdapt", acc(f(trim, "adaptation")),
-        "agg-winners.csv, row %s, col adaptation" % trim["cell"])
-    put("nTrimBestPres", acc(f(trim, "preservation")),
-        "agg-winners.csv, row %s, col preservation" % trim["cell"])
-    put("nTrimBestCount", "%d" % k,
-        "agg-winners.csv, row %s, col cell: the trimmed count t" % trim["cell"])
 
     # ---- Section 6.2, the best server rules -----------------------------
     # The parallel rule the record crowned is the anchor (AGG_CROWNED_CONC);
@@ -565,10 +538,6 @@ def build():
     r = top(agg, family="cyclic")
     put("nAggBestSeq", prose(r["cell"]),
         "agg-winners.csv, top-score cyclic row (%s), col cell" % r["cell"])
-    put("nAggBestSeqAdapt", acc(f(r, "adaptation")),
-        "agg-winners.csv, row %s/cyclic, col adaptation" % r["cell"])
-    put("nAggBestSeqPres", acc(f(r, "preservation")),
-        "agg-winners.csv, row %s/cyclic, col preservation" % r["cell"])
 
     # ---- Section 6.3, the best penalties (blends excluded; they are the
     #      subject of Section 6.4 and are reported separately) ------------
@@ -584,17 +553,11 @@ def build():
                  key=lambda r: -float(r["score"]))
     put("nRegBestSeqA", prose(cyc[0]["cell"]),
         "reg-winners.csv, 1st cyclic non-blend row by score (%s), col cell" % cyc[0]["cell"])
-    put("nRegBestSeqB", prose(cyc[1]["cell"]),
-        "reg-winners.csv, 2nd cyclic non-blend row by score (%s), col cell" % cyc[1]["cell"])
     put("nRegBestSeqAdapt", acc(f(cyc[0], "adaptation")),
         "reg-winners.csv, row %s/cyclic, col adaptation" % cyc[0]["cell"])
     put("nRegBestSeqPres", acc(f(cyc[0], "preservation")),
         "reg-winners.csv, row %s/cyclic, col preservation" % cyc[0]["cell"])
-    put("nRegLogitLamSeq", "%g" % suffix(cyc[0]["cell"], "lam"),
-        "reg-winners.csv, row %s/cyclic, col cell: the penalty coefficient" % cyc[0]["cell"])
     conc = top(single, family="parallel")
-    put("nRegLogitLamConc", "%g" % suffix(conc["cell"], "lam"),
-        "reg-winners.csv, row %s/parallel, col cell: the penalty coefficient" % conc["cell"])
     put("nRegBestSpent", pts(100 * f(cyc[0], "spent")),
         "reg-winners.csv, row %s/cyclic, col spent (= P0 - preservation), in points"
         % cyc[0]["cell"])
@@ -606,15 +569,9 @@ def build():
         " (= P0 - preservation), in points; same run as nFedAvgAdapt/Pres")
 
     tiny = pick(regu, cell="param_l2_mu0p0001", family="parallel")
-    put("nParamLBestConc", "%g" % suffix(tiny["cell"], "mu"),
-        "reg-winners.csv, row %s/parallel, col cell: the penalty coefficient" % tiny["cell"])
     # NOTE: reg-winners.csv carries param_l2_mu0 on the CYCLIC schedule only, so
     # the no-penalty reference here is cross-schedule and the quantity is a
     # PRESERVATION difference (as the sentence states), not a score difference.
-    put("nParamLTinyGain", dpts(f(tiny, "preservation") - f(nopen, "preservation")),
-        "derived: reg-winners.csv, row param_l2_mu0p0001/parallel minus row"
-        " param_l2_mu0/CYCLIC (the parallel no-penalty row is not in this file),"
-        " col preservation, in points")
 
     # ---- Section 6.4, the blend -----------------------------------------
     blends = [r for r in regu if r["cell"].startswith("hybrid")]
@@ -630,9 +587,6 @@ def build():
         % (bb["cell"], bb["family"]))
     kd = [r for r in blend if r["minus"].startswith("kd_")]
     assert len(kd) == 6
-    put("nBlendVsKdMin", pts(min(f(r, "mean") for r in kd)),
-        "blends.csv, col mean, minimum over the %d rows whose col minus is a"
-        " distillation parent, in points" % len(kd))
     put("nBlendVsKdMax", pts(max(f(r, "mean") for r in kd)),
         "blends.csv, col mean, maximum over the %d rows whose col minus is a"
         " distillation parent, in points" % len(kd))
@@ -685,13 +639,6 @@ def build():
         "combos.csv, row %s, col adaptation" % bal["cell"])
     put("nComboBalancedPres", acc(f(bal, "preservation")),
         "combos.csv, row %s, col preservation" % bal["cell"])
-    put("nComboBalancedGap", pts(100 * f(bal, "spent")),
-        "combos.csv, row %s, col spent (= P0 - preservation), in points" % bal["cell"])
-    put("nComboBalancedCost", dpts(f(win, "adaptation") - f(bal, "adaptation")),
-        "derived: combos.csv, rows %s minus %s, col adaptation, in points"
-        % (win["cell"], bal["cell"]))
-    put("nComboCells", "%d" % int(f(pick(cost_s, stage="combinations"), "tasks")),
-        "cost_stages.csv, row 'combinations', col tasks")
 
     seqarm = pick(combo, cell=CYCLIC_ARM[0], family=CYCLIC_ARM[1])
     put("nComboSeqAdapt", acc(f(seqarm, "adaptation")),
@@ -784,18 +731,9 @@ def build():
     # ---- Section 6.6, the carry settings --------------------------------
     n_by_file = {"five": 5, "c10d10": 10, "c20d10": 20, "c20d20": 20}
     listed = sorted({n_by_file[k] for k in sizes})
-    put("nSizeList", "%s and %s" % (", ".join(word(n) for n in listed[:-1]), word(listed[-1])),
-        "derived: the sizes_*.csv inventory (%s)" % ", ".join(sorted(sizes)))
 
     ctl5 = [r for r in sizes["five"] if r["cell"] == "control"]
-    put("nFiveControlPres", acc(sum(f(r, "preservation") for r in ctl5) / len(ctl5)),
-        "sizes_five.csv, rows control (cyclic, parallel), col preservation, mean")
-    put("nFiveBalancedPres", acc(f(pick(sizes["five"], cell="balanced"), "preservation")),
-        "sizes_five.csv, row balanced, col preservation")
     n5 = int(round(f(pick(cost_s, stage="five clients, one dropped"), "clients_per_round")))
-    put("nFiveTrimSurvivors", word(n5 - 2 * int(math.floor(frac * n5))),
-        "derived: cost_stages.csv, row 'five clients, one dropped',"
-        " col clients_per_round = %d, at trim fraction %g" % (n5, frac))
 
     delta = 0.0
     for cell in ("sequential", "winner", "balanced"):
@@ -808,27 +746,13 @@ def build():
         " sequential/winner/balanced and cols adaptation, preservation, in points")
 
     w5 = pick(sizes["five"], cell="winner")
-    put("nFiveWinnerAdapt", acc(f(w5, "adaptation")),
-        "sizes_five.csv, row winner, col adaptation")
     w20 = pick(sizes["c20d10"], cell="winner")
-    put("nTwentyWinnerDrop", dpts(f(win, "adaptation") - f(w20, "adaptation"), 1),
-        "derived: combos.csv row %s minus sizes_c20d10.csv row winner,"
-        " col adaptation, in points" % win["cell"])
     floor20 = min(f(r, "preservation")
                   for k in ("c20d10", "c20d20") for r in sizes[k])
-    put("nTwentyPresFloor", acc(floor20, 3),
-        "sizes_c20d10.csv + sizes_c20d20.csv, min over all rows, col preservation")
 
     balp = [f(pick(sizes[k], cell="balanced"), "preservation") for k in sizes]
-    put("nBalancedPresMin", acc(min(balp)),
-        "sizes_*.csv, row balanced, col preservation, minimum over the four settings")
-    put("nBalancedPresMax", acc(max(balp)),
-        "sizes_*.csv, row balanced, col preservation, maximum over the four settings")
     gap = max(f(pick(sizes[k], cell="winner"), "adaptation")
               - f(pick(sizes[k], cell="balanced"), "adaptation") for k in sizes)
-    put("nBalancedAdaptGap", dpts(gap, 2),
-        "derived: sizes_*.csv, row winner minus row balanced, col adaptation,"
-        " maximum over the four settings, in points")
 
     # the carried arms are the three frozen ones; 'control' is plain FedAvg
     carried = [(k, r) for k in sizes for r in sizes[k] if r["cell"] != "control"]
@@ -868,43 +792,6 @@ def build():
         " row and are excluded. In points, %s." % (mk, mc, ROUND_ONCE))
 
     # ---- Section 6.7, fairness ------------------------------------------
-    def cov(cell, family):
-        xs = [f(r, "accuracy") for r in fairc
-              if r["cell"] == cell and r["family"] == family]
-        m = sum(xs) / len(xs)
-        sd = math.sqrt(sum((x - m) ** 2 for x in xs) / len(xs))
-        return sd / m, len(xs)
-
-    def improved(cell, family):
-        xs = [f(r, "delta") for r in fairc
-              if r["cell"] == cell and r["family"] == family]
-        return sum(1 for x in xs if x > 0), len(xs)
-
-    for macro, cell, family, label in (("Control", "control", "parallel", "control"),
-                                       ("Winner", "winner", "parallel", "winner"),
-                                       ("Balanced", "balanced", "parallel", "balanced")):
-        row = pick(fair, cell=cell, family=family)
-        put("nFair%sMean" % macro, acc(f(row, "mean")),
-            "fairness_c10d10.csv, row %s/%s, col mean" % (cell, family))
-        put("nFair%sWorst" % macro, acc(f(row, "min")),
-            "fairness_c10d10.csv, row %s/%s, col min" % (cell, family))
-        c, n = cov(cell, family)
-        put("nFair%sCoV" % macro, "%.3f" % c,
-            "derived: fairness_c10d10_clients.csv, rows %s/%s, col accuracy,"
-            " population sd / mean over the %d clients" % (cell, family, n))
-        i, n = improved(cell, family)
-        put("nFair%sImproved" % macro, "%d of %d" % (i, n),
-            "fairness_c10d10_clients.csv, rows %s/%s, count of col delta > 0"
-            % (cell, family))
-
-    i, n = improved("control", "parallel")
-    put("nFairControlLeftBehind", word(n - i),
-        "fairness_c10d10_clients.csv, rows control/parallel, count of col delta <= 0")
-    put("nWorstWriterId", code(worst["client"]),
-        "fairness_c10d10_clients.csv, row with the smallest col shipped, col client")
-    put("nWorstWriterShipped", acc(f(worst, "shipped")),
-        "fairness_c10d10_clients.csv, row %s, col shipped" % worst["client"])
-
     # how far the worst-served client of each arm moved, in points
     put("nFairWorstMinGain", dpts(min(f(r, "lift_worst") for r in fair)),
         "fairness_c10d10.csv, col lift_worst, minimum over the %d arm rows,"
@@ -912,19 +799,6 @@ def build():
     put("nFairWorstMaxGain", dpts(max(f(r, "lift_worst") for r in fair)),
         "fairness_c10d10.csv, col lift_worst, maximum over the %d arm rows,"
         " in points" % len(fair))
-
-    fbp = max(fair_combo, key=lambda r: f(r, "lift_worst"))
-    crown_f = pick(fair_combo, cell=CROWNED[0], family=CROWNED[1])
-    put("nFairBestPair", prose(fbp["cell"], agg_cells),
-        "fairness_combo.csv, largest-lift_worst row (%s/%s), col cell"
-        % (fbp["cell"], fbp["family"]))
-    put("nFairBestPairWorstGain", dpts(f(fbp, "lift_worst") - f(crown_f, "lift_worst")),
-        "derived: fairness_combo.csv, col lift_worst, row %s minus the crowned"
-        " row %s, in points" % (fbp["cell"], CROWNED[0]))
-    put("nFairBestPairMeanCost", pts(abs(100 * (f(crown_f, "mean") - f(fbp, "mean")))),
-        "derived: fairness_combo.csv, col mean, |crowned row %s - row %s|,"
-        " in points (the crowned pair is in fact the LOWER of the two here,"
-        " by this amount)" % (CROWNED[0], fbp["cell"]))
 
     for macro, k in (("nBalancedWorstTwentyTwo", "c20d10"),
                      ("nBalancedWorstTwentyFour", "c20d20")):
@@ -935,23 +809,12 @@ def build():
 
     # ---- Section 6.7, cost ----------------------------------------------
     ca = pick(cost_a, arm="c10d10/winner")
-    put("nParticipants", word(f(ca, "clients_per_round")),
-        "cost_arms.csv, row c10d10/winner, col clients_per_round")
     put("nCommPerRound", "%.1f\\,MB" % f(ca, "mb_per_round"),
         "cost_arms.csv, row c10d10/winner, col mb_per_round")
-    put("nCommTotal", "%.2f\\,GB" % (f(ca, "mb_per_round") * f(ca, "rounds") / 1000.0),
-        "derived: cost_arms.csv, row c10d10/winner, cols mb_per_round x rounds")
     put("nParamCount", group(f(ca, "param_count")),
         "cost_arms.csv, row c10d10/winner, col param_count")
 
     # ---- Section 6.8, the extremes --------------------------------------
-    for macro, cell in (("Double", "double"), ("Dual", "dual")):
-        row = pick(extr, cell=cell)
-        put("n%sAdapt" % macro, acc(f(row, "adaptation")),
-            "extremes.csv, row %s, col adaptation" % cell)
-        put("n%sPres" % macro, acc(f(row, "preservation")),
-            "extremes.csv, row %s, col preservation" % cell)
-
     # The per-round decision table.  Its final_* columns are the same fixed
     # horizon as extremes.csv read on the per-round (validation) trace, so the
     # fixed-horizon and oracle numbers quoted together below share one basis.
@@ -964,10 +827,6 @@ def build():
     # horizon on the per-round VALIDATION trace (cols final_*), which differs:
     # single 0.7375 / -10.66, double 0.9373.  Both appear side by side in that
     # table, and the trace pair is what Section 7 argues from.
-    put("nDoubleFinalPres", acc(f(ex["double"], "preservation")),
-        "extremes.csv, row double, col preservation (test axis; the trace"
-        " value is stopping_extreme.csv row double col final_preservation"
-        " = %s)" % acc(f(sx["double"], "final_preservation")))
     put("nDualSatRound", "%d" % int(f(sx["dual"], "oracle_round")),
         "stopping_extreme.csv, row dual, col oracle_round")
 
@@ -1022,22 +881,6 @@ def build():
     put("nOneRuleDelta", "%g" % float(deltas.pop()),
         "stopping_all.csv, col one_delta (identical on every row)")
 
-    for macro, stage in (("Extreme", "extreme"), ("Five", "five"),
-                         ("Agg", "aggfull")):
-        put("nOneRule%sGain" % macro,
-            dpts(mean("one_vs_final", lambda r, s=stage: r["stage"] == s)),
-            "derived: mean of col one_vs_final over stopping_all.csv rows with"
-            " stage = %s, in points" % stage)
-
-    worst = min(stopa, key=lambda r: f(r, "one_vs_final"))
-    put("nOneRuleWorstArm", prose(worst["cell"], agg_cells),
-        "stopping_all.csv, row with the lowest col one_vs_final (stage %s,"
-        " cell %s, %s)" % (worst["stage"], worst["cell"], worst["family"]))
-    put("nOneRuleWorstLoss", dpts(-f(worst, "one_vs_final")),
-        "derived: minus stopping_all.csv col one_vs_final of that row, in"
-        " points (the sentence reads it as a cost)")
-
-
     put("nKlRuleScore", dpts(f(SIG["kl_global_to_current"],
                                "mean_stopped_score")),
         "signals_summary_extract.csv, row kl_global_to_current, col"
@@ -1046,25 +889,7 @@ def build():
         "signals_summary_extract.csv, row proxy_kl, col mean_stopped_score,"
         " in points")
 
-    put("nOracleGapMainMin", dpts(min(main_medians)),
-        "derived: smallest per-stage MEDIAN of col oracle_cost over the seven"
-        " non-extreme stages of stopping_all.csv, in points")
-    put("nOracleGapMainMax", dpts(max(main_medians)),
-        "derived: largest per-stage MEDIAN of col oracle_cost over the seven"
-        " non-extreme stages of stopping_all.csv, in points")
-    put("nOracleGapExtremeMin", dpts(extreme_gaps[0]),
-        "derived: smallest col oracle_cost among the stage = extreme rows of"
-        " stopping_all.csv, in points")
-    put("nOracleGapExtremeMax", dpts(extreme_gaps[-1]),
-        "derived: largest col oracle_cost among the stage = extreme rows of"
-        " stopping_all.csv, in points")
 
-    put("nRetentionMaxDev", acc(float(sigx["retention_max_dev_extreme"])),
-        "signals_extras_extract.csv, key retention_max_dev_extreme --- the"
-        " largest departure of retention_known from 1.0 over the three"
-        " extreme arms")
-    put("nRetentionSourceFall", dpts(float(sigx["source_max_fall_extreme"])),
-        "signals_extras_extract.csv, key source_max_fall_extreme, in points")
 
     # ---- Section 7, the correlation table --------------------------------
     # median_rho is the per-run median rank correlation of the signal's DRIFT
@@ -1100,8 +925,6 @@ def build():
     put("nBadPoolSize", group(float(cohort[0]["of"])),
         "cohort_table.csv, col 'of' (identical on every row)")
     cohort_clients = sum(1 for r in cohort_comp if r["cohort"] == "cohort10")
-    put("nCohortSize", word(cohort_clients),
-        "cohort_composition.csv, count of rows with cohort = cohort10")
     put("nRounds", "%d" % int(f(pick(cost_s, stage="regularisation finals"), "rounds")),
         "cost_stages.csv, row 'regularisation finals', col rounds")
 
@@ -1143,16 +966,11 @@ def build():
         raise KeyError("decouple_example.csv must flag exactly one row, "
                        "found %d" % len(flagged))
     dec = flagged[0]
-    put("nDecoupleGInit", acc(f(dec, "g_init_acc")),
-        "decouple_example.csv, row %s (chosen), col g_init_acc" % dec["writer"])
     put("nDecoupleGZero", acc(f(dec, "g0_acc")),
         "decouple_example.csv, row %s (chosen), col g0_acc" % dec["writer"])
 
     folds = [c for c in cohort[0] if re.fullmatch(r"f\d+_val", c)]
     per_fold = [sum(float(r[c]) for r in cohort) for c in folds]
-    put("nValRowsPerFold", "%d" % round(sum(per_fold) / len(per_fold)),
-        "cohort_table.csv, cols %s summed over the cohort writers, mean over folds"
-        % ", ".join(folds))
 
     return reg
 

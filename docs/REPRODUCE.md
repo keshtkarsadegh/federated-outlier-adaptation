@@ -750,17 +750,28 @@ the column the value came from, and a name with no registry entry is written bac
 as `\TBD{unmapped}`, reported on stdout, and exits non-zero - so an unsourced
 number is loud rather than silent.
 
-**FIFTY-NINE DEFINITIONS SIT ABOVE THE MARKER AND ARE NOT GENERATED.** They are
+**SIX DEFINITIONS SIT ABOVE THE MARKER AND ARE NOT GENERATED.** They are
 hand-maintained on purpose, they are outside the block the generator rewrites,
 and `numbers.tex` says which is which in a comment of its own:
 
 | what | how many | why it is not generated |
 |---|---|---|
-| `\pub...` | 46 | facts of the earlier published single-seed runs, not of this study |
-| `\nBadFraction`, `\nGoodPoolSize`, `\nDigitRows`, `\nDigitWriters`, `\nSamplesPerClassPerWriter`, `\nMacsPerImage`, `\nOldSize`, `\nOldMinSamples`, `\nLocalEpochs`, `\nBatchSize` | 10 | protocol constants: configuration the study was **given**, not a measurement it produced, so no view carries them |
-| `\nProxySamples`, `\nProxyAccStart`, `\nProxyAccEnd` | 3 | measurements of the public proxy set whose source has not been extracted into a view yet |
+| `\nBadFraction`, `\nDigitRows`, `\nDigitWriters`, `\nOldSize`, `\nLocalEpochs`, `\nBatchSize` | 6 | protocol constants: configuration the study was **given**, not a measurement it produced, so no view carries them. `tests/test_recipe.py` holds each to its own source in `src/`, in `outliers/pools.json` or in the shipped task lines |
 
-The other 179 macros are generated. `tables/sensitivity_agg.tex` and
+There were fifty-nine on 2026-09-20, and the fifty-three that have gone were
+retired rather than moved. The forty-six `\pub...` macros were facts of the
+earlier published single-seed runs; this programme re-ran every quantity they
+carried, five folds deep, and no page of the manuscript called one. The learning
+rate and the weight decay moved INTO the generated block when `recipe.csv`
+landed, and the rest - the proxy-set constants, the good pool, the per-writer
+sample counts - were macros nothing set. A macro no page calls is a macro no
+reader can check: `\TBD{}` cannot fire on a name nobody writes.
+
+The other 138 macros are generated, down from 205 in the same pass: the template
+now defines what the manuscript sets plus the handful the tables and the figure
+captions set for it, and `make_numbers.py` reports any registry entry with no
+macro between the markers, so the registry was pruned to match rather than left
+to answer names that had gone. `tables/sensitivity_agg.tex` and
 `tables/sensitivity_reg.tex` are the two table files `make_paper_tables.py` does
 not write: a third generator in the manuscript checkout does, from the two
 `weight_sensitivity_*.csv` that ship here.

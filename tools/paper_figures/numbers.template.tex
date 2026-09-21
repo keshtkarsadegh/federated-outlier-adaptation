@@ -1,121 +1,54 @@
 % Macros for material that the v4 programme did not run were retired on
 % 2026-08-30; 147 of them. They belonged to the three-dataset scope and to
 % sections that no longer exist. Nothing in the live text referenced them.
+%
+% A second retirement followed on 2026-09-21: 125 more, of which GROUP A --- the
+% forty-six \pub* figures of the published single-seed runs --- was the whole of
+% one block. The v6 programme re-ran every quantity that block carried, five
+% folds deep, and the live text sets the re-run ones. A macro no page calls is a
+% macro no reader can check: \TBD{} cannot fire on a name nobody writes, and a
+% value that drifts under a name nobody uses drifts silently. What remains here
+% is what the manuscript sets, plus the handful the tables and the figure
+% captions set for it.
 %% ===========================================================================
 %% numbers.tex --- every quantitative statement of the manuscript.
 %%
-%% Group A  : facts of the published single-seed runs and of the frozen
-%%            artefacts. These are recovered from the stored result files and
-%%            are therefore already filled in.
-%% Group B  : quantities produced by the re-executed experiment matrix. They
-%%            are defined as \TBD{...} and render as a visible red marker until
-%%            `fal report` has been rerun and the value has been transcribed.
+%% Two pieces, in this order: a short hand-maintained block of protocol
+%% constants that no view carries, and the generated block below it, which
+%% make_numbers.py rewrites from data/*.csv and which carries everything else.
 %%
 %% numbers_index.md documents every macro, its meaning and its source.
 %% ===========================================================================
 
 %% ---------------------------------------------------------------------------
-%% GROUP A --- published runs (single seed, R = 100 rounds, batch size 64) and
-%% frozen artefacts. Source: results/ as summarised in the revision record.
-%% ---------------------------------------------------------------------------
-
-% Frozen artefacts and population
-\newcommand{\pubGlobalTestAcc}{99.63\%}          % global_results/global_metrics.json
-\newcommand{\pubPooledSrcAcc}{99.57\%}           % combined (pooled-oracle) model, source test
-\newcommand{\pubPooledPoolAcc}{94.20\%}          % combined model, outlier cohort
-\newcommand{\pubSourceWriters}{108}              % writers used to train the global model
-\newcommand{\pubTotalWriters}{3597}              % independent writers in by_write
-\newcommand{\pubSourceShare}{3.0\%}              % 108 / 3597
-\newcommand{\pubEvaluatedWriters}{3473}          % non-contributor writers scored by the global model
-\newcommand{\pubBottomFrac}{0.5\%}               % bottom fraction the cohort was drawn from
-\newcommand{\pubBottomCount}{17}                 % writers inside that bottom fraction
-\newcommand{\pubCohortSize}{5}                   % participants drawn from those 17
-\newcommand{\pubCohortRanks}{1, 6, 13, 14 and 17}% their ranks inside the bottom fraction
-
-% Pre-adaptation accuracy of the frozen global model on the cohort
-\newcommand{\pubOutlierWorst}{56.7\%}            % writer f2248_68
-\newcommand{\pubOutlierRest}{83.8--85.6\%}       % the other four writers
-\newcommand{\pubOutlierSpan}{56--86\%}           % reported range
-
-% Aggregation-only (cross-entropy clients, 17 published rules)
-\newcommand{\pubAggBestSrc}{87.1\%}              % best final source accuracy (con_scaled_cgw)
-\newcommand{\pubAggBestRule}{\code{con\_scaled\_cgw}}
-\newcommand{\pubAggDropRange}{12.6--42}          % forgetting range, points
-\newcommand{\pubAggMedianSrc}{76\%}              % median final source accuracy
-
-% Parameter-space regularisation
-\newcommand{\pubProxDropRange}{6.5--20}          % forgetting range, points (lambda = 0.9)
-\newcommand{\pubProxClientRange}{94--96\%}
-\newcommand{\pubEwcBestSrc}{97.5\%}              % best final source accuracy (lambda = 8)
-\newcommand{\pubEwcBestDrop}{2.1}                % points
-\newcommand{\pubEwcClientRange}{95.4--96.1\%}
-\newcommand{\pubEwcDropRange}{2.1--17}           % points, across aggregation variants
-
-% Output-space regularisation
-\newcommand{\pubKdBestSrc}{99.34\%}              % con_capped_cgw
-\newcommand{\pubKdBestDrop}{0.29}                % points
-\newcommand{\pubKdBestClient}{93.2\%}
-\newcommand{\pubKdMedianDrop}{0.47}              % points
-\newcommand{\pubKdClientRange}{93--94.6\%}
-\newcommand{\pubKdSeqSrc}{99.25\%}               % seq_delta_capped
-\newcommand{\pubKdSeqClient}{94.4\%}
-\newcommand{\pubLogitDropRange}{0.14--0.47}      % points (lambda = 0.1)
-\newcommand{\pubLogitClientRange}{91.7--94.4\%}
-\newcommand{\pubAlignedDropRange}{0.10--0.45}    % points (beta = 0.1, identical objective)
-\newcommand{\pubAlignedClientRange}{92.3--94.0\%}
-
-% Hybrid output + parameter space
-\newcommand{\pubHybridDropRange}{1.6--5.8}       % points
-\newcommand{\pubHybridClientRange}{88--96\%}
-
-% Extreme cases as stored
-\newcommand{\pubTwoClientDropRange}{0.14--0.67}  % points
-\newcommand{\pubTwoClientRange}{95--97\%}
-\newcommand{\pubSingleStalledClient}{85.4\%}     % seq_incremental / seq_delta_progressive
-\newcommand{\pubSingleStalledSrc}{99.63\%}
-\newcommand{\pubSingleBestClient}{99.2\%}
-\newcommand{\pubSingleDropRange}{1.2--9.4}       % points
-\newcommand{\pubDualClientAcc}{96.9\%}           % con_weighted_cgw
-\newcommand{\pubDualDrop}{0.72}                  % points
-\newcommand{\pubDualDropMax}{4.4}                % points, across rules
-
-%% ---------------------------------------------------------------------------
-%% NOT GENERATED --- protocol constants and signal statistics.
+%% NOT GENERATED --- protocol constants.
 %%
-%% These are hand-maintained and sit OUTSIDE the generated block on purpose.
-%%   * the protocol constants are configuration, not measurements, and no CSV
-%%     in data/ carries them;
-%%   * the two proxy-set accuracies are measurements whose source has not
-%%     been extracted into data/ yet.  The rest of the Section 7 signal
-%%     statistics now live inside the generated block, read from
-%%     data/signals_summary_extract.csv.
+%% Hand-maintained, and outside the generated block on purpose: these are
+%% configuration rather than measurements, and no CSV in data/ carries them.
+%% Two constants that used to sit here do not any more. The Section 7 signal
+%% statistics moved into the generated block on 2026-09-01, when
+%% data/signals_summary_extract.csv landed; the learning rate and the weight
+%% decay followed on 2026-09-21, when data/recipe.csv did --- the runner writes
+%% the configuration it ran under beside every set of accuracies, so both are
+%% read off the payloads now rather than typed.
+%%
+%% tests/test_recipe.py holds every constant below to its own source, in src/
+%% or in the shipped task lines, so a drift in the code fails a test rather
+%% than a sentence.
 %% make_numbers.py rewrites only the marked block further down.
 %% ---------------------------------------------------------------------------
 
-% Forgetting signals (Section 7).  The per-signal statistics moved into the
-% generated block on 2026-09-01, when data/signals_summary_extract.csv and
-% data/signals_extras_extract.csv landed; only the proxy-set constants and the
-% two round-zero/round-100 proxy accuracies are still hand-maintained here.
-\newcommand{\nProxySamples}{10\,000}
-\newcommand{\nProxyAccStart}{0.9356}
-\newcommand{\nProxyAccEnd}{0.9319}
-
-% Protocol constants (Section 5) --- configuration, not measured.  The two
-% optimiser constants that used to sit here moved into the generated block on
-% 2026-09-21, when data/recipe.csv landed: the runner records the configuration
-% it ran under beside every set of accuracies, so the learning rate and the
-% weight decay are read off the payloads now rather than typed.
 \newcommand{\nBadFraction}{30\%}
-\newcommand{\nGoodPoolSize}{2\,506}
+  % outliers/pools.json: bad_fraction, as a percentage
 \newcommand{\nDigitRows}{402\,953}
 \newcommand{\nDigitWriters}{3\,580}
-\newcommand{\nSamplesPerClassPerWriter}{eleven}
-\newcommand{\nMacsPerImage}{12\,M}
+  % outliers/pools.json: ranked_writers
 \newcommand{\nOldSize}{200}
-\newcommand{\nOldMinSamples}{100}
+  % jobs/s02_selection.txt: draw-old-data --size 200
 \newcommand{\nLocalEpochs}{5}
   % jobs/d01_*.txt: --epochs 5 on every federated final task
 \newcommand{\nBatchSize}{64}
+  % jobs/d01_*.txt: --batch-size 64 on every federated final task
 
 %% ---------------------------------------------------------------------------
 %% GENERATED --- do not edit by hand.  Rewritten in place by
@@ -135,8 +68,6 @@
   % references.csv, every row: adaptation - gained
 \newcommand{\nStartingGap}{17.6}
   % derived: P0 - A0 (references.csv, every row: preservation + spent; references.csv, every row: adaptation - gained)
-\newcommand{\nWorstWriterGap}{23.9}
-  % derived: P0 - fairness_c10d10_clients.csv, row f3642_03, col shipped
 \newcommand{\nIsolatedScratchOwn}{0.8796}
   % references.csv, row 'isolated (scratch)', col adaptation
 \newcommand{\nIsolatedScratchSrc}{0.4192}
@@ -167,14 +98,6 @@
   % extreme_stop_rounds.csv, row dual, col oracle_src
 \newcommand{\nDoubleSatRound}{36}
   % extreme_stop_rounds.csv, row double, col oracle_round
-\newcommand{\nDualRuleRound}{26}
-  % extreme_stop_rounds.csv, row dual, col rule_round
-\newcommand{\nDoubleRuleRound}{59}
-  % extreme_stop_rounds.csv, row double, col rule_round
-\newcommand{\nDualRuleScore}{11.87}
-  % extreme_stop_rounds.csv, row dual, col rule_score, in points
-\newcommand{\nDoubleRuleScore}{10.72}
-  % extreme_stop_rounds.csv, row double, col rule_score, in points
 \newcommand{\nDualFinalScore}{-0.59}
   % extreme_stop_rounds.csv, row dual, col final_score (round-100 trace), in points
 \newcommand{\nDoubleFinalScore}{9.72}
@@ -189,12 +112,8 @@
   % plateau_stages.csv, row all, col oracle_mean, in points
 \newcommand{\nPlateauFixedMean}{7.73}
   % plateau_stages.csv, row all, col fixed_mean, in points
-\newcommand{\nPlateauFires}{50}
-  % plateau_stages.csv, row all, col fires
 \newcommand{\nPlateauArms}{81}
   % plateau_stages.csv, row all, col arms
-\newcommand{\nPlateauExtremeGain}{11.57}
-  % plateau_stages.csv, row extreme, col gain, in points
 \newcommand{\nPlateauHurtArms}{one}
   % plateau_arms.csv, count of rows with col gain < 0
 \newcommand{\nPlateauWorstLoss}{0.50}
@@ -233,16 +152,6 @@
   % references.csv, row 'centralized (from g-0)', col adaptation
 \newcommand{\nCentralPres}{0.9907}
   % references.csv, row 'centralized (from g-0)', col preservation
-\newcommand{\nTrimBestFrac}{a trim fraction of $0.4$}
-  % agg-winners.csv, row trimmed_t3, col cell (label via TRIM_FRACTION)
-\newcommand{\nTrimSurvivors}{three}
-  % derived: cost_arms.csv, row c10d10/control, col clients_per_round = 9, minus 2 x 3 trimmed (agg-winners.csv, row trimmed_t3)
-\newcommand{\nTrimBestAdapt}{0.9075}
-  % agg-winners.csv, row trimmed_t3, col adaptation
-\newcommand{\nTrimBestPres}{0.9648}
-  % agg-winners.csv, row trimmed_t3, col preservation
-\newcommand{\nTrimBestCount}{3}
-  % agg-winners.csv, row trimmed_t3, col cell: the trimmed count t
 \newcommand{\nAggBestConc}{the server anchor at a half-life of $h = 2R$}
   % agg-winners.csv, row anchor_h2/parallel, col cell -- the frozen crowning record (validation basis), not re-derived here
 \newcommand{\nAggBestConcAdapt}{0.9188}
@@ -251,10 +160,6 @@
   % agg-winners.csv, row anchor_h2/parallel, col preservation
 \newcommand{\nAggBestSeq}{the capped cyclic rule}
   % agg-winners.csv, top-score cyclic row (seq_delta_capped), col cell
-\newcommand{\nAggBestSeqAdapt}{0.9187}
-  % agg-winners.csv, row seq_delta_capped/cyclic, col adaptation
-\newcommand{\nAggBestSeqPres}{0.9726}
-  % agg-winners.csv, row seq_delta_capped/cyclic, col preservation
 \newcommand{\nAggEtaBest}{0.95}
   % agg-winners.csv, row eta_0p95, col cell: the server step coefficient
 \newcommand{\nAggBestGainOverFedAvg}{0.83}
@@ -267,32 +172,20 @@
   % reg-winners.csv, row logit_l2_lam0p001/parallel, col preservation
 \newcommand{\nRegBestSeqA}{logit matching at $\lambda = 3{\times}10^{-3}$}
   % reg-winners.csv, 1st cyclic non-blend row by score (logit_l2_lam0p003), col cell
-\newcommand{\nRegBestSeqB}{FedNTD at $\beta = 0.01$, $\tau = 2$}
-  % reg-winners.csv, 2nd cyclic non-blend row by score (ntd_b0p01_t2), col cell
 \newcommand{\nRegBestSeqAdapt}{0.9374}
   % reg-winners.csv, row logit_l2_lam0p003/cyclic, col adaptation
 \newcommand{\nRegBestSeqPres}{0.9903}
   % reg-winners.csv, row logit_l2_lam0p003/cyclic, col preservation
-\newcommand{\nRegLogitLamSeq}{0.003}
-  % reg-winners.csv, row logit_l2_lam0p003/cyclic, col cell: the penalty coefficient
-\newcommand{\nRegLogitLamConc}{0.001}
-  % reg-winners.csv, row logit_l2_lam0p001/parallel, col cell: the penalty coefficient
 \newcommand{\nControlSpent}{2.98}
   % agg-winners.csv, row control_fedavg/concurrent, col spent (= P0 - preservation), in points; same run as nFedAvgAdapt/Pres
 \newcommand{\nRegBestSpent}{0.82}
   % reg-winners.csv, row logit_l2_lam0p003/cyclic, col spent (= P0 - preservation), in points
-\newcommand{\nParamLBestConc}{0.0001}
-  % reg-winners.csv, row param_l2_mu0p0001/parallel, col cell: the penalty coefficient
-\newcommand{\nParamLTinyGain}{1.61}
-  % derived: reg-winners.csv, row param_l2_mu0p0001/parallel minus row param_l2_mu0/CYCLIC (the parallel no-penalty row is not in this file), col preservation, in points
 \newcommand{\nBlendBestAdapt}{0.9355}
   % reg-winners.csv, top-score blend row (hybrid_seq_mix0p75/cyclic), col adaptation
 \newcommand{\nBlendBestPres}{0.9925}
   % reg-winners.csv, top-score blend row (hybrid_seq_mix0p75/cyclic), col preservation
 \newcommand{\nBlendBestSpent}{0.61}
   % reg-winners.csv, row hybrid_seq_mix0p75/cyclic, col spent (= P0 - preservation), in points
-\newcommand{\nBlendVsKdMin}{0.98}
-  % blends.csv, col mean, minimum over the 6 rows whose col minus is a distillation parent, in points
 \newcommand{\nBlendVsKdMax}{2.05}
   % blends.csv, col mean, maximum over the 6 rows whose col minus is a distillation parent, in points
 \newcommand{\nBlendKdFoldWins}{five of six}
@@ -315,12 +208,6 @@
   % combos.csv, row eta_0p95_hybrid_seq_mix0p5, col adaptation
 \newcommand{\nComboBalancedPres}{0.9929}
   % combos.csv, row eta_0p95_hybrid_seq_mix0p5, col preservation
-\newcommand{\nComboBalancedGap}{0.56}
-  % combos.csv, row eta_0p95_hybrid_seq_mix0p5, col spent (= P0 - preservation), in points
-\newcommand{\nComboBalancedCost}{0.56}
-  % derived: combos.csv, rows anchor_h2_ntd_b0p01_t0p5 minus eta_0p95_hybrid_seq_mix0p5, col adaptation, in points
-\newcommand{\nComboCells}{90}
-  % cost_stages.csv, row 'combinations', col tasks
 \newcommand{\nComboArms}{eighteen}
   % combos.csv, number of rows -- the cross of three rules with three penalties inside each of the two schedules
 \newcommand{\nComboBeatMeans}{seven}
@@ -349,28 +236,8 @@
   % derived: combos.csv, row anchor_h2_ntd_b0p01_t0p5/parallel, col score, minus the better of agg-winners.csv row anchor_h2/parallel and reg-winners.csv row ntd_b0p01_t0p5/parallel (the better component is ntd_b0p01_t0p5), in points
 \newcommand{\nNtdEtaGain}{0.77}
   % derived: combos.csv, row eta_0p95_ntd_b0p01_t0p5/parallel, col score, minus the better of agg-winners.csv row eta_0p95/parallel and reg-winners.csv row ntd_b0p01_t0p5/parallel (the better component is ntd_b0p01_t0p5), in points
-\newcommand{\nSizeList}{five, ten and twenty}
-  % derived: the sizes_*.csv inventory (c10d10, c20d10, c20d20, five)
-\newcommand{\nFiveControlPres}{0.9370}
-  % sizes_five.csv, rows control (cyclic, parallel), col preservation, mean
-\newcommand{\nFiveBalancedPres}{0.9889}
-  % sizes_five.csv, row balanced, col preservation
-\newcommand{\nFiveTrimSurvivors}{two}
-  % derived: cost_stages.csv, row 'five clients, one dropped', col clients_per_round = 4, at trim fraction 0.4
 \newcommand{\nDropoutMaxDelta}{0.7}
   % derived: max |sizes_c20d10.csv - sizes_c20d20.csv| over rows sequential/winner/balanced and cols adaptation, preservation, in points
-\newcommand{\nFiveWinnerAdapt}{0.9324}
-  % sizes_five.csv, row winner, col adaptation
-\newcommand{\nTwentyWinnerDrop}{2.8}
-  % derived: combos.csv row anchor_h2_ntd_b0p01_t0p5 minus sizes_c20d10.csv row winner, col adaptation, in points
-\newcommand{\nTwentyPresFloor}{0.993}
-  % sizes_c20d10.csv + sizes_c20d20.csv, min over all rows, col preservation
-\newcommand{\nBalancedPresMin}{0.9889}
-  % sizes_*.csv, row balanced, col preservation, minimum over the four settings
-\newcommand{\nBalancedPresMax}{0.9961}
-  % sizes_*.csv, row balanced, col preservation, maximum over the four settings
-\newcommand{\nBalancedAdaptGap}{1.27}
-  % derived: sizes_*.csv, row winner minus row balanced, col adaptation, maximum over the four settings, in points
 \newcommand{\nCarryMinMargin}{2.77}
   % derived: sizes_*.csv, col score, minimum over every non-control row of (arm - the better-scoring control of its setting); attained by sizes_c10d10.csv row winner. The two twenty-client settings carry no control row and are excluded. In points.
 \newcommand{\nCarrySpentMin}{0.25}
@@ -381,68 +248,18 @@
   % sizes_c10d10.csv, row control, col spent (= P0 - preservation): the worse (larger) of the parallel and cyclic schedules, here cyclic, in points
 \newcommand{\nControlSpentFive}{6.18}
   % sizes_five.csv, row control, col spent (= P0 - preservation): the worse (larger) of the parallel and cyclic schedules, here parallel, in points
-\newcommand{\nFairControlMean}{0.9206}
-  % fairness_c10d10.csv, row control/parallel, col mean
-\newcommand{\nFairControlWorst}{0.8227}
-  % fairness_c10d10.csv, row control/parallel, col min
-\newcommand{\nFairControlCoV}{0.043}
-  % derived: fairness_c10d10_clients.csv, rows control/parallel, col accuracy, population sd / mean over the 10 clients
-\newcommand{\nFairControlImproved}{10 of 10}
-  % fairness_c10d10_clients.csv, rows control/parallel, count of col delta > 0
-\newcommand{\nFairControlLeftBehind}{zero}
-  % fairness_c10d10_clients.csv, rows control/parallel, count of col delta <= 0
-\newcommand{\nFairWinnerMean}{0.9310}
-  % fairness_c10d10.csv, row winner/parallel, col mean
-\newcommand{\nFairWinnerWorst}{0.8351}
-  % fairness_c10d10.csv, row winner/parallel, col min
-\newcommand{\nFairWinnerCoV}{0.040}
-  % derived: fairness_c10d10_clients.csv, rows winner/parallel, col accuracy, population sd / mean over the 10 clients
-\newcommand{\nFairWinnerImproved}{10 of 10}
-  % fairness_c10d10_clients.csv, rows winner/parallel, count of col delta > 0
-\newcommand{\nFairBalancedMean}{0.9291}
-  % fairness_c10d10.csv, row balanced/parallel, col mean
-\newcommand{\nFairBalancedWorst}{0.8420}
-  % fairness_c10d10.csv, row balanced/parallel, col min
-\newcommand{\nFairBalancedCoV}{0.043}
-  % derived: fairness_c10d10_clients.csv, rows balanced/parallel, col accuracy, population sd / mean over the 10 clients
-\newcommand{\nFairBalancedImproved}{10 of 10}
-  % fairness_c10d10_clients.csv, rows balanced/parallel, count of col delta > 0
-\newcommand{\nWorstWriterId}{\code{f3642\_03}}
-  % fairness_c10d10_clients.csv, row with the smallest col shipped, col client
-\newcommand{\nWorstWriterShipped}{0.7597}
-  % fairness_c10d10_clients.csv, row f3642_03, col shipped
 \newcommand{\nFairWorstMinGain}{9.14}
   % fairness_c10d10.csv, col lift_worst, minimum over the 5 arm rows, in points
 \newcommand{\nFairWorstMaxGain}{12.17}
   % fairness_c10d10.csv, col lift_worst, maximum over the 5 arm rows, in points
-\newcommand{\nFairBestPair}{the server step at $\eta_s = 0.95$ with logit matching at $\lambda = 10^{-3}$}
-  % fairness_combo.csv, largest-lift_worst row (eta_0p95_logit_l2_lam0p001/parallel), col cell
-\newcommand{\nFairBestPairWorstGain}{4.54}
-  % derived: fairness_combo.csv, col lift_worst, row eta_0p95_logit_l2_lam0p001 minus the crowned row anchor_h2_ntd_b0p01_t0p5, in points
-\newcommand{\nFairBestPairMeanCost}{0.13}
-  % derived: fairness_combo.csv, col mean, |crowned row anchor_h2_ntd_b0p01_t0p5 - row eta_0p95_logit_l2_lam0p001|, in points (the crowned pair is in fact the LOWER of the two here, by this amount)
 \newcommand{\nBalancedWorstTwentyTwo}{$-4.52$}
   % fairness_c20d10.csv, row balanced/parallel, col lift_worst, in points (negative: below the shipped model)
 \newcommand{\nBalancedWorstTwentyFour}{$-7.38$}
   % fairness_c20d20.csv, row balanced/parallel, col lift_worst, in points (negative: below the shipped model)
-\newcommand{\nParticipants}{nine}
-  % cost_arms.csv, row c10d10/winner, col clients_per_round
 \newcommand{\nCommPerRound}{119.8\,MB}
   % cost_arms.csv, row c10d10/winner, col mb_per_round
-\newcommand{\nCommTotal}{11.98\,GB}
-  % derived: cost_arms.csv, row c10d10/winner, cols mb_per_round x rounds
 \newcommand{\nParamCount}{1\,663\,370}
   % cost_arms.csv, row c10d10/winner, col param_count
-\newcommand{\nDoubleAdapt}{0.9685}
-  % extremes.csv, row double, col adaptation
-\newcommand{\nDoublePres}{0.9363}
-  % extremes.csv, row double, col preservation
-\newcommand{\nDualAdapt}{0.9612}
-  % extremes.csv, row dual, col adaptation
-\newcommand{\nDualPres}{0.8558}
-  % extremes.csv, row dual, col preservation
-\newcommand{\nDoubleFinalPres}{0.9363}
-  % extremes.csv, row double, col preservation (test axis; the trace value is stopping_extreme.csv row double col final_preservation = 0.9373)
 \newcommand{\nDualSatRound}{8}
   % stopping_extreme.csv, row dual, col oracle_round
 \newcommand{\nStoppingArms}{81}
@@ -459,32 +276,10 @@
   % derived: mean of col one_vs_final over stopping_all.csv, all 81 arms, in points
 \newcommand{\nOneRuleDelta}{0.05}
   % stopping_all.csv, col one_delta (identical on every row)
-\newcommand{\nOneRuleExtremeGain}{6.73}
-  % derived: mean of col one_vs_final over stopping_all.csv rows with stage = extreme, in points
-\newcommand{\nOneRuleFiveGain}{1.69}
-  % derived: mean of col one_vs_final over stopping_all.csv rows with stage = five, in points
-\newcommand{\nOneRuleAggGain}{0.86}
-  % derived: mean of col one_vs_final over stopping_all.csv rows with stage = aggfull, in points
-\newcommand{\nOneRuleWorstArm}{EWC at $\lambda = 8$}
-  % stopping_all.csv, row with the lowest col one_vs_final (stage regfull, cell fisher_lam8, parallel)
-\newcommand{\nOneRuleWorstLoss}{5.28}
-  % derived: minus stopping_all.csv col one_vs_final of that row, in points (the sentence reads it as a cost)
 \newcommand{\nKlRuleScore}{7.19}
   % signals_summary_extract.csv, row kl_global_to_current, col mean_stopped_score, in points
 \newcommand{\nProxyKlRuleScore}{8.12}
   % signals_summary_extract.csv, row proxy_kl, col mean_stopped_score, in points
-\newcommand{\nOracleGapMainMin}{0.08}
-  % derived: smallest per-stage MEDIAN of col oracle_cost over the seven non-extreme stages of stopping_all.csv, in points
-\newcommand{\nOracleGapMainMax}{2.17}
-  % derived: largest per-stage MEDIAN of col oracle_cost over the seven non-extreme stages of stopping_all.csv, in points
-\newcommand{\nOracleGapExtremeMin}{5.96}
-  % derived: smallest col oracle_cost among the stage = extreme rows of stopping_all.csv, in points
-\newcommand{\nOracleGapExtremeMax}{17.19}
-  % derived: largest col oracle_cost among the stage = extreme rows of stopping_all.csv, in points
-\newcommand{\nRetentionMaxDev}{0.0080}
-  % signals_extras_extract.csv, key retention_max_dev_extreme --- the largest departure of retention_known from 1.0 over the three extreme arms
-\newcommand{\nRetentionSourceFall}{17.04}
-  % signals_extras_extract.csv, key source_max_fall_extreme, in points
 \newcommand{\nSignalRuns}{2\,471}
   % signals_extras_extract.csv, key study_runs --- the run count the signals module reported for the study (of which 2444 carry a source-validation correlation)
 \newcommand{\nSignalCount}{eight}
@@ -535,14 +330,8 @@
   % cost_stages.csv, col tasks summed over every stage
 \newcommand{\nProgrammeGpuHours}{56.8}
   % cost_stages.csv, col hours summed over every stage, in GPU-hours
-\newcommand{\nCohortSize}{ten}
-  % cohort_composition.csv, count of rows with cohort = cohort10
-\newcommand{\nDecoupleGInit}{0.9091}
-  % decouple_example.csv, row f3984_32 (chosen), col g_init_acc
 \newcommand{\nDecoupleGZero}{0.9597}
   % decouple_example.csv, row f3984_32 (chosen), col g0_acc
 \newcommand{\nRounds}{100}
   % cost_stages.csv, row 'regularisation finals', col rounds
-\newcommand{\nValRowsPerFold}{213}
-  % cohort_table.csv, cols f1_val, f2_val, f3_val, f4_val, f5_val summed over the cohort writers, mean over folds
 % END GENERATED
