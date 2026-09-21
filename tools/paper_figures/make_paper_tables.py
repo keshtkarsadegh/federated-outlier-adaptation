@@ -147,14 +147,23 @@ CROWNED = ("anchor_h2_ntd_b0p01_t0p5", "parallel")
 BALANCED = ("eta_0p95_hybrid_seq_mix0p5", "parallel")
 CYCLIC_ARM = ("seq_fedavg_ntd_b0p01_t2", "cyclic")
 
-#: The composite the study selected out of the construction sweep, named for
-#: the same reason the three arms above are: the record is frozen, and a table
+#: The composite that LEADS tab:reg_winners on both schedules, named for the
+#: same reason the three arms above are: the record is frozen, and a table
 #: reports it rather than re-deriving it from its own best row.
-BLEND_SELECTED = "hybrid_seq_mix0p75"
+#:
+#: IT WAS NOT SELECTED, AND THE CONSTANT USED TO SAY IT WAS.  Nothing chose
+#: this arm: every shortlist of the study was cut on the validation score, and
+#: on the cyclic penalties this one stands third there while the arm the cross
+#: actually carried is a different mix.  It leads the TEST ordering, which is a
+#: post-selection reading, and the note tab:reg_winners prints has always said
+#: so -- so a constant called BLEND_SELECTED contradicted the caption it fed,
+#: and the emitter comment underneath it repeated the contradiction into the
+#: provenance line of the .tex.
+BLEND_TEST_LEADING = "hybrid_seq_mix0p75"
 
 #: The superscript tab:reg_winners puts on a composite row, by the role that
 #: earns the row its place in a table of penalties, in printing order.
-BLEND_MARK = (("selected", "\\dagger"), ("crossed", "\\ddagger"))
+BLEND_MARK = (("test-leading", "\\dagger"), ("crossed", "\\ddagger"))
 
 #: What the two control rows of tab:agg_winners are, said where the rows are
 #: printed.  The second one arms the accuracy-floor stop rule and is otherwise
@@ -479,8 +488,9 @@ def reg_printed(regu, combo, agg_cells):
     So the filter is not "no composites".  It is every single-method penalty,
     plus the composite rows another printed table reads: the one the grid
     crosses on that schedule, derived from the grid itself rather than assumed,
-    and the one the study selected.  The remaining composite rows are the
-    construction sweep's own subject and are reported with it.
+    and the test-leading one, which no selection chose and which leads the test
+    ordering of both blocks.  The remaining composite rows are the construction
+    sweep's own subject and are reported with it.
     """
     crossed = {(split_combo(r["cell"], agg_cells)[1], r["family"]) for r in combo}
     out = []
@@ -489,7 +499,7 @@ def reg_printed(regu, combo, agg_cells):
             out.append((r, ()))
             continue
         roles = [role for role, ok in
-                 (("selected", r["cell"] == BLEND_SELECTED),
+                 (("test-leading", r["cell"] == BLEND_TEST_LEADING),
                   ("crossed", (r["cell"], r["family"]) in crossed)) if ok]
         if roles:
             out.append((r, tuple(roles)))
@@ -600,7 +610,8 @@ def t_reg(reg_rows, agg, regu):
             "The \\emph{screened} rows are the separate screen that "
             "swept all three coefficients together, which is why the two are "
             "named apart and carry different coefficients here. Of the "
-            "composite rows this table carries the two another table reads. "
+            "composite rows, this table carries the two that other tables "
+            "read: "
             "$\\ddagger$ is the composite that schedule's validation ordering "
             "selected --- $m{=}0.5$ on both schedules --- which is therefore "
             "the one Table~\\ref{tab:combos} crosses and reads its $\\Delta$ "
@@ -640,7 +651,7 @@ def t_reg(reg_rows, agg, regu):
         comment="source: data/reg-winners.csv, every row whose cell does not\n"
                 "start with 'hybrid', plus the 'hybrid' rows another table\n"
                 "reads --- the penalty component of a data/combos.csv row\n"
-                "on the same schedule, and the selected composite (mix 0.75,\n"
+                "on the same schedule, and the test-leading composite (mix 0.75,\n"
                 "cyclic-tuned) --- grouped by col family (parallel block\n"
                 "first, cyclic second), ordered by col score within each\n"
                 "block. The last row of each block is the plain-FedAvg\n"
@@ -1148,7 +1159,12 @@ def t_selection_axis(sel, agg, regu, combo):
             "fold-mean source accuracy and the selection score of "
             "Eq.~\\eqref{eq:score} that each selection record was cut on, and "
             "the arm's place in that score's ordering --- which is the "
-            "ordering that did the choosing. The four columns under "
+            "ordering that did the choosing. Both scores are taken against one "
+            "pair of baselines, the shipped model's \\emph{test}-axis $A_0$ "
+            "and $P_0$, on the validation side as well as the test side: that "
+            "is what the selection records themselves did, so the validation "
+            "score printed here is the number each shortlist was cut on and "
+            "not a re-derivation of it. The four columns under "
             "\\textbf{test} are the row the reporting table prints for the "
             "same arm, and \\emph{Rank} there is that arm's place in the same "
             "population ordered by the test score. A rank is over every arm "

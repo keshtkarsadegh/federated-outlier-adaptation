@@ -155,6 +155,63 @@ def test_the_two_shipped_model_worst_client_figures_are_told_apart():
     assert "fold-mean of g0_own_test" in registry["nGZeroClientMin"][1]
 
 
+# ----------------------------------------- tab:selection_axis, the baselines
+
+def test_both_selection_axis_scores_are_against_the_test_axis_baselines():
+    """
+    A referee recomputed the VALIDATION score column of tab:selection_axis
+    exactly from the shipped model's TEST-axis A0 and P0, and the page gave no
+    way to tell whether that was the intended basis.  It is: one pair of
+    baselines feeds both columns, because that is the pair
+    study_emit.shipped_baselines handed ranked_by_trade when it cut every
+    shortlist, and a validation-axis baseline would report an ordering the
+    study never selected on.  Pinned here against references.csv, which
+    carries the same two constants on the test axis as adaptation - gained and
+    preservation + spent.
+    """
+    refs = _rows(PAPER / "references.csv")
+    a0 = {round(float(r["adaptation"]) - float(r["gained"]), 9) for r in refs}
+    p0 = {round(float(r["preservation"]) + float(r["spent"]), 9) for r in refs}
+    assert len(a0) == 1 and len(p0) == 1, (sorted(a0), sorted(p0))
+    a0, p0 = a0.pop(), p0.pop()
+
+    for row in _rows(PAPER / "selection_axis.csv"):
+        for axis in ("val", "test"):
+            expected = ((float(row[f"{axis}_adaptation"]) - a0)
+                        - (p0 - float(row[f"{axis}_preservation"])))
+            assert abs(float(row[f"{axis}_score"]) - expected) < 5e-6, (
+                row["cell"], row["schedule"], axis)
+
+
+def test_the_selection_axis_note_states_which_baselines_it_scored_against(
+        tmp_path, monkeypatch):
+    """The basis is only checkable from the page if the page says it."""
+    out = _emitted(tmp_path, monkeypatch)
+    note = (out / "selection_axis.tex").read_text()
+    assert "test}-axis $A_0$" in note
+    assert "on the validation side as well as the test side" in note
+
+
+def test_the_leading_composite_is_never_called_the_selected_one(
+        tmp_path, monkeypatch):
+    """
+    The composite that leads tab:reg_winners was chosen by nothing: every
+    shortlist was cut on the validation score and that ordering put a
+    different mix forward on each schedule.  The note has always said so and
+    the generator called the arm BLEND_SELECTED anyway, which reached the page
+    as a provenance line describing the leading row as the selected one.
+    """
+    import make_paper_tables as tables
+
+    out = _emitted(tmp_path, monkeypatch)
+    printed = (out / "reg_winners.tex").read_text()
+    assert ("Of the composite rows, this table carries the two that other "
+            "tables read:") in printed
+    assert "test-leading composite (mix 0.75," in printed
+    assert "selected composite" not in printed
+    assert not hasattr(tables, "BLEND_SELECTED")
+
+
 # ------------------------------------------------- tab:selection_axis, ranks
 def _blocks():
     """The selection-axis view, grouped by stage and schedule."""
